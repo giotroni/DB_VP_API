@@ -1,0 +1,282 @@
+/* Stili aggiuntivi per Task Management */
+
+:root {
+    --primary-color: #667eea;
+    --secondary-color: #764ba2;
+    --success-color: #28a745;
+    --warning-color: #ffc107;
+    --danger-color: #dc3545;
+    --info-color: #17a2b8;
+    --light-color: #f8f9fa;
+    --dark-color: #343a40;
+}
+
+body {
+    background-color: #f5f7fa;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Card animations e stili */
+.task-card {
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow: hidden;
+}
+
+.task-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+}
+
+.task-card.status-in-corso {
+    border-left: 4px solid var(--success-color);
+}
+
+.task-card.status-completato {
+    border-left: 4px solid var(--info-color);
+}
+
+.task-card.status-archiviato {
+    border-left: 4px solid var(--dark-color);
+}
+
+.task-card.status-sospeso {
+    border-left: 4px solid var(--warning-color);
+}
+
+.task-card.archived-task {
+    opacity: 0.7;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+}
+
+/* Progress circle migliorato */
+.progress-circle {
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    border: 3px solid white;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    font-size: 0.75rem;
+    font-weight: 600;
+    min-width: 50px;
+    min-height: 50px;
+}
+
+/* Badge personalizzati */
+.badge-tipo-campo {
+    background: linear-gradient(135deg, var(--info-color), #20c997);
+    color: white;
+    font-weight: 500;
+}
+
+.badge-tipo-ufficio {
+    background: linear-gradient(135deg, var(--success-color), #20c997);
+    color: white;
+    font-weight: 500;
+}
+
+/* Header della barra di ricerca */
+.search-filter-bar {
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    position: relative;
+}
+
+.search-filter-bar::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 100" fill="white" fill-opacity="0.1"><polygon points="0,0 0,100 1000,0"/></svg>');
+    background-size: cover;
+}
+
+.search-filter-bar .container {
+    position: relative;
+    z-index: 1;
+}
+
+/* Cards delle statistiche */
+.stats-card {
+    background: white;
+    border-radius: 12px;
+    padding: 1.2rem;
+    text-align: center;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+    transition: transform 0.2s ease;
+}
+
+.stats-card:hover {
+    transform: translateY(-2px);
+}
+
+.stats-card .h4 {
+    color: var(--primary-color);
+    font-weight: 700;
+}
+
+/* Form styling */
+.form-control:focus,
+.form-select:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+}
+
+/* Modal migliorato */
+.modal-content {
+    border-radius: 15px;
+    border: none;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+}
+
+.modal-header {
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    color: white;
+    border-radius: 15px 15px 0 0;
+    border: none;
+}
+
+.modal-header .btn-close {
+    filter: invert(1);
+}
+
+/* Bottoni personalizzati */
+.btn-primary {
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    border: none;
+    border-radius: 8px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+}
+
+.btn-success {
+    background: linear-gradient(135deg, var(--success-color), #20c997);
+    border: none;
+    border-radius: 8px;
+}
+
+.btn-warning {
+    background: linear-gradient(135deg, var(--warning-color), #fd7e14);
+    border: none;
+    border-radius: 8px;
+}
+
+/* Navbar */
+.navbar-brand {
+    font-weight: 600;
+    font-size: 1.3rem;
+}
+
+/* Loading spinner */
+.spinner-border {
+    width: 3rem;
+    height: 3rem;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .search-filter-bar .row {
+        text-align: center;
+    }
+    
+    .stats-card {
+        margin-bottom: 1rem;
+    }
+    
+    .task-card {
+        margin-bottom: 1rem;
+    }
+    
+    .modal-dialog {
+        margin: 1rem;
+    }
+    
+    .progress-circle {
+        width: 40px;
+        height: 40px;
+        font-size: 0.7rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .search-filter-bar {
+        padding: 1.5rem 0;
+    }
+    
+    .card-body .row.text-center {
+        font-size: 0.85rem;
+    }
+    
+    .btn-sm {
+        font-size: 0.8rem;
+        padding: 0.25rem 0.5rem;
+    }
+}
+
+/* Animazioni */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.task-card {
+    animation: fadeInUp 0.5s ease forwards;
+}
+
+.task-card:nth-child(2) { animation-delay: 0.1s; }
+.task-card:nth-child(3) { animation-delay: 0.2s; }
+.task-card:nth-child(4) { animation-delay: 0.3s; }
+
+/* Alert personalizzati */
+.alert {
+    border-radius: 10px;
+    border: none;
+    font-weight: 500;
+}
+
+.alert-success {
+    background: linear-gradient(135deg, #d4edda, #c3e6cb);
+    color: #155724;
+}
+
+.alert-danger {
+    background: linear-gradient(135deg, #f8d7da, #f5c6cb);
+    color: #721c24;
+}
+
+/* Tooltips se necessario */
+.tooltip-inner {
+    background-color: var(--dark-color);
+    border-radius: 6px;
+}
+
+/* Scrollbar personalizzata */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--primary-color);
+}

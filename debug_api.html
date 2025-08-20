@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug API</title>
+    <style>
+        body { font-family: monospace; margin: 20px; }
+        .api-test { margin: 20px 0; padding: 15px; border: 1px solid #ccc; }
+        .response { background: #f5f5f5; padding: 10px; white-space: pre-wrap; word-break: break-all; }
+        .error { color: red; }
+        .success { color: green; }
+    </style>
+</head>
+<body>
+    <h1>Debug API Responses</h1>
+    
+    <div class="api-test">
+        <h3>Test API Task</h3>
+        <button onclick="testTaskAPI()">Test Task API</button>
+        <div id="task-response" class="response"></div>
+    </div>
+    
+    <div class="api-test">
+        <h3>Test API Commesse</h3>
+        <button onclick="testCommesseAPI()">Test Commesse API</button>
+        <div id="commesse-response" class="response"></div>
+    </div>
+    
+    <div class="api-test">
+        <h3>Test API Collaboratori</h3>
+        <button onclick="testCollaboratoriAPI()">Test Collaboratori API</button>
+        <div id="collaboratori-response" class="response"></div>
+    </div>
+
+    <script>
+        async function testAPI(url, responseElementId) {
+            const responseElement = document.getElementById(responseElementId);
+            responseElement.innerHTML = 'Loading...';
+            
+            try {
+                const response = await fetch(url);
+                const text = await response.text();
+                
+                responseElement.innerHTML = `
+Status: ${response.status} ${response.statusText}
+Headers: ${JSON.stringify(Object.fromEntries(response.headers), null, 2)}
+
+Raw Response:
+${text}
+
+JSON Parse Test:
+`;
+                
+                try {
+                    const json = JSON.parse(text);
+                    responseElement.innerHTML += `✅ Valid JSON\n${JSON.stringify(json, null, 2)}`;
+                    responseElement.className = 'response success';
+                } catch (e) {
+                    responseElement.innerHTML += `❌ Invalid JSON: ${e.message}`;
+                    responseElement.className = 'response error';
+                }
+                
+            } catch (error) {
+                responseElement.innerHTML = `❌ Network Error: ${error.message}`;
+                responseElement.className = 'response error';
+            }
+        }
+        
+        function testTaskAPI() {
+            testAPI('API/task?limit=5', 'task-response');
+        }
+        
+        function testCommesseAPI() {
+            testAPI('API/commesse?limit=5', 'commesse-response');
+        }
+        
+        function testCollaboratoriAPI() {
+            testAPI('API/collaboratori?limit=5', 'collaboratori-response');
+        }
+    </script>
+</body>
+</html>

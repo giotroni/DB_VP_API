@@ -1,0 +1,26 @@
+[20-Aug-2025 10:40:06 Europe/Rome] PHP Fatal error:  Uncaught Error: Undefined constant PDO::MYSQL_ATTR_INIT_COMMAND in C:\onedrive_vep\OneDrive\Documents\40. KNOWHOW\VP\Gestionale\DB_VP\DB\config.php:26
+Stack trace:
+#0 C:\onedrive_vep\OneDrive\Documents\40. KNOWHOW\VP\Gestionale\DB_VP\DB\config.php(37): DatabaseConnection->__construct()
+#1 C:\onedrive_vep\OneDrive\Documents\40. KNOWHOW\VP\Gestionale\DB_VP\DB\config.php(59): DatabaseConnection::getInstance()
+#2 C:\onedrive_vep\OneDrive\Documents\40. KNOWHOW\VP\Gestionale\DB_VP\DB\import_csv.php(48): getDatabase()
+#3 C:\onedrive_vep\OneDrive\Documents\40. KNOWHOW\VP\Gestionale\DB_VP\DB\import_csv.php(713): CSVImporter->__construct()
+#4 {main}
+  thrown in C:\onedrive_vep\OneDrive\Documents\40. KNOWHOW\VP\Gestionale\DB_VP\DB\config.php on line 26
+[20-Aug-2025 12:02:21 Europe/Rome] PHP Warning:  Cannot modify header information - headers already sent by (output started at /home2/vaglioty/public_html/gestione_VP/API/simple_test.php:13) in /home2/vaglioty/public_html/gestione_VP/API/simple_test.php on line 58
+[20-Aug-2025 12:02:36 Europe/Rome] PHP Warning:  Cannot modify header information - headers already sent by (output started at /home2/vaglioty/public_html/gestione_VP/API/debug.php:13) in /home2/vaglioty/public_html/gestione_VP/DB/config.php on line 74
+[20-Aug-2025 12:02:36 Europe/Rome] PHP Warning:  Cannot modify header information - headers already sent by (output started at /home2/vaglioty/public_html/gestione_VP/API/debug.php:13) in /home2/vaglioty/public_html/gestione_VP/DB/config.php on line 75
+[20-Aug-2025 12:02:36 Europe/Rome] PHP Warning:  Cannot modify header information - headers already sent by (output started at /home2/vaglioty/public_html/gestione_VP/API/debug.php:13) in /home2/vaglioty/public_html/gestione_VP/DB/config.php on line 76
+[20-Aug-2025 12:02:36 Europe/Rome] PHP Warning:  Cannot modify header information - headers already sent by (output started at /home2/vaglioty/public_html/gestione_VP/API/debug.php:13) in /home2/vaglioty/public_html/gestione_VP/DB/config.php on line 77
+[20-Aug-2025 12:02:36 Europe/Rome] PHP Warning:  Cannot modify header information - headers already sent by (output started at /home2/vaglioty/public_html/gestione_VP/API/debug.php:13) in /home2/vaglioty/public_html/gestione_VP/DB/config.php on line 74
+[20-Aug-2025 12:02:36 Europe/Rome] PHP Warning:  Cannot modify header information - headers already sent by (output started at /home2/vaglioty/public_html/gestione_VP/API/debug.php:13) in /home2/vaglioty/public_html/gestione_VP/DB/config.php on line 75
+[20-Aug-2025 12:02:36 Europe/Rome] PHP Warning:  Cannot modify header information - headers already sent by (output started at /home2/vaglioty/public_html/gestione_VP/API/debug.php:13) in /home2/vaglioty/public_html/gestione_VP/DB/config.php on line 76
+[20-Aug-2025 12:02:36 Europe/Rome] PHP Warning:  Cannot modify header information - headers already sent by (output started at /home2/vaglioty/public_html/gestione_VP/API/debug.php:13) in /home2/vaglioty/public_html/gestione_VP/DB/config.php on line 77
+[20-Aug-2025 12:11:03 Europe/Rome] PHP Warning:  Cannot modify header information - headers already sent by (output started at /home2/vaglioty/public_html/gestione_VP/API/simple_test.php:13) in /home2/vaglioty/public_html/gestione_VP/API/simple_test.php on line 58
+[20-Aug-2025 12:11:03 Europe/Rome] Debug API: REQUEST_URI=/gestione_VP/API/status?debug=1, PARSED_PATH=status
+[20-Aug-2025 12:11:03 Europe/Rome] Debug API: REQUEST_URI=/gestione_VP/API/?debug=1, PARSED_PATH=
+[20-Aug-2025 12:11:07 Europe/Rome] PHP Warning:  Cannot modify header information - headers already sent by (output started at /home2/vaglioty/public_html/gestione_VP/API/simple_test.php:13) in /home2/vaglioty/public_html/gestione_VP/API/simple_test.php on line 58
+[20-Aug-2025 12:11:07 Europe/Rome] Debug API: REQUEST_URI=/gestione_VP/API/status?debug=1, PARSED_PATH=status
+[20-Aug-2025 12:11:07 Europe/Rome] Debug API: REQUEST_URI=/gestione_VP/API/?debug=1, PARSED_PATH=
+[20-Aug-2025 12:31:05 Europe/Rome] PHP Warning:  Cannot modify header information - headers already sent by (output started at /home2/vaglioty/public_html/gestione_VP/API/simple_test.php:13) in /home2/vaglioty/public_html/gestione_VP/API/simple_test.php on line 58
+[20-Aug-2025 12:31:05 Europe/Rome] Debug API: REQUEST_URI=/gestione_VP/API/status?debug=1, PARSED_PATH=status
+[20-Aug-2025 12:31:05 Europe/Rome] Debug API: REQUEST_URI=/gestione_VP/API/?debug=1, PARSED_PATH=

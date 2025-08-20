@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestione Task - Vaglio & Partners</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="assets/css/task-management.css" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="#">
+                <i class="bi bi-kanban me-2"></i>Gestione Task VP
+            </a>
+            <button class="btn btn-success ms-auto" data-bs-toggle="modal" data-bs-target="#taskModal">
+                <i class="bi bi-plus-circle me-1"></i>Nuovo Task
+            </button>
+        </div>
+    </nav>
+
+    <div class="search-filter-bar">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <input type="text" class="form-control" id="searchTask" placeholder="Cerca task...">
+                        </div>
+                        <div class="col-md-3">
+                            <select class="form-select" id="filterCommessa">
+                                <option value="">Tutte le commesse</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <select class="form-select" id="filterStato">
+                                <option value="">Tutti gli stati</option>
+                                <option value="In corso">In corso</option>
+                                <option value="Completato">Completato</option>
+                                <option value="Sospeso">Sospeso</option>
+                                <option value="Archiviato">Archiviato</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <select class="form-select" id="filterTipo">
+                                <option value="">Tutti i tipi</option>
+                                <option value="Campo">Campo</option>
+                                <option value="Ufficio">Ufficio</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <div class="stats-card">
+                                <div class="h4 mb-0" id="totalTasks">0</div>
+                                <small>Task Totali</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="stats-card">
+                                <div class="h4 mb-0" id="activeTasks">0</div>
+                                <small>Task Attivi</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-12">
+                <div id="loadingSpinner" class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Caricamento...</span>
+                    </div>
+                </div>
+                <div id="tasksContainer" class="row g-3" style="display: none;">
+                    <!-- I task verranno caricati qui -->
+                </div>
+                <div id="noTasks" class="text-center py-5" style="display: none;">
+                    <i class="bi bi-inbox display-1 text-muted"></i>
+                    <h3 class="text-muted">Nessun task trovato</h3>
+                    <p class="text-muted">Inizia creando il tuo primo task!</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal per inserimento/modifica task -->
+    <div class="modal fade" id="taskModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalTitle">Nuovo Task</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="taskForm">
+                        <input type="hidden" id="taskId">
+                        
+                        <div class="row g-3">
+                            <div class="col-md-8">
+                                <label for="taskName" class="form-label">Nome Task *</label>
+                                <input type="text" class="form-control" id="taskName" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="taskTipo" class="form-label">Tipo *</label>
+                                <select class="form-select" id="taskTipo" required>
+                                    <option value="">Seleziona tipo</option>
+                                    <option value="Campo">Campo</option>
+                                    <option value="Ufficio">Ufficio</option>
+                                    <option value="Monitoraggio">Monitoraggio</option>
+                                    <option value="Promo">Promo</option>
+                                    <option value="Sviluppo">Sviluppo</option>
+                                    <option value="Formazione">Formazione</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mt-1">
+                            <div class="col-md-6">
+                                <label for="taskCommessa" class="form-label">Commessa *</label>
+                                <select class="form-select" id="taskCommessa" required>
+                                    <option value="">Seleziona commessa</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="taskCollaboratore" class="form-label">Collaboratore *</label>
+                                <select class="form-select" id="taskCollaboratore" required>
+                                    <option value="">Seleziona collaboratore</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="mt-3">
+                            <label for="taskDescrizione" class="form-label">Descrizione</label>
+                            <textarea class="form-control" id="taskDescrizione" rows="3"></textarea>
+                        </div>
+
+                        <div class="row g-3 mt-1">
+                            <div class="col-md-4">
+                                <label for="taskDataApertura" class="form-label">Data Apertura *</label>
+                                <input type="date" class="form-control" id="taskDataApertura" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="taskDataChiusura" class="form-label">Data Chiusura</label>
+                                <input type="date" class="form-control" id="taskDataChiusura">
+                            </div>
+                            <div class="col-md-4">
+                                <label for="taskStato" class="form-label">Stato</label>
+                                <select class="form-select" id="taskStato">
+                                    <option value="In corso">In corso</option>
+                                    <option value="Completato">Completato</option>
+                                    <option value="Sospeso">Sospeso</option>
+                                    <option value="Archiviato">Archiviato</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mt-1">
+                            <div class="col-md-3">
+                                <label for="taskGgPreviste" class="form-label">Giorni Previsti</label>
+                                <input type="number" class="form-control" id="taskGgPreviste" step="0.5" min="0">
+                            </div>
+                            <div class="col-md-3">
+                                <label for="taskValoreGg" class="form-label">Valore/Giorno (€)</label>
+                                <input type="number" class="form-control" id="taskValoreGg" step="0.01" min="0">
+                            </div>
+                            <div class="col-md-3">
+                                <label for="taskSpeseComprese" class="form-label">Spese Comprese</label>
+                                <select class="form-select" id="taskSpeseComprese">
+                                    <option value="No">No</option>
+                                    <option value="Sì">Sì</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label for="taskValoreSpese" class="form-label">Valore Spese (€)</label>
+                                <input type="number" class="form-control" id="taskValoreSpese" step="0.01" min="0">
+                            </div>
+                        </div>
+
+                        <div class="mt-3">
+                            <label for="taskNote" class="form-label">Note</label>
+                            <textarea class="form-control" id="taskNote" rows="2"></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                    <button type="button" class="btn btn-primary" onclick="saveTask()">
+                        <i class="bi bi-save me-1"></i>Salva Task
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal conferma archiviazione -->
+    <div class="modal fade" id="archiveModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Conferma Archiviazione</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Sei sicuro di voler archiviare questo task?</p>
+                    <p class="text-muted small">Un task archiviato non può essere più modificato.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                    <button type="button" class="btn btn-warning" onclick="confirmArchive()">
+                        <i class="bi bi-archive me-1"></i>Archivia
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="assets/js/task-management.js"></script>
+</body>
+</html>
