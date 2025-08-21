@@ -69,12 +69,12 @@ function getDatabase() {
     return DatabaseConnection::getInstance()->getConnection();
 }
 
-// Headers per API JSON
+// Headers per API JSON (senza invio automatico)
 function setJSONHeaders() {
     header('Content-Type: application/json; charset=utf-8');
     header('Access-Control-Allow-Origin: *');
     header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
-    header('Access-Control-Allow-Headers: Content-Type, Authorization');
+    header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
 }
 
 // Funzione per gestire errori API
@@ -102,7 +102,7 @@ function sendSuccessResponse($data, $message = 'Operazione completata con succes
 }
 
 // Configurazioni aggiuntive
-define('API_VERSION', '1.0');
+define('API_VERSION', '1.0.0');
 define('TIMEZONE', 'Europe/Rome');
 
 // Imposta il timezone

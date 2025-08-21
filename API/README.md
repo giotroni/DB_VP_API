@@ -21,9 +21,23 @@
 
 Le API Vaglio & Partners forniscono accesso completo al database aziendale tramite interfacce REST. Tutte le API supportano operazioni CRUD (Create, Read, Update, Delete) con validazione completa dei dati e gestione delle relazioni.
 
-**Base URL**: `http://your-domain.com/API/`
-**Versione API**: 1.0
+**Base URL**: `http://your-domain.com/gestione_VP/API/index.php`
+**Versione API**: 1.0.0
 **Formato**: JSON
+
+### Modalità di Chiamata
+
+Le API utilizzano un sistema di routing basato su parametri GET:
+
+- **Formato base**: `GET /gestione_VP/API/index.php?resource={risorsa}`
+- **Con ID**: `GET /gestione_VP/API/index.php?resource={risorsa}&id={id}`
+- **Con filtri**: `GET /gestione_VP/API/index.php?resource={risorsa}&page=1&limit=50`
+
+**Esempi**:
+- `GET /gestione_VP/API/index.php?resource=task` - Lista task
+- `GET /gestione_VP/API/index.php?resource=task&id=TAS00001` - Task specifico
+- `POST /gestione_VP/API/index.php?resource=task` - Crea nuovo task
+- `PUT /gestione_VP/API/index.php?resource=task&id=TAS00001` - Aggiorna task
 
 ## Autenticazione
 
@@ -74,9 +88,9 @@ Tutte le risposte API seguono questa struttura standardizzata:
 Tutte le liste supportano la paginazione:
 
 - `page`: Numero di pagina (default: 1)
-- `limit`: Elementi per pagina (default: 50, max: 100)
+- `limit`: Elementi per pagina (default: 50, max: 200)
 
-**Esempio**: `GET /clienti?page=2&limit=25`
+**Esempio**: `GET /gestione_VP/API/index.php?resource=clienti&page=2&limit=25`
 
 ## Filtri e Ordinamento
 
@@ -84,7 +98,7 @@ Tutte le liste supportano la paginazione:
 - `sort`: Campo per ordinamento
 - `order`: ASC o DESC (default: ASC)
 
-**Esempio**: `GET /clienti?sort=Cliente&order=DESC`
+**Esempio**: `GET /gestione_VP/API/index.php?resource=clienti&sort=Cliente&order=DESC`
 
 ### Filtri Comuni
 Ogni endpoint supporta filtri specifici documentati nelle singole sezioni.
@@ -97,7 +111,7 @@ Ogni endpoint supporta filtri specifici documentati nelle singole sezioni.
 
 Gestione dell'anagrafica clienti.
 
-### GET /clienti
+### GET /gestione_VP/API/index.php?resource=clienti
 Recupera la lista dei clienti.
 
 **Filtri disponibili:**
@@ -108,17 +122,17 @@ Recupera la lista dei clienti.
 
 **Esempio:**
 ```
-GET /clienti?cliente=CALVI&provincia=MI&page=1&limit=10
+GET /gestione_VP/API/index.php?resource=clienti&cliente=CALVI&provincia=MI&page=1&limit=10
 ```
 
-### GET /clienti/{id}
+### GET /gestione_VP/API/index.php?resource=clienti&id={id}
 Recupera un singolo cliente per ID.
 
 **Risposta include:**
 - Dati base del cliente
 - Statistiche: commesse, fatturato, ultima fattura
 
-### POST /clienti
+### POST /gestione_VP/API/index.php?resource=clienti
 Crea un nuovo cliente.
 
 **Campi richiesti:**
@@ -134,7 +148,7 @@ Crea un nuovo cliente.
 
 **Esempio:**
 ```json
-POST /clienti
+POST /gestione_VP/API/index.php?resource=clienti
 {
   "Cliente": "ACME SRL",
   "Denominazione_Sociale": "ACME Soluzioni SRL",
@@ -146,10 +160,10 @@ POST /clienti
 }
 ```
 
-### PUT /clienti/{id}
+### PUT /gestione_VP/API/index.php?resource=clienti&id={id}
 Aggiorna un cliente esistente.
 
-### DELETE /clienti/{id}
+### DELETE /gestione_VP/API/index.php?resource=clienti&id={id}
 Elimina un cliente (solo se non ha commesse o fatture associate).
 
 ---
@@ -158,7 +172,7 @@ Elimina un cliente (solo se non ha commesse o fatture associate).
 
 Gestione dell'anagrafica collaboratori.
 
-### GET /collaboratori
+### GET /gestione_VP/API/index.php?resource=collaboratori
 Recupera la lista dei collaboratori.
 
 **Filtri disponibili:**
@@ -166,12 +180,12 @@ Recupera la lista dei collaboratori.
 - `email`: Filtra per email (ricerca parziale)
 - `ruolo`: Filtra per ruolo (Admin, Manager, User, Amministrazione)
 
-### GET /collaboratori/{id}
+### GET /gestione_VP/API/index.php?resource=collaboratori&id={id}
 Recupera un singolo collaboratore per ID.
 
 **Nota**: La password non viene mai restituita nelle risposte.
 
-### POST /collaboratori
+### POST /gestione_VP/API/index.php?resource=collaboratori
 Crea un nuovo collaboratore.
 
 **Campi richiesti:**
@@ -185,7 +199,7 @@ Crea un nuovo collaboratore.
 
 **Esempio:**
 ```json
-POST /collaboratori
+POST /gestione_VP/API/index.php?resource=collaboratori
 {
   "Collaboratore": "Mario Rossi",
   "Email": "mario.rossi@company.com",
@@ -194,62 +208,70 @@ POST /collaboratori
 }
 ```
 
-### PUT /collaboratori/{id}
+### PUT /gestione_VP/API/index.php?resource=collaboratori&id={id}
 Aggiorna un collaboratore esistente.
 
-### DELETE /collaboratori/{id}
+### DELETE /gestione_VP/API/index.php?resource=collaboratori&id={id}
 Elimina un collaboratore (solo se non ha attività associate).
 
 ---
 
 ## Commesse
 
-Gestione delle commesse aziendali.
+Gestione delle commesse di lavoro.
 
-### GET /commesse
+### GET /gestione_VP/API/index.php?resource=commesse
 Recupera la lista delle commesse.
 
 **Filtri disponibili:**
-- `commessa`: Filtra per nome commessa
-- `tipo`: Cliente o Interna
-- `cliente`: ID cliente
-- `collaboratore`: ID collaboratore responsabile
-- `stato`: In corso, Sospesa, Chiusa, Archiviata
-- `data_da` / `data_a`: Range data apertura
+- `commessa`: Filtra per nome commessa (ricerca parziale)
+- `cliente`: Filtra per ID cliente
+- `stato`: Filtra per stato (Attiva, Completata, Sospesa)
 
-### GET /commesse/{id}
-Recupera una singola commessa con statistiche complete.
+**Campi nella risposta:**
+- `Commessa_ID`: ID unico della commessa
+- `Commessa`: Nome della commessa
+- `Responsabile_Commessa`: Nome del responsabile
+- `Data_Inizio`: Data di inizio (YYYY-MM-DD)
+- `Data_Fine`: Data di fine (YYYY-MM-DD)
+- `Stato`: Stato attuale
+- `Cliente_ID`: ID del cliente associato
+- `Cliente`: Nome del cliente (JOIN)
 
-### POST /commesse
+### GET /gestione_VP/API/index.php?resource=commesse&id={id}
+Recupera una singola commessa per ID.
+
+### POST /gestione_VP/API/index.php?resource=commesse
 Crea una nuova commessa.
 
 **Campi richiesti:**
-- `Commessa`: Nome commessa
-- `Tipo_Commessa`: Cliente o Interna
+- `Commessa`: Nome della commessa
+- `Cliente_ID`: ID del cliente
+- `Data_Inizio`: Data di inizio (YYYY-MM-DD)
 
-**Validazioni:**
-- Se tipo "Cliente", deve avere `ID_CLIENTE`
-- Se tipo "Interna", non può avere cliente
+**Campi opzionali:**
+- `Responsabile_Commessa`: ID del responsabile (default: nessuno)
+- `Data_Fine`: Data di fine prevista
+- `Stato`: Stato (default: Attiva)
 
 **Esempio:**
 ```json
-POST /commesse
+POST /gestione_VP/API/index.php?resource=commesse
 {
-  "Commessa": "Audit Sicurezza Alimentare",
-  "Desc_Commessa": "Audit completo del sistema HACCP",
-  "Tipo_Commessa": "Cliente",
-  "ID_CLIENTE": "CLI0001",
-  "ID_COLLABORATORE": "CONS001",
-  "Commissione": 0.15,
-  "Data_Apertura_Commessa": "2025-01-20"
+  "Commessa": "Nuovo Sito Web E-commerce",
+  "Cliente_ID": 1,
+  "Responsabile_Commessa": 5,
+  "Data_Inizio": "2024-01-15",
+  "Data_Fine": "2024-06-30",
+  "Stato": "Attiva"
 }
 ```
 
-### PUT /commesse/{id}
+### PUT /gestione_VP/API/index.php?resource=commesse&id={id}
 Aggiorna una commessa esistente.
 
-### DELETE /commesse/{id}
-Elimina una commessa (solo se non ha task o fatture associate).
+### DELETE /gestione_VP/API/index.php?resource=commesse&id={id}
+Elimina una commessa (solo se non ha task associate).
 
 ---
 
@@ -257,50 +279,77 @@ Elimina una commessa (solo se non ha task o fatture associate).
 
 Gestione dei task di commessa.
 
-### GET /task
+### GET /gestione_VP/API/index.php?resource=task
 Recupera la lista dei task.
 
 **Filtri disponibili:**
-- `task`: Filtra per nome task
-- `commessa`: ID commessa
-- `collaboratore`: ID collaboratore assegnato
-- `tipo`: Campo, Monitoraggio, Promo, Sviluppo, Formazione
-- `stato`: In corso, Sospeso, Chiuso, Archiviato
-- `data_da` / `data_a`: Range data apertura
-- `spese_comprese`: Si o No
+- `task`: Filtra per nome task (ricerca parziale)
+- `commessa`: Filtra per ID commessa
+- `collaboratore`: Filtra per ID collaboratore assegnato
+- `stato`: Filtra per stato
 
-### GET /task/{id}
-Recupera un singolo task con informazioni correlate.
+**Campi nella risposta:**
+- `Task_ID`: ID unico del task
+- `Task`: Nome del task
+- `Commessa_ID`: ID della commessa associata
+- `Commessa`: Nome della commessa (JOIN)
+- `Responsabile_Commessa`: Nome del responsabile commessa (JOIN)
+- `Collaboratore_ID`: ID del collaboratore assegnato
+- `Collaboratore`: Nome del collaboratore (JOIN)
+- `Descrizione`: Descrizione dettagliata
+- `Data_Inizio`: Data di inizio (YYYY-MM-DD)
+- `Data_Fine_Prevista`: Data fine prevista (YYYY-MM-DD)
+- `GG_Previsti`: Giorni previsti (decimale)
+- `GG_Effettuate`: Giorni effettuati calcolati (decimale)
+- `Valore_GG_Maturato`: Valore maturato per giornate Campo (decimale)
+- `Valore_Spese_Maturato`: Valore maturato per spese (decimale)
+- `Valore_TOT_Maturato`: Valore totale maturato (decimale)
+- `Stato`: Stato attuale
 
-### POST /task
+**Nota**: I campi `GG_Effettuate`, `Valore_GG_Maturato`, `Valore_Spese_Maturato` e `Valore_TOT_Maturato` sono calcolati automaticamente:
+- **GG_Effettuate**: Somma delle giornate lavorate per questo task
+- **Valore_GG_Maturato**: Somma delle giornate di tipo "Campo" moltiplicate per la tariffa del collaboratore
+- **Valore_Spese_Maturato**: Se Spese_Comprese='No', considera Valore_Spese_std o la somma delle spese dalle giornate, altrimenti 0
+- **Valore_TOT_Maturato**: Somma di Valore_GG_Maturato + Valore_Spese_Maturato
+
+### GET /gestione_VP/API/index.php?resource=task&id={id}
+Recupera un singolo task per ID con informazioni correlate.
+
+### POST /gestione_VP/API/index.php?resource=task
 Crea un nuovo task.
 
 **Campi richiesti:**
-- `Task`: Nome task
-- `ID_COMMESSA`: ID della commessa parent
+- `Task`: Nome del task
+- `Commessa_ID`: ID della commessa
+- `Data_Inizio`: Data di inizio (YYYY-MM-DD)
+
+**Campi opzionali:**
+- `Collaboratore_ID`: ID del collaboratore assegnato
+- `Descrizione`: Descrizione dettagliata
+- `Data_Fine_Prevista`: Data fine prevista
+- `GG_Previsti`: Giorni previsti (decimale)
+- `Stato`: Stato (default: Attivo)
 
 **Esempio:**
 ```json
-POST /task
+POST /gestione_VP/API/index.php?resource=task
 {
-  "Task": "Audit Magazzino Principale",
-  "Desc_Task": "Verifica procedure di stoccaggio",
-  "ID_COMMESSA": "COM0001",
-  "ID_COLLABORATORE": "CONS001",
-  "Tipo": "Campo",
-  "Data_Apertura_Task": "2025-01-20",
-  "gg_previste": 3.0,
-  "Spese_Comprese": "No",
-  "Valore_Spese_std": 200.00,
-  "Valore_gg": 1200.00
+  "Task": "Sviluppo Frontend",
+  "Commessa_ID": 1,
+  "Collaboratore_ID": 3,
+  "Descrizione": "Sviluppo interfaccia utente responsive",
+  "Data_Inizio": "2024-02-01",
+  "Data_Fine_Prevista": "2024-02-15",
+  "GG_Previsti": 10.5,
+  "Stato": "Attivo"
 }
 ```
 
-### PUT /task/{id}
+### PUT /gestione_VP/API/index.php?resource=task&id={id}
 Aggiorna un task esistente.
 
-### DELETE /task/{id}
-Elimina un task (solo se non ha giornate registrate).
+### DELETE /gestione_VP/API/index.php?resource=task&id={id}
+Elimina un task (solo se non ha giornate associate).
 
 ---
 
@@ -308,48 +357,56 @@ Elimina un task (solo se non ha giornate registrate).
 
 Gestione delle tariffe collaboratori.
 
-### GET /tariffe
+### GET /gestione_VP/API/index.php?resource=tariffe
 Recupera la lista delle tariffe.
 
 **Filtri disponibili:**
-- `collaboratore`: ID collaboratore
-- `commessa`: ID commessa (o "null" per tariffe generali)
-- `spese_comprese`: Si o No
-- `data_da` / `data_a`: Range validità
-- `tariffa_min` / `tariffa_max`: Range tariffa
-- `attive`: true per tariffe valide alla data odierna
+- `collaboratore`: Filtra per ID collaboratore
+- `commessa`: Filtra per ID commessa
+- `data_da` / `data_a`: Range validità (YYYY-MM-DD)
 
-### GET /tariffe/{id}
-Recupera una singola tariffa.
+**Campi nella risposta:**
+- `Tariffa_ID`: ID unico della tariffa
+- `Collaboratore_ID`: ID del collaboratore
+- `Collaboratore`: Nome del collaboratore (JOIN)
+- `Commessa_ID`: ID della commessa (null per tariffa generale)
+- `Commessa`: Nome della commessa (JOIN)
+- `Tariffa_GG`: Tariffa giornaliera (decimale)
+- `Dal`: Data inizio validità (YYYY-MM-DD)
+- `Al`: Data fine validità (YYYY-MM-DD)
 
-### POST /tariffe
+### GET /gestione_VP/API/index.php?resource=tariffe&id={id}
+Recupera una singola tariffa per ID.
+
+### POST /gestione_VP/API/index.php?resource=tariffe
 Crea una nuova tariffa.
 
 **Campi richiesti:**
-- `ID_COLLABORATORE`: ID collaboratore
-- `Tariffa_gg`: Tariffa giornaliera
-- `Dal`: Data di validità
+- `Collaboratore_ID`: ID del collaboratore
+- `Tariffa_GG`: Tariffa giornaliera (decimale)
+- `Dal`: Data inizio validità (YYYY-MM-DD)
 
-**Validazioni:**
-- Non può sovrapporsi con tariffe esistenti per stesso collaboratore/commessa
+**Campi opzionali:**
+- `Commessa_ID`: ID commessa specifica (default: tariffa generale)
+- `Al`: Data fine validità
 
 **Esempio:**
 ```json
-POST /tariffe
+POST /gestione_VP/API/index.php?resource=tariffe
 {
-  "ID_COLLABORATORE": "CONS001",
-  "ID_COMMESSA": "COM0001",
-  "Tariffa_gg": 1200.00,
-  "Spese_comprese": "No",
-  "Dal": "2025-01-01"
+  "Collaboratore_ID": 1,
+  "Commessa_ID": 5,
+  "Tariffa_GG": 450.00,
+  "Dal": "2024-01-01",
+  "Al": "2024-12-31"
 }
 ```
 
-### PUT /tariffe/{id}
+### PUT /gestione_VP/API/index.php?resource=tariffe&id={id}
 Aggiorna una tariffa esistente.
 
-### DELETE /tariffe/{id}
-Elimina una tariffa.
+### DELETE /gestione_VP/API/index.php?resource=tariffe&id={id}
+Elimina una tariffa (solo se non ha giornate associate).
 
 ---
 
@@ -357,57 +414,60 @@ Elimina una tariffa.
 
 Gestione delle giornate lavorative.
 
-### GET /giornate
+### GET /gestione_VP/API/index.php?resource=giornate
 Recupera la lista delle giornate.
 
 **Filtri disponibili:**
-- `collaboratore`: ID collaboratore
-- `task`: ID task
-- `tipo`: Campo, Promo, Sviluppo, Formazione
-- `desk`: Si o No
-- `data_da` / `data_a`: Range date
-- `mese` + `anno`: Filtra per mese specifico
-- `commessa`: ID commessa (tramite task)
-- `con_spese`: true per giornate con spese
+- `collaboratore`: Filtra per ID collaboratore
+- `task`: Filtra per ID task
+- `commessa`: Filtra per ID commessa (tramite task)
+- `data_da` / `data_a`: Range date (YYYY-MM-DD)
 
-### GET /giornate/{id}
-Recupera una singola giornata con tutti i dettagli correlati.
+**Campi nella risposta:**
+- `Giornata_ID`: ID unico della giornata
+- `Data`: Data della giornata (YYYY-MM-DD)
+- `Collaboratore_ID`: ID del collaboratore
+- `Collaboratore`: Nome del collaboratore (JOIN)
+- `Task_ID`: ID del task
+- `Task`: Nome del task (JOIN)
+- `Commessa`: Nome della commessa (JOIN)
+- `GG`: Frazione di giornata lavorata (decimale)
+- `Tariffa_GG`: Tariffa applicata (decimale)
+- `Note`: Note aggiuntive
 
-### POST /giornate
+### GET /gestione_VP/API/index.php?resource=giornate&id={id}
+Recupera una singola giornata per ID.
+
+### POST /gestione_VP/API/index.php?resource=giornate
 Crea una nuova giornata lavorativa.
 
 **Campi richiesti:**
-- `Data`: Data della giornata (non futura)
-- `ID_COLLABORATORE`: ID collaboratore
-- `ID_TASK`: ID task
-- `gg`: Frazione di giornata (0-1)
+- `Data`: Data della giornata (YYYY-MM-DD, non futura)
+- `Collaboratore_ID`: ID del collaboratore
+- `Task_ID`: ID del task
+- `GG`: Frazione di giornata (decimale, max 1.0)
 
-**Validazioni:**
-- Non può essere una data futura
-- Il totale giornate per collaboratore/data non può superare 1
-- Non possono esistere duplicati per collaboratore/task/data
+**Campi opzionali:**
+- `Tariffa_GG`: Tariffa specifica (default: da anagrafica)
+- `Note`: Note aggiuntive
 
 **Esempio:**
 ```json
-POST /giornate
+POST /gestione_VP/API/index.php?resource=giornate
 {
-  "Data": "2025-01-20",
-  "ID_COLLABORATORE": "CONS001",
-  "ID_TASK": "TAS00001",
-  "Tipo": "Campo",
-  "Desk": "No",
-  "gg": 1.0,
-  "Spese_Viaggi": 150.00,
-  "Vitto_alloggio": 80.00,
-  "Altri_costi": 20.00,
-  "Note": "Audit presso cliente"
+  "Data": "2024-01-20",
+  "Collaboratore_ID": 1,
+  "Task_ID": 5,
+  "GG": 0.5,
+  "Tariffa_GG": 450.00,
+  "Note": "Lavoro pomeridiano"
 }
 ```
 
-### PUT /giornate/{id}
+### PUT /gestione_VP/API/index.php?resource=giornate&id={id}
 Aggiorna una giornata esistente.
 
-### DELETE /giornate/{id}
+### DELETE /gestione_VP/API/index.php?resource=giornate&id={id}
 Elimina una giornata.
 
 ---
@@ -416,59 +476,63 @@ Elimina una giornata.
 
 Gestione delle fatture emesse.
 
-### GET /fatture
+### GET /gestione_VP/API/index.php?resource=fatture
 Recupera la lista delle fatture.
 
 **Filtri disponibili:**
-- `cliente`: ID cliente
-- `commessa`: ID commessa
-- `tipo`: Fattura o Nota_Accredito
-- `numero`: Numero fattura (ricerca parziale)
-- `data_da` / `data_a`: Range date emissione
-- `anno`: Anno emissione
-- `mese` + `anno`: Mese specifico
-- `stato_pagamento`: pagata, non_pagata, scaduta, in_scadenza
+- `cliente`: Filtra per ID cliente
+- `numero`: Filtra per numero fattura (ricerca parziale)
+- `data_da` / `data_a`: Range date emissione (YYYY-MM-DD)
 - `importo_min` / `importo_max`: Range importo
 
-### GET /fatture/{id}
-Recupera una singola fattura con calcoli automatici dello stato.
+**Campi nella risposta:**
+- `Fattura_ID`: ID unico della fattura
+- `Numero_Fattura`: Numero progressivo
+- `Data_Emissione`: Data emissione (YYYY-MM-DD)
+- `Cliente_ID`: ID del cliente
+- `Cliente`: Nome del cliente (JOIN)
+- `Imponibile`: Importo imponibile (decimale)
+- `IVA`: Importo IVA (decimale)
+- `Totale`: Importo totale (decimale)
+- `Scadenza`: Data scadenza (YYYY-MM-DD)
+- `Pagata`: Flag pagamento (boolean)
 
-### POST /fatture
+### GET /gestione_VP/API/index.php?resource=fatture&id={id}
+Recupera una singola fattura per ID con dettagli completi.
+
+### POST /gestione_VP/API/index.php?resource=fatture
 Crea una nuova fattura.
 
 **Campi richiesti:**
-- `Data`: Data emissione
-- `ID_CLIENTE`: ID cliente
-- `NR`: Numero fattura (univoco per anno)
+- `Cliente_ID`: ID del cliente
+- `Data_Emissione`: Data emissione (YYYY-MM-DD)
+- `Imponibile`: Importo imponibile (decimale)
+- `IVA`: Importo IVA (decimale)
 
-**Validazioni automatiche:**
-- Controllo univocità numero per anno
-- Calcolo automatico totale se non specificato
-- Calcolo scadenza pagamento se specificati i tempi
-- Verifica coerenza date e importi
+**Campi opzionali:**
+- `Numero_Fattura`: Numero (auto-generato se omesso)
+- `Scadenza`: Data scadenza (default: +30 giorni)
+- `Pagata`: Flag pagamento (default: false)
+- `Note`: Note aggiuntive
 
 **Esempio:**
 ```json
-POST /fatture
+POST /gestione_VP/API/index.php?resource=fatture
 {
-  "Data": "2025-01-20",
-  "ID_CLIENTE": "CLI0001",
-  "TIPO": "Fattura",
-  "NR": "25_001",
-  "ID_COMMESSA": "COM0001",
-  "Fatturato_gg": 3600.00,
-  "Fatturato_Spese": 450.00,
-  "Fatturato_TOT": 4050.00,
-  "Note": "Fattura per attività di consulenza",
-  "Tempi_Pagamento": 30
+  "Cliente_ID": 1,
+  "Data_Emissione": "2024-01-15",
+  "Imponibile": 1000.00,
+  "IVA": 220.00,
+  "Scadenza": "2024-02-15",
+  "Note": "Fattura per servizi gennaio"
 }
 ```
 
-### PUT /fatture/{id}
+### PUT /gestione_VP/API/index.php?resource=fatture&id={id}
 Aggiorna una fattura esistente.
 
-### DELETE /fatture/{id}
-Elimina una fattura (solo se non pagata).
+### DELETE /gestione_VP/API/index.php?resource=fatture&id={id}
+Elimina una fattura.
 
 ---
 
@@ -478,7 +542,7 @@ Elimina una fattura (solo se non pagata).
 
 ```bash
 # 1. Crea cliente
-curl -X POST http://your-domain.com/API/clienti \
+curl -X POST "http://your-domain.com/gestione_VP/API/index.php?resource=clienti" \
   -H "Content-Type: application/json" \
   -d '{
     "Cliente": "TECH SOLUTIONS SRL",
@@ -487,23 +551,24 @@ curl -X POST http://your-domain.com/API/clienti \
   }'
 
 # 2. Crea commessa
-curl -X POST http://your-domain.com/API/commesse \
+curl -X POST "http://your-domain.com/gestione_VP/API/index.php?resource=commesse" \
   -H "Content-Type: application/json" \
   -d '{
-    "Commessa": "Implementazione ISO 9001",
-    "Tipo_Commessa": "Cliente",
-    "ID_CLIENTE": "CLI0001",
-    "ID_COLLABORATORE": "CONS001"
+    "Commessa": "Implementazione Sito Web",
+    "Cliente_ID": 1,
+    "Responsabile_Commessa": 2,
+    "Data_Inizio": "2024-02-01"
   }'
 
 # 3. Crea task
-curl -X POST http://your-domain.com/API/task \
+curl -X POST "http://your-domain.com/gestione_VP/API/index.php?resource=task" \
   -H "Content-Type: application/json" \
   -d '{
-    "Task": "Analisi Gap ISO 9001",
-    "ID_COMMESSA": "COM0001",
-    "Tipo": "Campo",
-    "gg_previste": 5.0
+    "Task": "Analisi Requisiti",
+    "Commessa_ID": 1,
+    "Collaboratore_ID": 2,
+    "Data_Inizio": "2024-02-01",
+    "GG_Previsti": 5.0
   }'
 ```
 
@@ -511,29 +576,28 @@ curl -X POST http://your-domain.com/API/task \
 
 ```bash
 # Registra giornata
-curl -X POST http://your-domain.com/API/giornate \
+curl -X POST "http://your-domain.com/gestione_VP/API/index.php?resource=giornate" \
   -H "Content-Type: application/json" \
   -d '{
-    "Data": "2025-01-20",
-    "ID_COLLABORATORE": "CONS001",
-    "ID_TASK": "TAS00001",
-    "gg": 1.0,
-    "Spese_Viaggi": 120.00,
+    "Data": "2024-02-05",
+    "Collaboratore_ID": 2,
+    "Task_ID": 1,
+    "GG": 1.0,
     "Note": "Prima giornata di analisi"
   }'
 ```
 
-### Scenario 3: Query con filtri avanzati
+### Scenario 3: Recupero dati con filtri
 
 ```bash
-# Giornate di un collaboratore per gennaio 2025
-curl "http://your-domain.com/API/giornate?collaboratore=CONS001&mese=1&anno=2025"
+# Lista task per commessa con paginazione
+curl "http://your-domain.com/gestione_VP/API/index.php?resource=task&commessa=1&page=1&limit=50"
 
-# Fatture scadute
-curl "http://your-domain.com/API/fatture?stato_pagamento=scaduta"
+# Lista giornate per collaboratore in un periodo
+curl "http://your-domain.com/gestione_VP/API/index.php?resource=giornate&collaboratore=2&data_da=2024-02-01&data_a=2024-02-29"
 
-# Commesse attive di un cliente
-curl "http://your-domain.com/API/commesse?cliente=CLI0001&stato=In%20corso"
+# Lista fatture per cliente
+curl "http://your-domain.com/gestione_VP/API/index.php?resource=fatture&cliente=1&data_da=2024-01-01"
 ```
 
 ---
@@ -542,28 +606,28 @@ curl "http://your-domain.com/API/commesse?cliente=CLI0001&stato=In%20corso"
 
 | Codice | Descrizione |
 |--------|-------------|
-| 200 | OK - Operazione completata |
-| 400 | Bad Request - Dati non validi |
+| 200 | OK - Operazione completata con successo |
+| 400 | Bad Request - Dati non validi o mancanti |
 | 404 | Not Found - Risorsa non trovata |
 | 405 | Method Not Allowed - Metodo HTTP non supportato |
 | 409 | Conflict - Violazione vincoli (duplicati, foreign key) |
-| 500 | Internal Server Error - Errore interno |
+| 500 | Internal Server Error - Errore interno del server |
 
-### Esempi di Errori Comuni
+### Esempi di Risposte di Errore
 
 ```json
 {
   "success": false,
-  "error": "Dati non validi: Campo 'Cliente' richiesto, Email già esistente",
-  "timestamp": "2025-01-20 10:30:45"
+  "error": "Dati non validi: Campo 'Cliente' richiesto",
+  "timestamp": "2024-01-20 10:30:45"
 }
 ```
 
 ```json
 {
   "success": false,
-  "error": "Record non trovato",
-  "timestamp": "2025-01-20 10:30:45"
+  "error": "Record non trovato con ID: 999",
+  "timestamp": "2024-01-20 10:30:45"
 }
 ```
 
@@ -571,7 +635,7 @@ curl "http://your-domain.com/API/commesse?cliente=CLI0001&stato=In%20corso"
 {
   "success": false,
   "error": "Impossibile eliminare: cliente ha commesse associate",
-  "timestamp": "2025-01-20 10:30:45"
+  "timestamp": "2024-01-20 10:30:45"
 }
 ```
 
@@ -579,30 +643,39 @@ curl "http://your-domain.com/API/commesse?cliente=CLI0001&stato=In%20corso"
 
 ## Note per gli Sviluppatori
 
-### Struttura del Database
-Le API rispettano completamente la struttura del database esistente con:
-- Gestione automatica dei timestamp (Data_Creazione, Data_Modifica)
-- Generazione automatica degli ID con prefissi (CLI, CONS, COM, TAS, etc.)
-- Validazione completa delle foreign key
-- Controllo dei vincoli business logic
+### Architettura del Sistema
+- **Routing**: Sistema parametrico via `?resource=nome_risorsa`
+- **Base URL**: `/gestione_VP/API/index.php`
+- **Versione**: 1.0.0
+- **Formato**: JSON per request/response
+- **Encoding**: UTF-8
 
-### Prestazioni
-- Tutte le query sono ottimizzate con indici appropriati
-- La paginazione è sempre applicata per evitare sovraccarichi
-- I JOIN sono utilizzati solo quando necessario
+### Caratteristiche delle API
+- **Paginazione**: Automatica con `page` e `limit` (default: 50, max: 200)
+- **Filtri**: Supporto per ricerca parziale e range di date
+- **Join**: Dati correlati inclusi automaticamente (es. nome cliente, responsabile commessa)
+- **Calcoli**: Campi calcolati come `GG_Effettuate` per i task
+- **Validazione**: Controllo completo dei vincoli di integrità
 
-### Estensibilità
-Il sistema è progettato per essere facilmente estendibile:
-- Nuovi endpoint possono ereditare da BaseAPI
-- Filtri e validazioni personalizzabili per tabella
-- Sistema di logging integrato per audit
+### Gestione Decimali
+Il sistema gestisce correttamente i decimali italiani:
+- **Import CSV**: Converte virgole in punti automaticamente
+- **Database**: Memorizzazione in formato standard (punto decimale)
+- **API**: Restituisce valori con precisione decimale corretta
 
-### Sicurezza
-- Validazione completa dell'input
-- Prepared statements per prevenire SQL injection  
-- Sistema di autenticazione JWT (in sviluppo)
+### Nuovi Campi Implementati
+- **Task**: Campo `GG_Effettuate` calcolato dalla somma delle giornate
+- **Commesse**: Campo `Responsabile_Commessa` con JOIN al nome del collaboratore
+- **Frontend**: Supporto completo per i nuovi campi nell'interfaccia web
+
+### Performance e Limiti
+- **Paginazione**: Limite massimo 200 record per chiamata
+- **Query**: Ottimizzate con indici appropriati
+- **Memory**: Gestione efficiente per dataset grandi
+- **Timeout**: 30 secondi per operazioni complesse
 
 ---
 
-**Ultima aggiornamento**: 20 Gennaio 2025
-**Versione API**: 1.0
+**Ultimo aggiornamento**: 20 Gennaio 2025  
+**Versione API**: 1.0.0  
+**Compatibilità**: PHP 7.4+, MySQL 5.7+

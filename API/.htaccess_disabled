@@ -1,0 +1,27 @@
+RewriteEngine On
+
+# Abilita CORS per tutte le richieste API
+Header always set Access-Control-Allow-Origin "*"
+Header always set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
+Header always set Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With"
+
+# Gestisci richieste OPTIONS (preflight)
+RewriteCond %{REQUEST_METHOD} OPTIONS
+RewriteRule ^(.*)$ - [R=200,L]
+
+# Escludi file esistenti dal rewrite (incluso index.php)
+RewriteCond %{REQUEST_FILENAME} -f
+RewriteRule ^ - [L]
+
+# Escludi directory esistenti dal rewrite
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# Reindirizza tutte le altre richieste verso index.php
+RewriteRule ^(.*)$ index.php [QSA,L,E=ORIGINAL_PATH:$1]
+
+# Previeni accesso diretto ai file PHP delle API (tranne index.php e file di test)
+<FilesMatch "^(BaseAPI|ClientiAPI|CollaboratoriAPI|CommesseAPI|TaskAPI|TariffeAPI|GiornateAPI|FattureAPI)\.php$">
+    Order Deny,Allow
+    Deny from all
+</FilesMatch>

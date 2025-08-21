@@ -49,20 +49,34 @@
                                 <option value="Ufficio">Ufficio</option>
                             </select>
                         </div>
+                        <div class="col-md-2">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="groupByCommessa" checked>
+                                <label class="form-check-label" for="groupByCommessa">
+                                    Raggruppa per commessa
+                                </label>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div class="col-md-4">
                     <div class="row g-2">
-                        <div class="col-6">
+                        <div class="col-4">
                             <div class="stats-card">
                                 <div class="h4 mb-0" id="totalTasks">0</div>
                                 <small>Task Totali</small>
                             </div>
                         </div>
-                        <div class="col-6">
+                        <div class="col-4">
                             <div class="stats-card">
                                 <div class="h4 mb-0" id="activeTasks">0</div>
                                 <small>Task Attivi</small>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="stats-card">
+                                <div class="h4 mb-0" id="totalValue">€0</div>
+                                <small>Valore Totale</small>
                             </div>
                         </div>
                     </div>
@@ -130,9 +144,9 @@
                                 </select>
                             </div>
                             <div class="col-md-6">
-                                <label for="taskCollaboratore" class="form-label">Collaboratore *</label>
-                                <select class="form-select" id="taskCollaboratore" required>
-                                    <option value="">Seleziona collaboratore</option>
+                                <label for="taskCollaboratore" class="form-label">Collaboratore Assegnato</label>
+                                <select class="form-select" id="taskCollaboratore">
+                                    <option value="">Nessun collaboratore specifico</option>
                                 </select>
                             </div>
                         </div>
@@ -217,6 +231,103 @@
                     <button type="button" class="btn btn-warning" onclick="confirmArchive()">
                         <i class="bi bi-archive me-1"></i>Archivia
                     </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Giornate Task -->
+    <div class="modal fade" id="giornateModal" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="giornateModalLabel">
+                        <i class="bi bi-calendar-week me-2"></i>
+                        Giornate del Task
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row mb-3">
+                        <div class="col-md-8">
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <div class="card text-center">
+                                        <div class="card-body p-2">
+                                            <h5 class="card-title mb-1" id="totalGiornate">0</h5>
+                                            <small class="text-muted">Giornate Totali</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="card text-center">
+                                        <div class="card-body p-2">
+                                            <h5 class="card-title mb-1 text-success" id="totalValoreGiornate">€0</h5>
+                                            <small class="text-muted">Valore Giornate</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="card text-center">
+                                        <div class="card-body p-2">
+                                            <h5 class="card-title mb-1 text-info" id="totalSpese">€0</h5>
+                                            <small class="text-muted">Spese Totali</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="card text-center border-success">
+                                        <div class="card-body p-2">
+                                            <h5 class="card-title mb-1 text-success" id="totalValoreMaturato">€0</h5>
+                                            <small class="text-muted">Valore Maturato</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <button class="btn btn-primary" id="addGiornataBtn" onclick="addGiornata()">
+                                <i class="bi bi-plus-circle me-1"></i>Nuova Giornata
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div id="giornateLoadingSpinner" class="text-center py-5">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Caricamento giornate...</span>
+                        </div>
+                    </div>
+                    
+                    <div id="giornateContainer" style="display: none;">
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Data</th>
+                                        <th>Collaboratore</th>
+                                        <th>Tipo</th>
+                                        <th class="text-center">Giornate</th>
+                                        <th class="text-end">Valore</th>
+                                        <th class="text-end">Spese</th>
+                                        <th>Note</th>
+                                        <th width="100">Azioni</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="giornateTableBody">
+                                    <!-- Le giornate verranno caricate qui -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <div id="noGiornate" class="text-center py-5" style="display: none;">
+                        <i class="bi bi-calendar-x display-1 text-muted"></i>
+                        <h4 class="text-muted">Nessuna giornata registrata</h4>
+                        <p class="text-muted">Inizia registrando la prima giornata di lavoro per questo task.</p>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Chiudi</button>
                 </div>
             </div>
         </div>

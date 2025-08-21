@@ -10,8 +10,7 @@ if (isset($_GET['debug'])) {
     ini_set('display_errors', 1);
 }
 
-// Definisci versione API
-define('API_VERSION', '1.0.0');
+// La versione API è definita in config.php
 
 // Cerca il config.php nel percorso corretto
 $config_paths = [
@@ -51,33 +50,7 @@ require_once 'TariffeAPI.php';
 require_once 'GiornateAPI.php';
 require_once 'FattureAPI.php';
 
-// Funzioni di supporto
-function setJSONHeaders() {
-    header('Content-Type: application/json; charset=utf-8');
-    header('Access-Control-Allow-Origin: *');
-    header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
-    header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
-}
-
-function sendSuccessResponse($data, $message = 'Operazione completata con successo') {
-    echo json_encode([
-        'success' => true,
-        'message' => $message,
-        'data' => $data,
-        'timestamp' => date('Y-m-d H:i:s')
-    ]);
-    exit;
-}
-
-function sendErrorResponse($message, $code = 400) {
-    http_response_code($code);
-    echo json_encode([
-        'success' => false,
-        'error' => $message,
-        'timestamp' => date('Y-m-d H:i:s')
-    ]);
-    exit;
-}
+// Le funzioni di supporto sono definite in config.php
 
 // Set headers per CORS e JSON
 setJSONHeaders();
@@ -93,27 +66,39 @@ try {
     $request_uri = $_SERVER['REQUEST_URI'];
     $path = parse_url($request_uri, PHP_URL_PATH);
     
-    // Rimuovi il path base del progetto se presente
-    // Il server ha path del tipo: /gestione_VP/API/risorsa
-    $path = preg_replace('#^.*/API/?#', '', $path);
+    // Se abbiamo il parametro resource via GET, usalo (per compatibilità senza .htaccess)
+    if (isset($_GET['resource'])) {
+        $resource = $_GET['resource'];
+        $id = $_GET['id'] ?? null;
+    } else {
+        // Altrimenti prova a parsare il path (con .htaccess)
+        $path = preg_replace('#^.*/API/?#', '', $path);
+        
+        // Se il path è vuoto o contiene solo index.php, considera come root
+        if (empty($path) || $path === 'index.php') {
+            $resource = '';
+            $id = null;
+        } else {
+            // Parse del path: /risorsa/id o /risorsa
+            $path_parts = explode('/', trim($path, '/'));
+            $resource = $path_parts[0] ?? '';
+            $id = $path_parts[1] ?? null;
+        }
+    }
     
     // Debug info se richiesto
     if (isset($_GET['debug'])) {
-        error_log("Debug API: REQUEST_URI={$request_uri}, PARSED_PATH={$path}");
         sendSuccessResponse([
             'debug' => true,
             'request_uri' => $request_uri,
             'parsed_path' => $path,
+            'resource' => $resource,
+            'id' => $id,
             'method' => $_SERVER['REQUEST_METHOD'],
             'get_params' => $_GET,
             'post_params' => $_POST
         ], 'Debug info');
     }
-    
-    // Parse del path: /risorsa/id o /risorsa
-    $path_parts = explode('/', trim($path, '/'));
-    $resource = $path_parts[0] ?? '';
-    $id = $path_parts[1] ?? null;
     
     // Routing delle richieste
     switch ($resource) {

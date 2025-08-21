@@ -5,6 +5,12 @@
  * Questo script importa i file CSV nella sequenza corretta rispettando
  * le dipendenze delle foreign key tra le tabelle.
  * 
+ * CARATTERISTICHE:
+ * - Usa punto e virgola (;) come separatore campi
+ * - Converte automaticamente virgole in punti per campi decimali
+ * - Gestione format date italiane (gg/mm/aa → YYYY-MM-DD)
+ * - Supporto per auto-increment e foreign key
+ * 
  * Sequenza di importazione:
  * 1. ANA_CLIENTI (tabella principale)
  * 2. ANA_COLLABORATORI (tabella principale)
@@ -647,6 +653,17 @@ class CSVImporter {
                     in_array(strtolower($finalHeaders[$i]), ['data', 'scadenza_pagamento', 'data_pagamento', 'data_ordine', 'data_apertura_task', 'dal'])
                 );
                 
+                // Gestione speciale per campi numerici decimali
+                $isDecimalField = (
+                    in_array(strtolower($finalHeaders[$i]), ['gg', 'importo', 'valore', 'prezzo', 'costo', 'spese']) ||
+                    strpos(strtolower($finalHeaders[$i]), 'valore') !== false ||
+                    strpos(strtolower($finalHeaders[$i]), 'importo') !== false ||
+                    strpos(strtolower($finalHeaders[$i]), 'spese') !== false ||
+                    strpos(strtolower($finalHeaders[$i]), 'costo') !== false ||
+                    strpos(strtolower($finalHeaders[$i]), 'prezzo') !== false ||
+                    strpos(strtolower($finalHeaders[$i]), 'tariffa') !== false
+                );
+                
                 if ($isDateField && !empty($value)) {
                     $originalValue = $value;
                     $value = $this->convertDateFormat($value);
@@ -654,6 +671,15 @@ class CSVImporter {
                     // Log conversioni date per i primi record
                     if ($imported < 5 && $originalValue !== $value) {
                         $this->log("Campo '{$finalHeaders[$i]}': '$originalValue' → '$value'");
+                    }
+                } elseif ($isDecimalField && !empty($value)) {
+                    $originalValue = $value;
+                    // Converti virgola in punto per i decimali
+                    $value = str_replace(',', '.', $value);
+                    
+                    // Log conversioni decimali per i primi record
+                    if ($imported < 5 && $originalValue !== $value) {
+                        $this->log("Campo decimale '{$finalHeaders[$i]}': '$originalValue' → '$value'");
                     }
                 }
                 

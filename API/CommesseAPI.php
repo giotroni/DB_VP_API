@@ -192,7 +192,7 @@ class CommesseAPI extends BaseAPI {
     /**
      * Override getAll per includere il nome del cliente direttamente
      */
-    public function getAll() {
+    protected function getAll() {
         try {
             $params = [];
             $whereClause = $this->buildWhereClause($params);
@@ -236,7 +236,7 @@ class CommesseAPI extends BaseAPI {
             // Conta totale per paginazione
             $total = $this->getTotalCountCommesse($whereClause, $params);
             
-            return [
+            $result = [
                 'data' => $processedRecords,
                 'pagination' => [
                     'page' => $page,
@@ -246,8 +246,10 @@ class CommesseAPI extends BaseAPI {
                 ]
             ];
             
+            sendSuccessResponse($result);
+            
         } catch (PDOException $e) {
-            throw new Exception("Errore nel recupero delle commesse: " . $e->getMessage());
+            sendErrorResponse('Errore durante il recupero dei dati: ' . $e->getMessage(), 500);
         }
     }
     
