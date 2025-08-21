@@ -336,6 +336,28 @@ class GiornateAPI extends BaseAPI {
             $params[':mese'] = intval($_GET['mese']);
         }
         
+        // Filtro per anno-mese formato YYYY-MM
+        if (isset($_GET['anno_mese']) && !empty($_GET['anno_mese'])) {
+            $annoMese = $_GET['anno_mese'];
+            
+            // Valida il formato YYYY-MM
+            if (preg_match('/^\d{4}-\d{2}$/', $annoMese)) {
+                $conditions[] = "DATE_FORMAT(Data, '%Y-%m') = :anno_mese";
+                $params[':anno_mese'] = $annoMese;
+            }
+        }
+        
+        // Filtro per solo anno
+        if (isset($_GET['anno']) && !empty($_GET['anno']) && !isset($_GET['mese'])) {
+            $anno = $_GET['anno'];
+            
+            // Valida il formato YYYY
+            if (preg_match('/^\d{4}$/', $anno)) {
+                $conditions[] = "YEAR(Data) = :anno_only";
+                $params[':anno_only'] = intval($anno);
+            }
+        }
+        
         // Filtro per commessa (tramite task)
         if (isset($_GET['commessa']) && !empty($_GET['commessa'])) {
             $conditions[] = "ID_TASK IN (SELECT ID_TASK FROM ANA_TASK WHERE ID_COMMESSA = :commessa)";

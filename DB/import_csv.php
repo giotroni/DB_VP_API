@@ -655,13 +655,16 @@ class CSVImporter {
                 
                 // Gestione speciale per campi numerici decimali
                 $isDecimalField = (
-                    in_array(strtolower($finalHeaders[$i]), ['gg', 'importo', 'valore', 'prezzo', 'costo', 'spese']) ||
+                    in_array(strtolower($finalHeaders[$i]), ['gg', 'importo', 'valore', 'prezzo', 'costo', 'spese', 'vitto_alloggio', 'spese_viaggi', 'altri_costi']) ||
                     strpos(strtolower($finalHeaders[$i]), 'valore') !== false ||
                     strpos(strtolower($finalHeaders[$i]), 'importo') !== false ||
                     strpos(strtolower($finalHeaders[$i]), 'spese') !== false ||
                     strpos(strtolower($finalHeaders[$i]), 'costo') !== false ||
                     strpos(strtolower($finalHeaders[$i]), 'prezzo') !== false ||
-                    strpos(strtolower($finalHeaders[$i]), 'tariffa') !== false
+                    strpos(strtolower($finalHeaders[$i]), 'tariffa') !== false ||
+                    strpos(strtolower($finalHeaders[$i]), 'vitto') !== false ||
+                    strpos(strtolower($finalHeaders[$i]), 'alloggio') !== false ||
+                    strpos(strtolower($finalHeaders[$i]), 'viaggi') !== false
                 );
                 
                 if ($isDateField && !empty($value)) {

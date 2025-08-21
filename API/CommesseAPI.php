@@ -258,7 +258,11 @@ class CommesseAPI extends BaseAPI {
      */
     private function getTotalCountCommesse($whereClause, $params) {
         try {
-            $sql = "SELECT COUNT(*) as total FROM {$this->table} c";
+            $sql = "
+                SELECT COUNT(*) as total 
+                FROM {$this->table} c
+                LEFT JOIN ANA_CLIENTI cl ON c.ID_CLIENTE = cl.ID_CLIENTE
+            ";
             
             if (!empty($whereClause)) {
                 $sql .= " WHERE $whereClause";
@@ -286,43 +290,69 @@ class CommesseAPI extends BaseAPI {
         
         // Filtro per nome commessa
         if (isset($_GET['commessa']) && !empty($_GET['commessa'])) {
-            $conditions[] = "Commessa LIKE :commessa";
+            $conditions[] = "c.Commessa LIKE :commessa";
             $params[':commessa'] = '%' . $_GET['commessa'] . '%';
         }
         
         // Filtro per tipo commessa
         if (isset($_GET['tipo']) && !empty($_GET['tipo'])) {
-            $conditions[] = "Tipo_Commessa = :tipo";
+            $conditions[] = "c.Tipo_Commessa = :tipo";
             $params[':tipo'] = $_GET['tipo'];
         }
         
         // Filtro per cliente
         if (isset($_GET['cliente']) && !empty($_GET['cliente'])) {
-            $conditions[] = "ID_CLIENTE = :cliente";
+            $conditions[] = "c.ID_CLIENTE = :cliente";
             $params[':cliente'] = $_GET['cliente'];
         }
         
         // Filtro per collaboratore
         if (isset($_GET['collaboratore']) && !empty($_GET['collaboratore'])) {
-            $conditions[] = "ID_COLLABORATORE = :collaboratore";
+            $conditions[] = "c.ID_COLLABORATORE = :collaboratore";
             $params[':collaboratore'] = $_GET['collaboratore'];
         }
         
         // Filtro per stato
         if (isset($_GET['stato']) && !empty($_GET['stato'])) {
-            $conditions[] = "Stato_Commessa = :stato";
+            $conditions[] = "c.Stato_Commessa = :stato";
             $params[':stato'] = $_GET['stato'];
+        }
+        
+        // Filtro per anno-mese basato su FACT_GIORNATE
+        if (isset($_GET['anno_mese']) && !empty($_GET['anno_mese'])) {
+            $annoMese = $_GET['anno_mese'];
+            
+            // Valida il formato YYYY-MM o solo YYYY
+            if (preg_match('/^\d{4}-\d{2}$/', $annoMese)) {
+                // Formato YYYY-MM
+                $conditions[] = "c.ID_COMMESSA IN (
+                    SELECT DISTINCT t.ID_COMMESSA 
+                    FROM ANA_TASK t
+                    JOIN FACT_GIORNATE g ON t.ID_TASK = g.ID_TASK
+                    WHERE DATE_FORMAT(g.Data, '%Y-%m') = :anno_mese
+                )";
+                $params[':anno_mese'] = $annoMese;
+            } elseif (preg_match('/^\d{4}$/', $annoMese)) {
+                // Formato YYYY (solo anno)
+                $conditions[] = "c.ID_COMMESSA IN (
+                    SELECT DISTINCT t.ID_COMMESSA 
+                    FROM ANA_TASK t
+                    JOIN FACT_GIORNATE g ON t.ID_TASK = g.ID_TASK
+                    WHERE YEAR(g.Data) = :anno
+                )";
+                $params[':anno'] = $annoMese;
+            }
         }
         
         // Filtro per data apertura (da)
         if (isset($_GET['data_da']) && !empty($_GET['data_da'])) {
-            $conditions[] = "Data_Apertura_Commessa >= :data_da";
+            $conditions[] = "c.Data_Apertura_Commessa >= :data_da";
             $params[':data_da'] = $_GET['data_da'];
         }
         
         // Filtro per data apertura (a)
         if (isset($_GET['data_a']) && !empty($_GET['data_a'])) {
-            $conditions[] = "Data_Apertura_Commessa <= :data_a";
+            $conditions[] = "c.Data_Apertura_Commessa <= :data_a";
             $params[':data_a'] = $_GET['data_a'];
         }
         

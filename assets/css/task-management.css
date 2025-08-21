@@ -75,10 +75,36 @@ body {
     font-weight: 500;
 }
 
+.badge-tipo-monitoraggio {
+    background: linear-gradient(135deg, #6f42c1, #495057);
+    color: white;
+    font-weight: 500;
+    border: 1px solid rgba(255,255,255,0.2);
+}
+
+.badge-tipo-promo {
+    background: linear-gradient(135deg, var(--warning-color), #fd7e14);
+    color: white;
+    font-weight: 500;
+}
+
+.badge-tipo-sviluppo {
+    background: linear-gradient(135deg, var(--danger-color), #e83e8c);
+    color: white;
+    font-weight: 500;
+}
+
+.badge-tipo-formazione {
+    background: linear-gradient(135deg, #17a2b8, #6610f2);
+    color: white;
+    font-weight: 500;
+}
+
 /* Header della barra di ricerca */
 .search-filter-bar {
     background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
     position: relative;
+    padding: 2rem 0;
 }
 
 .search-filter-bar::before {
@@ -114,6 +140,28 @@ body {
 .stats-card .h4 {
     color: var(--primary-color);
     font-weight: 700;
+}
+
+/* Collapse delle commesse */
+.commessa-group .card-header {
+    transition: background-color 0.2s ease;
+}
+
+.commessa-group .card-header:hover {
+    background-color: #e9ecef !important;
+}
+
+.collapse-icon {
+    transition: transform 0.3s ease;
+    color: var(--primary-color);
+}
+
+.collapse-icon.bi-chevron-right {
+    transform: rotate(-90deg);
+}
+
+.collapse-icon.bi-chevron-down {
+    transform: rotate(0deg);
 }
 
 /* Form styling */

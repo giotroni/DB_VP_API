@@ -37,6 +37,8 @@ class TaskManager {
                 this.loadCommesse(),
                 this.loadCollaboratori()
             ]);
+            this.populateAnnoSelect();
+            this.populateMeseSelect();
         } catch (error) {
             console.error('Errore nel caricamento dati:', error);
             this.showAlert('Errore nel caricamento dei dati', 'danger');
@@ -92,6 +94,129 @@ class TaskManager {
         }
     }
     
+    populateAnnoSelect() {
+        const select = document.getElementById('filterAnno');
+        if (!select) return;
+        
+        const currentValue = select.value;
+        const firstOption = select.children[0].outerHTML;
+        select.innerHTML = firstOption;
+        
+        const currentYear = new Date().getFullYear();
+        
+        // Genera anni dal 2024 fino all'anno corrente
+        for (let year = currentYear; year >= 2024; year--) {
+            const option = document.createElement('option');
+            option.value = year.toString();
+            option.textContent = year.toString();
+            select.appendChild(option);
+        }
+        
+        if (currentValue) select.value = currentValue;
+    }
+    
+    populateMeseSelect() {
+        const select = document.getElementById('filterMese');
+        if (!select) return;
+        
+        const currentValue = select.value;
+        const firstOption = select.children[0].outerHTML;
+        select.innerHTML = firstOption;
+        
+        const mesi = [
+            { value: '01', label: 'Gennaio' },
+            { value: '02', label: 'Febbraio' },
+            { value: '03', label: 'Marzo' },
+            { value: '04', label: 'Aprile' },
+            { value: '05', label: 'Maggio' },
+            { value: '06', label: 'Giugno' },
+            { value: '07', label: 'Luglio' },
+            { value: '08', label: 'Agosto' },
+            { value: '09', label: 'Settembre' },
+            { value: '10', label: 'Ottobre' },
+            { value: '11', label: 'Novembre' },
+            { value: '12', label: 'Dicembre' }
+        ];
+        
+        mesi.forEach(mese => {
+            const option = document.createElement('option');
+            option.value = mese.value;
+            option.textContent = mese.label;
+            select.appendChild(option);
+        });
+        
+        if (currentValue) select.value = currentValue;
+    }
+    
+    async updateCommesseBasedOnPeriod() {
+        const anno = document.getElementById('filterAnno')?.value || '';
+        const mese = document.getElementById('filterMese')?.value || '';
+        
+        try {
+            if (!anno) {
+                // Se non c'è un anno selezionato, mostra tutte le commesse
+                this.populateCommesseSelect();
+                return;
+            }
+            
+            // Prepara il parametro per l'API
+            let annoMeseParam = '';
+            if (anno && mese) {
+                // Anno e mese specificati
+                annoMeseParam = `${anno}-${mese}`;
+            } else if (anno) {
+                // Solo anno specificato - usa un range per tutto l'anno
+                annoMeseParam = anno; // L'API gestirà questo caso
+            }
+            
+            if (annoMeseParam) {
+                // Chiama l'API per ottenere le commesse con giornate nel periodo selezionato
+                const response = await fetch(`${this.API_BASE}?resource=commesse&anno_mese=${annoMeseParam}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    const commesseConGiornate = data.data.data || [];
+                    this.updateCommesseSelect(commesseConGiornate);
+                } else {
+                    console.warn('Errore nel caricamento commesse per periodo:', data.error);
+                    // Fallback: mostra tutte le commesse
+                    this.populateCommesseSelect();
+                }
+            } else {
+                this.populateCommesseSelect();
+            }
+        } catch (error) {
+            console.error('Errore nell\'aggiornamento commesse per periodo:', error);
+            // Fallback: mostra tutte le commesse
+            this.populateCommesseSelect();
+        }
+    }
+    
+    updateCommesseSelect(commesseList) {
+        const select = document.getElementById('filterCommessa');
+        if (!select) return;
+        
+        const currentValue = select.value;
+        const firstOption = select.children[0].outerHTML;
+        select.innerHTML = firstOption;
+        
+        if (commesseList && commesseList.length > 0) {
+            commesseList.forEach(commessa => {
+                const option = document.createElement('option');
+                option.value = commessa.ID_COMMESSA;
+                option.textContent = `${commessa.Commessa}${commessa.Cliente ? ' - ' + commessa.Cliente : ''}`;
+                select.appendChild(option);
+            });
+        }
+        
+        // Se la commessa precedentemente selezionata non è più disponibile, resettala
+        if (currentValue && !commesseList.find(c => c.ID_COMMESSA === currentValue)) {
+            select.value = '';
+        } else if (currentValue) {
+            select.value = currentValue;
+        }
+    }
+    
     populateCommesseSelect() {
         const selects = ['taskCommessa', 'filterCommessa'];
         selects.forEach(selectId => {
@@ -102,12 +227,14 @@ class TaskManager {
             const firstOption = select.children[0].outerHTML;
             select.innerHTML = firstOption;
             
-                this.commesseList.forEach(commessa => {
-                    const option = document.createElement('option');
-                    option.value = commessa.ID_COMMESSA;
-                    option.textContent = `${commessa.Commessa}${commessa.Cliente ? ' - ' + commessa.Cliente : ''}`;
-                    select.appendChild(option);
-                });            if (currentValue) select.value = currentValue;
+            this.commesseList.forEach(commessa => {
+                const option = document.createElement('option');
+                option.value = commessa.ID_COMMESSA;
+                option.textContent = `${commessa.Commessa}${commessa.Cliente ? ' - ' + commessa.Cliente : ''}`;
+                select.appendChild(option);
+            });
+            
+            if (currentValue) select.value = currentValue;
         });
     }
     
@@ -132,11 +259,11 @@ class TaskManager {
     renderTasks(tasks) {
         const container = document.getElementById('tasksContainer');
         const noTasksDiv = document.getElementById('noTasks');
-        const groupByCommessa = document.getElementById('groupByCommessa')?.checked;
         
         if (tasks.length === 0) {
             container.style.display = 'none';
             noTasksDiv.style.display = 'block';
+            this.updateStatistics([]); // Aggiorna statistiche con array vuoto
             return;
         }
         
@@ -148,11 +275,8 @@ class TaskManager {
         const endIndex = startIndex + this.tasksPerPage;
         const paginatedTasks = tasks.slice(startIndex, endIndex);
         
-        if (groupByCommessa) {
-            container.innerHTML = this.renderTasksByCommessa(paginatedTasks);
-        } else {
-            container.innerHTML = paginatedTasks.map(task => this.createTaskCard(task)).join('');
-        }
+        // Sempre raggruppato per commessa
+        container.innerHTML = this.renderTasksByCommessa(paginatedTasks);
         
         // Aggiorna le statistiche con tutti i task (non solo quelli paginati)
         this.updateStatistics(tasks);
@@ -175,17 +299,19 @@ class TaskManager {
         }, {});
         
         // Crea HTML per ogni gruppo
-        return Object.entries(tasksByCommessa).map(([commessaId, group]) => {
-            const totalValue = group.tasks.reduce((sum, task) => sum + (task.valore_tot_maturato || 0), 0);
-            const totalGiornate = group.tasks.reduce((sum, task) => sum + (task.gg_effettuate || 0), 0);
+        return Object.entries(tasksByCommessa).map(([commessaId, group], index) => {
+            // Calcola statistiche filtrate per periodo
+            const stats = this.calculateCommessaStatsFiltered(group.tasks);
+            const collapseId = `commessa-collapse-${index}`;
             
             return `
                 <div class="col-12 mb-4">
                     <div class="card commessa-group">
-                        <div class="card-header bg-light">
+                        <div class="card-header bg-light" style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#${collapseId}" aria-expanded="false" aria-controls="${collapseId}">
                             <div class="row align-items-center">
                                 <div class="col-md-8">
                                     <h5 class="mb-1">
+                                        <i class="bi bi-chevron-right me-2 collapse-icon" id="icon-${collapseId}"></i>
                                         <i class="bi bi-briefcase me-2"></i>${group.commessa}
                                     </h5>
                                     <div class="text-muted small">
@@ -200,26 +326,40 @@ class TaskManager {
                                             <small class="text-muted">Task</small>
                                         </div>
                                         <div class="col-4">
-                                            <div class="fw-bold text-success">${totalGiornate.toFixed(1)}</div>
+                                            <div class="fw-bold text-success">${stats.totalGiornate.toFixed(1)}</div>
                                             <small class="text-muted">Giornate</small>
                                         </div>
                                         <div class="col-4">
-                                            <div class="fw-bold text-info">€${this.formatCurrency(totalValue)}</div>
+                                            <div class="fw-bold text-info">€${this.formatCurrency(stats.totalValore)}</div>
                                             <small class="text-muted">Valore</small>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                        <div class="card-body">
-                            <div class="row g-3">
-                                ${group.tasks.map(task => this.createTaskCard(task, true)).join('')}
+                        <div class="collapse" id="${collapseId}">
+                            <div class="card-body">
+                                <div class="row g-3">
+                                    ${group.tasks.map(task => this.createTaskCard(task, true)).join('')}
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
             `;
         }).join('');
+    }
+    
+    calculateCommessaStatsFiltered(tasks) {
+        // Calcola le statistiche basandosi sui dati già filtrati per periodo
+        // I task arrivano già con i valori maturati filtrati dall'API
+        const totalGiornate = tasks.reduce((sum, task) => sum + (task.gg_effettuate_filtrate || task.gg_effettuate || 0), 0);
+        const totalValore = tasks.reduce((sum, task) => sum + (task.valore_tot_maturato_filtrato || task.valore_tot_maturato || 0), 0);
+        
+        return {
+            totalGiornate: totalGiornate,
+            totalValore: totalValore
+        };
     }
     
     createTaskCard(task, isInGroup = false) {
@@ -230,15 +370,16 @@ class TaskManager {
         const responsabileCommessa = task.responsabile_commessa || 'N/A';
         
         const progressPercent = task.gg_previste > 0 ? 
-            Math.round((task.gg_effettuate || 0) / task.gg_previste * 100) : 0;
+            Math.round((task.gg_effettuate_filtrate || task.gg_effettuate || 0) / task.gg_previste * 100) : 0;
         
         const isArchived = task.Stato_Task === 'Archiviato';
         const statusClass = task.Stato_Task?.toLowerCase().replace(' ', '-') || 'unknown';
         
-        // Valori maturati
-        const valoreGgMaturato = task.valore_gg_maturato || 0;
-        const valoreSpeseMaturo = task.valore_spese_maturato || 0;
-        const valoreTotMaturato = task.valore_tot_maturato || 0;
+        // Usa valori filtrati se disponibili, altrimenti i valori totali
+        const ggEffettuate = task.gg_effettuate_filtrate !== undefined ? task.gg_effettuate_filtrate : (task.gg_effettuate || 0);
+        const valoreGgMaturato = task.valore_gg_maturato_filtrato !== undefined ? task.valore_gg_maturato_filtrato : (task.valore_gg_maturato || 0);
+        const valoreSpeseMaturo = task.valore_spese_maturato_filtrato !== undefined ? task.valore_spese_maturato_filtrato : (task.valore_spese_maturato || 0);
+        const valoreTotMaturato = task.valore_tot_maturato_filtrato !== undefined ? task.valore_tot_maturato_filtrato : (task.valore_tot_maturato || 0);
         
         const colClass = isInGroup ? 'col-md-6 col-xl-4' : 'col-md-6 col-lg-4';
         
@@ -251,16 +392,36 @@ class TaskManager {
                             <span class="badge badge-tipo-${task.Tipo?.toLowerCase() || 'unknown'}">${task.Tipo || 'N/A'}</span>
                             <span class="badge bg-secondary ms-1">${task.Stato_Task || 'N/A'}</span>
                         </div>
+                        ${task.Tipo !== 'Monitoraggio' ? `
                         <div class="progress-circle" style="background: ${this.getProgressColor(progressPercent)}">
                             ${progressPercent}%
                         </div>
+                        ` : ''}
                     </div>
                     <div class="card-body" onclick="taskManager.showGiornateModal('${task.ID_TASK}')" style="cursor: pointer;">
                         <h6 class="card-title text-truncate" title="${task.Task}">${task.Task}</h6>
                         <p class="card-text text-muted small mb-2" title="${task.Desc_Task || 'Nessuna descrizione'}">
                             ${this.truncateText(task.Desc_Task || 'Nessuna descrizione', 80)}
                         </p>
+                        ${task.Tipo === 'Monitoraggio' ? `
+                        <div class="alert alert-info py-1 px-2 mb-2 small">
+                            <i class="bi bi-info-circle me-1"></i>
+                            Valore calcolato su attività commessa
+                        </div>
+                        ` : ''}
                         
+                        ${task.Tipo === 'Monitoraggio' ? `
+                        <div class="row text-center mb-2 small">
+                            <div class="col-6">
+                                <div class="text-muted">Prezzo/gg</div>
+                                <div class="fw-bold text-secondary">€${this.formatCurrency(task.Valore_gg || 0)}</div>
+                            </div>
+                            <div class="col-6">
+                                <div class="text-muted">Valore Calc.</div>
+                                <div class="fw-bold text-success">€${this.formatCurrency(valoreTotMaturato)}</div>
+                            </div>
+                        </div>
+                        ` : `
                         <div class="row text-center mb-2 small">
                             <div class="col-3">
                                 <div class="text-muted">Previsti</div>
@@ -268,7 +429,7 @@ class TaskManager {
                             </div>
                             <div class="col-3">
                                 <div class="text-muted">Effettuati</div>
-                                <div class="fw-bold text-primary">${task.gg_effettuate || 0} gg</div>
+                                <div class="fw-bold text-primary">${ggEffettuate} gg</div>
                             </div>
                             <div class="col-3">
                                 <div class="text-muted">Prezzo/gg</div>
@@ -290,6 +451,7 @@ class TaskManager {
                                 <div class="fw-bold text-warning">€${this.formatCurrency(valoreSpeseMaturo)}</div>
                             </div>
                         </div>
+                        `}
                         
                         ${!isInGroup ? `
                         <hr class="my-2">
@@ -359,7 +521,10 @@ class TaskManager {
     }
     
     formatCurrency(amount) {
-        return new Intl.NumberFormat('it-IT').format(amount);
+        return new Intl.NumberFormat('it-IT', {
+            minimumFractionDigits: 1,
+            maximumFractionDigits: 1
+        }).format(amount);
     }
     
     truncateText(text, maxLength) {
@@ -373,11 +538,28 @@ class TaskManager {
         const filterCommessa = document.getElementById('filterCommessa');
         const filterStato = document.getElementById('filterStato');
         const filterTipo = document.getElementById('filterTipo');
+        const filterAnno = document.getElementById('filterAnno');
+        const filterMese = document.getElementById('filterMese');
         
         if (searchInput) searchInput.addEventListener('input', () => this.filterTasks());
         if (filterCommessa) filterCommessa.addEventListener('change', () => this.filterTasks());
         if (filterStato) filterStato.addEventListener('change', () => this.filterTasks());
         if (filterTipo) filterTipo.addEventListener('change', () => this.filterTasks());
+        
+        // Event listeners per i nuovi filtri di periodo
+        if (filterAnno) {
+            filterAnno.addEventListener('change', async () => {
+                await this.updateCommesseBasedOnPeriod();
+                this.filterTasks();
+            });
+        }
+        
+        if (filterMese) {
+            filterMese.addEventListener('change', async () => {
+                await this.updateCommesseBasedOnPeriod();
+                this.filterTasks();
+            });
+        }
         
         // Reset form quando il modal si chiude
         const taskModal = document.getElementById('taskModal');
@@ -393,27 +575,135 @@ class TaskManager {
                 this.saveTask();
             });
         }
+        
+        // Setup collapse listeners per le commesse
+        this.setupCollapseListeners();
+        
+        // Event listener per espandi/collassa tutto
+        const expandCollapseAll = document.getElementById('expandCollapseAll');
+        if (expandCollapseAll) {
+            expandCollapseAll.addEventListener('change', () => {
+                this.toggleAllCommesse(expandCollapseAll.checked);
+            });
+        }
     }
     
-    filterTasks() {
+    setupCollapseListeners() {
+        // Usa event delegation per gestire i collapse dinamici
+        document.addEventListener('shown.bs.collapse', (e) => {
+            if (e.target.id.startsWith('commessa-collapse-')) {
+                const iconId = `icon-${e.target.id}`;
+                const icon = document.getElementById(iconId);
+                if (icon) {
+                    icon.classList.remove('bi-chevron-right');
+                    icon.classList.add('bi-chevron-down');
+                }
+            }
+        });
+        
+        document.addEventListener('hidden.bs.collapse', (e) => {
+            if (e.target.id.startsWith('commessa-collapse-')) {
+                const iconId = `icon-${e.target.id}`;
+                const icon = document.getElementById(iconId);
+                if (icon) {
+                    icon.classList.remove('bi-chevron-down');
+                    icon.classList.add('bi-chevron-right');
+                }
+            }
+        });
+    }
+    
+    toggleAllCommesse(expand) {
+        // Trova tutti i collapse delle commesse
+        const collapses = document.querySelectorAll('[id^="commessa-collapse-"]');
+        const label = document.querySelector('label[for="expandCollapseAll"]');
+        
+        collapses.forEach(collapse => {
+            const bsCollapse = new bootstrap.Collapse(collapse, { toggle: false });
+            
+            if (expand) {
+                bsCollapse.show();
+            } else {
+                bsCollapse.hide();
+            }
+        });
+        
+        // Aggiorna la label
+        if (label) {
+            label.textContent = expand ? 'Collassa Tutto' : 'Espandi Tutto';
+        }
+    }
+    
+    async filterTasks() {
         const searchText = document.getElementById('searchTask')?.value.toLowerCase() || '';
         const filterCommessa = document.getElementById('filterCommessa')?.value || '';
         const filterStato = document.getElementById('filterStato')?.value || '';
         const filterTipo = document.getElementById('filterTipo')?.value || '';
+        const filterAnno = document.getElementById('filterAnno')?.value || '';
+        const filterMese = document.getElementById('filterMese')?.value || '';
         
-        const filteredTasks = this.allTasks.filter(task => {
-            const matchesSearch = task.Task?.toLowerCase().includes(searchText) ||
-                                (task.Desc_Task && task.Desc_Task.toLowerCase().includes(searchText));
-            const matchesCommessa = !filterCommessa || task.ID_COMMESSA === filterCommessa;
-            const matchesStato = !filterStato || task.Stato_Task === filterStato;
-            const matchesTipo = !filterTipo || task.Tipo === filterTipo;
+        try {
+            // Costruisci i parametri della query
+            const params = new URLSearchParams();
+            params.append('resource', 'task');
+            params.append('limit', '200');
             
-            return matchesSearch && matchesCommessa && matchesStato && matchesTipo;
-        });
-        
-        this.currentPage = 1; // Reset alla prima pagina
-        this.renderTasks(filteredTasks);
-        this.updatePagination(filteredTasks.length);
+            if (searchText) {
+                params.append('search', searchText);
+            }
+            if (filterCommessa) {
+                params.append('commessa', filterCommessa);
+            }
+            if (filterStato) {
+                params.append('stato', filterStato);
+            }
+            if (filterTipo) {
+                params.append('tipo', filterTipo);
+            }
+            
+            // Gestisce filtro per periodo: anno+mese, solo anno, o nessuno
+            if (filterAnno && filterMese) {
+                // Anno e mese specificati
+                const annoMese = `${filterAnno}-${filterMese}`;
+                params.append('anno_mese', annoMese);
+            } else if (filterAnno) {
+                // Solo anno specificato - filtra per tutto l'anno
+                params.append('anno', filterAnno);
+            }
+            
+            // Chiama l'API con i filtri integrati
+            const response = await fetch(`${this.API_BASE}?${params.toString()}`);
+            const data = await response.json();
+            
+            if (data.success) {
+                const filteredTasks = data.data.data || [];
+                this.currentPage = 1; // Reset alla prima pagina
+                this.renderTasks(filteredTasks);
+                this.updatePagination(filteredTasks.length);
+            } else {
+                throw new Error(data.error);
+            }
+            
+        } catch (error) {
+            console.error('Errore nel filtro task:', error);
+            this.showAlert('Errore nell\'applicazione dei filtri', 'warning');
+            
+            // Fallback: usa il filtro client-side per i parametri di base
+            let filteredTasks = this.allTasks.filter(task => {
+                const matchesSearch = !searchText || 
+                    task.Task?.toLowerCase().includes(searchText) ||
+                    (task.Desc_Task && task.Desc_Task.toLowerCase().includes(searchText));
+                const matchesCommessa = !filterCommessa || task.ID_COMMESSA === filterCommessa;
+                const matchesStato = !filterStato || task.Stato_Task === filterStato;
+                const matchesTipo = !filterTipo || task.Tipo === filterTipo;
+                
+                return matchesSearch && matchesCommessa && matchesStato && matchesTipo;
+            });
+            
+            this.currentPage = 1;
+            this.renderTasks(filteredTasks);
+            this.updatePagination(filteredTasks.length);
+        }
     }
     
     updateStats() {
@@ -615,6 +905,20 @@ class TaskManager {
                 giornateContainer.style.display = 'none';
             }
             
+            // Ottieni i filtri periodo correnti
+            const filterAnno = document.getElementById('filterAnno')?.value || '';
+            const filterMese = document.getElementById('filterMese')?.value || '';
+            
+            // Costruisci URL per le giornate con filtri periodo
+            let giornateUrl = `${this.API_BASE}?resource=giornate&task=${taskId}`;
+            
+            // Aggiungi filtri periodo se presenti
+            if (filterAnno && filterMese) {
+                giornateUrl += `&anno_mese=${filterAnno}-${filterMese}`;
+            } else if (filterAnno) {
+                giornateUrl += `&anno=${filterAnno}`;
+            }
+            
             // Carica i dati del task
             const taskUrl = `${this.API_BASE}?resource=task&id=${taskId}`;
             console.log('Loading task from:', taskUrl);
@@ -638,34 +942,30 @@ class TaskManager {
                 throw new Error('Dati task non validi');
             }
             
-            // Controlla se l'API del task include già le giornate
+            // Carica le giornate con filtri periodo
             let giornate = [];
-            if (taskData.data.giornate && Array.isArray(taskData.data.giornate)) {
-                giornate = taskData.data.giornate;
-                console.log('✅ Using giornate from task API:', giornate.length);
-            } else {
-                console.log('❌ No giornate in task API, trying dedicated giornate API');
-                
-                // Prova l'API giornate con filtro task 
-                const giornateUrl = `${this.API_BASE}?resource=giornate&task=${taskId}`;
-                console.log('Loading giornate from:', giornateUrl);
-                
-                const giornateResponse = await fetch(giornateUrl, {
-                    headers: { 'Accept': 'application/json' }
-                });
-                
-                if (giornateResponse.ok) {
-                    const giornateData = await giornateResponse.json();
-                    if (giornateData.success && giornateData.data && giornateData.data.data) {
-                        giornate = giornateData.data.data;
-                        console.log('✅ Using filtered giornate API:', giornate.length);
-                    } else {
-                        console.log('❌ Filtered API failed, structure:', giornateData);
-                    }
+            console.log('Loading filtered giornate from:', giornateUrl);
+            
+            const giornateResponse = await fetch(giornateUrl, {
+                headers: { 'Accept': 'application/json' }
+            });
+            
+            if (giornateResponse.ok) {
+                const giornateData = await giornateResponse.json();
+                if (giornateData.success && giornateData.data && giornateData.data.data) {
+                    giornate = giornateData.data.data;
+                    console.log('✅ Using filtered giornate API:', giornate.length);
+                } else {
+                    console.log('❌ Filtered API failed, structure:', giornateData);
                 }
+            } else {
+                console.log('❌ Giornate API failed with status:', giornateResponse.status);
             }
             
             console.log('📊 Final giornate array for modal:', giornate.length, 'items');
+            
+            // Aggiungi info sul filtro periodo al task data per mostrarlo nel modal
+            taskData.data.filtro_periodo = this.getCurrentPeriodFilter();
             
             this.renderGiornateModal(taskData.data, giornate);
             
@@ -679,6 +979,24 @@ class TaskManager {
                 loadingSpinner.style.display = 'none';
             }
         }
+    }
+    
+    getCurrentPeriodFilter() {
+        const filterAnno = document.getElementById('filterAnno')?.value || '';
+        const filterMese = document.getElementById('filterMese')?.value || '';
+        
+        if (filterAnno && filterMese) {
+            const mesi = [
+                'Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno',
+                'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'
+            ];
+            const meseNome = mesi[parseInt(filterMese) - 1];
+            return `${meseNome} ${filterAnno}`;
+        } else if (filterAnno) {
+            return `Anno ${filterAnno}`;
+        }
+        
+        return null;
     }
     
     renderGiornateModal(task, giornate) {
@@ -707,8 +1025,12 @@ class TaskManager {
                 giornateContainer.style.display = 'block';
             }
             
-            // Aggiorna il titolo del modal
-            modalLabel.textContent = `Giornate - ${task.Task || 'Task sconosciuto'}`;
+            // Aggiorna il titolo del modal con info sul filtro
+            let titleText = `Giornate - ${task.Task || 'Task sconosciuto'}`;
+            if (task.filtro_periodo) {
+                titleText += ` (Filtro: ${task.filtro_periodo})`;
+            }
+            modalLabel.textContent = titleText;
             
             // Assicurati che giornate sia un array
             if (!Array.isArray(giornate)) {
@@ -731,27 +1053,31 @@ class TaskManager {
             const prezzoGiornata = parseFloat(task.Valore_gg) || 1550; // Fallback a 1550 se non disponibile
             const valoreGiornate = totaleGiornate * prezzoGiornata;
             
+            // Calcola valore maturato = valore giornate + spese totali
+            const valoreMaturato = valoreGiornate + totaleSpese;
+            
             console.log('📊 Totali calcolati:');
             console.log('- Giornate totali:', totaleGiornate);
             console.log('- Prezzo per giornata:', prezzoGiornata);
             console.log('- Valore giornate:', valoreGiornate);
             console.log('- Spese totali:', totaleSpese);
+            console.log('- Valore maturato:', valoreMaturato);
             
             // Aggiorna le card di riepilogo
             totalGiornateEl.textContent = totaleGiornate.toFixed(2);
             totalSpeseEl.textContent = this.formatCurrency(totaleSpese);
             
-            // Aggiorna il VALORE MATURATO (card verde in basso)
+            // Aggiorna il VALORE MATURATO (card verde in basso) = Valore Giornate + Spese
             if (totalValoreMaturato) {
-                totalValoreMaturato.textContent = `€${valoreGiornate.toFixed(0)}`;
-                console.log('✅ Updated Valore Maturato:', valoreGiornate);
+                totalValoreMaturato.textContent = `€${this.formatCurrency(valoreMaturato)}`;
+                console.log('✅ Updated Valore Maturato:', valoreMaturato);
             }
             
-            // Aggiorna anche il Valore Giornate (card blu centrale) se esiste
+            // Aggiorna il Valore Giornate (card blu centrale) 
             const valoreGiornateEl = document.getElementById('valoreGiornate') || 
                                    document.querySelector('.text-success');
             if (valoreGiornateEl && valoreGiornateEl !== totalValoreMaturato) {
-                valoreGiornateEl.textContent = `€${valoreGiornate.toFixed(0)}`;
+                valoreGiornateEl.textContent = `€${this.formatCurrency(valoreGiornate)}`;
                 console.log('✅ Updated Valore Giornate in center card:', valoreGiornate);
             }
             
@@ -808,8 +1134,8 @@ class TaskManager {
                         <td>${collaboratore || 'N/A'}</td>
                         <td class="text-center">${giornata.Tipo || 'Campo'}</td>
                         <td class="text-end">${giornateNum.toFixed(2)}</td>
-                        <td class="text-end">€${valoreGiornata.toFixed(0)}</td>
-                        <td class="text-end">€${totaleSpese.toFixed(0)}</td>
+                        <td class="text-end">€${this.formatCurrency(valoreGiornata)}</td>
+                        <td class="text-end">€${this.formatCurrency(totaleSpese)}</td>
                         <td class="text-truncate" style="max-width: 200px;" title="${giornata.Note || ''}">
                             ${giornata.Note || '-'}
                         </td>
@@ -865,29 +1191,33 @@ class TaskManager {
         this.showAlert('Funzione di aggiunta giornata in sviluppo', 'info');
     }
     
-    // Toggle per raggruppamento per commessa
-    toggleGroupByCommessa(isGrouped) {
-        this.isGroupedByCommessa = isGrouped;
-        this.renderTasks();
-    }
-    
     // Aggiornamento delle statistiche
     updateStatistics(tasks) {
         if (!tasks || tasks.length === 0) {
             // Resetta le statistiche se non ci sono task
             document.getElementById('totalTasks').textContent = '0';
+            document.getElementById('activeTasks').textContent = '0';
             document.getElementById('totalValue').textContent = '€0';
             return;
         }
         
-        // Calcola i totali
+        // Calcola i totali basandosi sui task filtrati
         const totalTasks = tasks.length;
+        const activeTasks = tasks.filter(task => 
+            task.Stato_Task !== 'Archiviato' && task.Stato_Task !== 'Chiuso'
+        ).length;
+        
+        // Usa i valori filtrati se disponibili
         const totalValue = tasks.reduce((sum, task) => {
-            return sum + (parseFloat(task.valore_tot_maturato) || 0);
+            const valore = task.valore_tot_maturato_filtrato !== undefined ? 
+                task.valore_tot_maturato_filtrato : 
+                (task.valore_tot_maturato || 0);
+            return sum + valore;
         }, 0);
         
         // Aggiorna i display
         document.getElementById('totalTasks').textContent = totalTasks.toString();
+        document.getElementById('activeTasks').textContent = activeTasks.toString();
         document.getElementById('totalValue').textContent = `€${this.formatCurrency(totalValue)}`;
     }
     
@@ -921,13 +1251,6 @@ let taskManager;
 document.addEventListener('DOMContentLoaded', function() {
     taskManager = new TaskManager();
     
-    // Aggiungi event listener per il toggle di raggruppamento
-    const groupToggle = document.getElementById('groupByCommessa');
-    if (groupToggle) {
-        groupToggle.addEventListener('change', function() {
-            taskManager.toggleGroupByCommessa(this.checked);
-        });
-    }
 });
 
 // Funzioni globali per compatibilità con HTML

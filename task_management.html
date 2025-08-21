@@ -24,7 +24,8 @@
         <div class="container">
             <div class="row align-items-center">
                 <div class="col-md-8">
-                    <div class="row g-3">
+                    <!-- Prima riga di filtri -->
+                    <div class="row g-3 mb-3">
                         <div class="col-md-4">
                             <input type="text" class="form-control" id="searchTask" placeholder="Cerca task...">
                         </div>
@@ -33,27 +34,42 @@
                                 <option value="">Tutte le commesse</option>
                             </select>
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-md-2">
                             <select class="form-select" id="filterStato">
                                 <option value="">Tutti gli stati</option>
                                 <option value="In corso">In corso</option>
-                                <option value="Completato">Completato</option>
+                                <option value="Chiuso">Chiuso</option>
                                 <option value="Sospeso">Sospeso</option>
                                 <option value="Archiviato">Archiviato</option>
                             </select>
                         </div>
-                        <div class="col-md-2">
+                        <div class="col-md-3">
                             <select class="form-select" id="filterTipo">
                                 <option value="">Tutti i tipi</option>
                                 <option value="Campo">Campo</option>
                                 <option value="Ufficio">Ufficio</option>
                             </select>
                         </div>
-                        <div class="col-md-2">
-                            <div class="form-check form-switch">
-                                <input class="form-check-input" type="checkbox" id="groupByCommessa" checked>
-                                <label class="form-check-label" for="groupByCommessa">
-                                    Raggruppa per commessa
+                    </div>
+                    <!-- Seconda riga di filtri -->
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <select class="form-select" id="filterAnno">
+                                <option value="">Seleziona Anno</option>
+                                <!-- Le opzioni verranno popolate dinamicamente -->
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <select class="form-select" id="filterMese">
+                                <option value="">Seleziona Mese</option>
+                                <!-- Le opzioni verranno popolate dinamicamente -->
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-check form-switch d-flex align-items-center justify-content-center h-100">
+                                <input class="form-check-input me-2" type="checkbox" id="expandCollapseAll">
+                                <label class="form-check-label" for="expandCollapseAll">
+                                    Espandi Tutto
                                 </label>
                             </div>
                         </div>
@@ -169,7 +185,7 @@
                                 <label for="taskStato" class="form-label">Stato</label>
                                 <select class="form-select" id="taskStato">
                                     <option value="In corso">In corso</option>
-                                    <option value="Completato">Completato</option>
+                                    <option value="Chiuso">Chiuso</option>
                                     <option value="Sospeso">Sospeso</option>
                                     <option value="Archiviato">Archiviato</option>
                                 </select>
