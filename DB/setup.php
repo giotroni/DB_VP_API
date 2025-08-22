@@ -79,6 +79,7 @@ class DatabaseSetup {
             ID_COLLABORATORE VARCHAR(50) PRIMARY KEY,
             Collaboratore VARCHAR(255),
             Email VARCHAR(255) UNIQUE,
+            User VARCHAR(100),
             PWD VARCHAR(255),
             Ruolo ENUM('Admin', 'Manager', 'User', 'Amministrazione') DEFAULT 'User',
             PIVA VARCHAR(20),
@@ -87,6 +88,7 @@ class DatabaseSetup {
             Data_Modifica TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             ID_UTENTE_MODIFICA VARCHAR(50),
             INDEX idx_email (Email),
+            INDEX idx_user (User),
             INDEX idx_ruolo (Ruolo)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
         $this->executeSQL($sql, "ANA_COLLABORATORI");
@@ -175,6 +177,7 @@ class DatabaseSetup {
             Spese_Viaggi DECIMAL(10,2) DEFAULT 0,
             Vitto_alloggio DECIMAL(10,2) DEFAULT 0,
             Altri_costi DECIMAL(10,2) DEFAULT 0,
+            Confermata ENUM('Si', 'No') DEFAULT 'No',
             Note TEXT,
             Data_Creazione TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             ID_UTENTE_CREAZIONE VARCHAR(50),
@@ -185,7 +188,8 @@ class DatabaseSetup {
             INDEX idx_data (Data),
             INDEX idx_collaboratore (ID_COLLABORATORE),
             INDEX idx_task (ID_TASK),
-            INDEX idx_tipo (Tipo)
+            INDEX idx_tipo (Tipo),
+            INDEX idx_confermata (Confermata)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
         $this->executeSQL($sql, "FACT_GIORNATE");
         

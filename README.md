@@ -14,6 +14,7 @@ Sistema completo di gestione aziendale con API REST, interfaccia web e database 
 
 ### 🌐 **Interfaccia Web Moderna**
 - **Task Management** con dashboard interattiva
+- **App Consuntivazione** per registrazione ore e spese
 - **Design responsive** ottimizzato per mobile
 - **Filtri in tempo reale** e ricerca istantanea
 - **Card animate** con indicatori di progresso
@@ -57,6 +58,7 @@ DB_VP_API/
 │   └── 📂 js/                 # JavaScript applicazione
 │
 ├── task_management.html        # Interfaccia web gestione task
+├── consuntivazione.html        # App consuntivazione ore e spese
 ├── debug_api.html             # Tool debug API
 ├── test_giornate_quick.php    # Test rapidi giornate
 ├── README.md                  # Questo file
@@ -167,12 +169,12 @@ DELETE /gestione_VP/API/index.php?resource=clienti&id=1
 ?resource=task&sort=Data_Inizio&order=DESC
 ```
 
-## 🎯 Interfaccia Web Task
+## 🎯 Interfacce Web
 
-### **Accesso**
+### **Gestione Task**
 Apri `task_management.html` nel browser per accedere all'interfaccia di gestione task.
 
-### **Funzionalità**
+**Funzionalità:**
 - ✅ **Vista Dashboard** con statistiche in tempo reale
 - 🔍 **Ricerca e filtri** avanzati per task
 - ➕ **Creazione task** con form guidato
@@ -180,6 +182,18 @@ Apri `task_management.html` nel browser per accedere all'interfaccia di gestione
 - 📁 **Archiviazione task** completati
 - 📊 **Indicatori progresso** visivi
 - 📱 **Design responsive** per tutti i dispositivi
+
+### **App Consuntivazione**
+Apri `consuntivazione.html` nel browser per l'app di consuntivazione delle ore.
+
+**Funzionalità:**
+- 🔐 **Login sicuro** con credenziali database
+- 📊 **Dashboard statistiche** personali
+- ⏱️ **Registrazione ore** per commessa/task
+- 💰 **Gestione spese** complete (viaggio, vitto, altro)
+- 📱 **Interface responsive** mobile-friendly
+- 📋 **Storico consuntivazioni** ultime attività
+- ✅ **Validazione completa** dati
 
 ### **Stati Task**
 - **🟢 In corso**: Task attualmente in lavorazione
@@ -207,12 +221,26 @@ define('TIMEZONE', 'Europe/Rome');
 
 ### **Tabelle Principali**
 - **ANA_CLIENTI**: Anagrafica clienti
-- **ANA_COLLABORATORI**: Collaboratori e utenti sistema
+- **ANA_COLLABORATORI**: Collaboratori e utenti sistema (aggiunto campo `User`)
 - **ANA_COMMESSE**: Progetti e commesse di lavoro
 - **ANA_TASK**: Task e attività di commessa
 - **ANA_TARIFFE_COLLABORATORI**: Tariffe per collaboratori
-- **FACT_GIORNATE**: Registrazione ore lavorate
+- **FACT_GIORNATE**: Registrazione ore lavorate (aggiunto campo `Confermata`)
 - **FACT_FATTURE**: Fatture emesse
+
+### **Campi Aggiornati**
+
+#### **ANA_COLLABORATORI**
+```sql
+-- Nuovo campo User per username di login
+User VARCHAR(100)  -- Username per autenticazione
+```
+
+#### **FACT_GIORNATE**
+```sql
+-- Nuovo campo Confermata per stato di approvazione
+Confermata ENUM('Si', 'No') DEFAULT 'No'  -- Stato conferma giornata
+```
 
 ### **Relazioni Chiave**
 - Clienti → Commesse (1:N)
@@ -251,6 +279,7 @@ define('TIMEZONE', 'Europe/Rome');
 
 - **[API Documentation](API/README.md)** - Documentazione completa delle API
 - **[Task Interface Guide](TASK_INTERFACE_DOCS.md)** - Guida interfaccia web task
+- **[Consuntivazione App Guide](CONSUNTIVAZIONE_DOCS.md)** - Guida app consuntivazione
 
 ## 🔄 Versioning
 
