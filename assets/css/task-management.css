@@ -60,6 +60,11 @@ body {
     font-weight: 600;
     min-width: 50px;
     min-height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    color: white;
 }
 
 /* Badge personalizzati */
@@ -327,4 +332,186 @@ body {
 
 ::-webkit-scrollbar-thumb:hover {
     background: var(--primary-color);
+}
+
+/* === STILI MODAL COMMESSA === */
+
+#commessaModal .modal-dialog {
+    max-width: 90vw;
+}
+
+#commessaModal .modal-body {
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+/* Header commesse con pulsante modifica */
+.commessa-group .card-header {
+    position: relative;
+    padding: 1rem 1.25rem;
+}
+
+.commessa-group .card-header .btn {
+    transition: all 0.2s ease;
+}
+
+.commessa-group .card-header .btn:hover {
+    transform: scale(1.05);
+}
+
+/* Gestione valori grandi nell'header commesse */
+.commessa-group .card-header .row.text-center {
+    min-width: 240px;
+    margin: 0;
+}
+
+.commessa-group .card-header .row.text-center .col-4 {
+    padding: 0 0.25rem;
+}
+
+.commessa-group .card-header .fw-bold {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 0.9rem;
+}
+
+.commessa-group .card-header .fw-bold.text-info {
+    font-size: 0.85rem;
+    line-height: 1.1;
+}
+
+/* Responsive per header commesse */
+@media (max-width: 768px) {
+    .commessa-group .card-header .row {
+        flex-direction: column;
+        text-align: center !important;
+    }
+    
+    .commessa-group .card-header .col-md-7,
+    .commessa-group .card-header .col-md-5 {
+        flex: 0 0 100%;
+        max-width: 100%;
+        margin-bottom: 0.5rem;
+    }
+    
+    .commessa-group .card-header .d-flex {
+        justify-content: center !important;
+        flex-wrap: wrap;
+        gap: 1rem !important;
+    }
+    
+    .commessa-group .card-header .row.text-center {
+        min-width: auto;
+        width: 100%;
+    }
+    
+    .commessa-group .card-header .fw-bold {
+        font-size: 0.8rem;
+    }
+}
+
+.task-item {
+    background-color: #f8f9fa;
+    border: 2px solid #e9ecef !important;
+    transition: all 0.3s ease;
+}
+
+.task-item:hover {
+    border-color: var(--primary-color) !important;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.15);
+}
+
+.task-item h6 {
+    color: var(--primary-color);
+    font-weight: 600;
+}
+
+.task-item .btn-outline-danger {
+    border-color: #dc3545;
+    color: #dc3545;
+    transition: all 0.2s ease;
+}
+
+.task-item .btn-outline-danger:hover {
+    background-color: #dc3545;
+    border-color: #dc3545;
+    color: white;
+}
+
+/* Animazione per l'aggiunta di nuovi task */
+.task-item {
+    animation: slideInFromBottom 0.3s ease-out;
+}
+
+@keyframes slideInFromBottom {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Stile per i form nel modal commessa */
+#commessaModal .form-label {
+    font-weight: 500;
+    color: var(--dark-color);
+    margin-bottom: 0.5rem;
+}
+
+#commessaModal .form-control:focus,
+#commessaModal .form-select:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+}
+
+/* Separatore tra commessa e task */
+#commessaModal hr {
+    border: none;
+    height: 2px;
+    background: linear-gradient(to right, var(--primary-color), var(--secondary-color));
+    margin: 2rem 0;
+}
+
+/* Stile per la sezione task */
+#commessaModal #tasksContainer {
+    max-height: 400px;
+    overflow-y: auto;
+    padding-right: 0.5rem;
+}
+
+/* Badge e indicatori */
+.task-number-badge {
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    color: white;
+    padding: 0.25rem 0.5rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+/* Responsive per modal commessa */
+@media (max-width: 768px) {
+    #commessaModal .modal-dialog {
+        max-width: 95vw;
+        margin: 0.5rem;
+    }
+    
+    #commessaModal .modal-body {
+        max-height: 85vh;
+        padding: 1rem;
+    }
+    
+    .task-item {
+        padding: 1rem !important;
+    }
+    
+    .task-item .row .col-md-6,
+    .task-item .row .col-md-3,
+    .task-item .row .col-md-12 {
+        margin-bottom: 0.75rem;
+    }
 }

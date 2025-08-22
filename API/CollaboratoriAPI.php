@@ -10,13 +10,14 @@ class CollaboratoriAPI extends BaseAPI {
     public function __construct() {
         parent::__construct('ANA_COLLABORATORI', 'ID_COLLABORATORE');
         
-        $this->requiredFields = ['Collaboratore', 'Email'];
+        $this->requiredFields = ['Collaboratore', 'User', 'Email', 'Ruolo', 'PWD'];
         $this->validationRules = [
             'ID_COLLABORATORE' => ['max_length' => 50],
             'Collaboratore' => ['required' => true, 'max_length' => 255],
+            'User' => ['required' => true, 'max_length' => 100],
             'Email' => ['required' => true, 'max_length' => 255, 'email' => true],
-            'PWD' => ['min_length' => 6, 'max_length' => 255],
-            'Ruolo' => ['enum' => ['Admin', 'Manager', 'User', 'Amministrazione']],
+            'PWD' => ['required' => true, 'min_length' => 6, 'max_length' => 255],
+            'Ruolo' => ['required' => true, 'enum' => ['Admin', 'Manager', 'User']],
             'PIVA' => ['max_length' => 20, 'pattern' => '/^\d{11}$/']
         ];
     }
@@ -82,6 +83,14 @@ class CollaboratoriAPI extends BaseAPI {
             }
         }
         
+        // Validazione User (username) univoco
+        if (isset($data['User']) && !empty($data['User'])) {
+            $checkUser = $this->checkUniqueField('User', $data['User'], $data['ID_COLLABORATORE'] ?? null);
+            if (!$checkUser) {
+                $errors[] = "Username già esistente";
+            }
+        }
+        
         // Validazione P.IVA univoca se presente
         if (isset($data['PIVA']) && !empty($data['PIVA'])) {
             $checkPiva = $this->checkUniqueField('PIVA', $data['PIVA'], $data['ID_COLLABORATORE'] ?? null);
@@ -129,6 +138,10 @@ class CollaboratoriAPI extends BaseAPI {
             $data['Collaboratore'] = trim($data['Collaboratore']);
         }
         
+        if (isset($data['User'])) {
+            $data['User'] = strtolower(trim($data['User']));
+        }
+        
         if (isset($data['Email'])) {
             $data['Email'] = strtolower(trim($data['Email']));
         }
@@ -139,9 +152,12 @@ class CollaboratoriAPI extends BaseAPI {
         
         // Hash della password se presente
         if (isset($data['PWD']) && !empty($data['PWD'])) {
-            // In produzione, utilizzare un hash più sicuro come password_hash()
-            // Per ora manteniamo compatibilità con i dati esistenti
-            $data['PWD'] = $data['PWD']; // Mantengo il valore così com'è per compatibilità
+            // Salva la password in chiaro per l'email (solo durante la creazione)
+            if (!isset($data['ID_COLLABORATORE'])) {
+                $data['_plain_password'] = $data['PWD']; // Campo temporaneo per l'email
+            }
+            // Hash della password per il database
+            $data['PWD'] = password_hash($data['PWD'], PASSWORD_DEFAULT);
         }
         
         // Imposta ruolo predefinito se non specificato
@@ -353,6 +369,127 @@ class CollaboratoriAPI extends BaseAPI {
             
         } catch (PDOException $e) {
             return false;
+        }
+    }
+    
+    /**
+     * Override del metodo create per gestire l'invio email
+     */
+    protected function create() {
+        try {
+            $input = $this->getRequestBody();
+            
+            // Validazione input
+            $validation = $this->validateInput($input);
+            if (!$validation['valid']) {
+                sendErrorResponse('Dati non validi: ' . implode(', ', $validation['errors']), 400);
+                return;
+            }
+            
+            // Pre-processing dei dati
+            $data = $this->preprocessData($input);
+            
+            // Salva la password in chiaro per l'email
+            $plainPassword = $data['_plain_password'] ?? null;
+            unset($data['_plain_password']); // Rimuovi dal dato da salvare
+            
+            // Aggiunta campi automatici
+            $data['Data_Creazione'] = date('Y-m-d H:i:s');
+            $data['ID_UTENTE_CREAZIONE'] = $this->getCurrentUserId();
+            
+            // Generazione ID se necessario
+            if (!isset($data[$this->primaryKey])) {
+                $data[$this->primaryKey] = $this->generateId();
+            }
+            
+            // Costruzione query INSERT
+            $fields = array_keys($data);
+            $placeholders = ':' . implode(', :', $fields);
+            $sql = "INSERT INTO {$this->table} (" . implode(', ', $fields) . ") VALUES ($placeholders)";
+            
+            $stmt = $this->db->prepare($sql);
+            
+            // Bind dei parametri
+            foreach ($data as $key => $value) {
+                $stmt->bindValue(':' . $key, $value);
+            }
+            
+            $stmt->execute();
+            
+            // Invia email al nuovo collaboratore se ha successo
+            if ($plainPassword) {
+                $this->sendWelcomeEmail($data, $plainPassword);
+            }
+            
+            // Recupera il record appena creato
+            $newId = $data[$this->primaryKey];
+            $this->getById($newId);
+            
+        } catch (PDOException $e) {
+            error_log("Database error in CollaboratoriAPI::create(): " . $e->getMessage());
+            sendErrorResponse('Errore del database: ' . $e->getMessage(), 500);
+        } catch (Exception $e) {
+            error_log("General error in CollaboratoriAPI::create(): " . $e->getMessage());
+            sendErrorResponse('Errore del server: ' . $e->getMessage(), 500);
+        }
+    }
+    
+    /**
+     * Invia email di benvenuto al nuovo collaboratore
+     */
+    private function sendWelcomeEmail($collaboratoreData, $plainPassword) {
+        try {
+            $to = $collaboratoreData['Email'];
+            $nome = $collaboratoreData['Collaboratore'];
+            $username = $collaboratoreData['User'] ?? $collaboratoreData['Email'];
+            
+            $subject = "Benvenuto nel sistema Gestione Task VP";
+            
+            $message = "
+            <html>
+            <head>
+                <title>Benvenuto nel sistema Gestione Task VP</title>
+            </head>
+            <body>
+                <h2>Benvenuto {$nome}!</h2>
+                <p>È stato creato un account per te nel sistema di Gestione Task di Vaglio & Partners.</p>
+                
+                <h3>Le tue credenziali di accesso:</h3>
+                <ul>
+                    <li><strong>Username:</strong> {$username}</li>
+                    <li><strong>Password:</strong> {$plainPassword}</li>
+                </ul>
+                
+                <p>Per motivi di sicurezza, ti consigliamo di cambiare la password al primo accesso.</p>
+                
+                <p>Se hai domande o problemi di accesso, contatta l'amministratore del sistema.</p>
+                
+                <hr>
+                <p><em>Questo messaggio è stato generato automaticamente dal sistema Gestione Task VP.</em></p>
+            </body>
+            </html>
+            ";
+            
+            // Headers per email HTML
+            $headers = array(
+                'MIME-Version: 1.0',
+                'Content-type: text/html; charset=UTF-8',
+                'From: noreply@vagliopartners.com',
+                'Reply-To: info@vagliopartners.com',
+                'X-Mailer: PHP/' . phpversion()
+            );
+            
+            // Invia l'email
+            $result = mail($to, $subject, $message, implode("\r\n", $headers));
+            
+            if ($result) {
+                error_log("Email di benvenuto inviata con successo a: " . $to);
+            } else {
+                error_log("Errore nell'invio dell'email di benvenuto a: " . $to);
+            }
+            
+        } catch (Exception $e) {
+            error_log("Errore durante l'invio dell'email di benvenuto: " . $e->getMessage());
         }
     }
 }

@@ -309,7 +309,7 @@ class TaskManager {
                     <div class="card commessa-group">
                         <div class="card-header bg-light" style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#${collapseId}" aria-expanded="false" aria-controls="${collapseId}">
                             <div class="row align-items-center">
-                                <div class="col-md-8">
+                                <div class="col-md-7">
                                     <h5 class="mb-1">
                                         <i class="bi bi-chevron-right me-2 collapse-icon" id="icon-${collapseId}"></i>
                                         <i class="bi bi-briefcase me-2"></i>${group.commessa}
@@ -319,19 +319,30 @@ class TaskManager {
                                         <strong>Responsabile:</strong> ${group.responsabile}
                                     </div>
                                 </div>
-                                <div class="col-md-4 text-end">
-                                    <div class="row text-center">
-                                        <div class="col-4">
-                                            <div class="fw-bold text-primary">${group.tasks.length}</div>
-                                            <small class="text-muted">Task</small>
-                                        </div>
-                                        <div class="col-4">
-                                            <div class="fw-bold text-success">${stats.totalGiornate.toFixed(1)}</div>
-                                            <small class="text-muted">Giornate</small>
-                                        </div>
-                                        <div class="col-4">
-                                            <div class="fw-bold text-info">€${this.formatCurrency(stats.totalValore)}</div>
-                                            <small class="text-muted">Valore</small>
+                                <div class="col-md-5 text-end">
+                                    <div class="d-flex justify-content-end align-items-center gap-2">
+                                        <button class="btn btn-outline-primary btn-sm" 
+                                                onclick="event.stopPropagation(); taskManager.editCommessa('${commessaId}')"
+                                                title="Modifica Commessa">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                        <div class="row text-center" style="min-width: 240px;">
+                                            <div class="col-4">
+                                                <div class="fw-bold text-primary">${group.tasks.length}</div>
+                                                <small class="text-muted">Task</small>
+                                            </div>
+                                            <div class="col-4">
+                                                <div class="fw-bold text-success">${stats.totalGiornate.toFixed(1)}</div>
+                                                <small class="text-muted">Giornate</small>
+                                            </div>
+                                            <div class="col-4">
+                                                <div class="fw-bold text-info" 
+                                                     style="font-size: 0.9rem;" 
+                                                     title="€${this.formatCurrencyFull(stats.totalValore)}">
+                                                    €${this.formatCurrency(stats.totalValore)}
+                                                </div>
+                                                <small class="text-muted">Valore</small>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -369,8 +380,20 @@ class TaskManager {
         const collaboratoreNome = task.collaboratore_nome || 'N/A';
         const responsabileCommessa = task.responsabile_commessa || 'N/A';
         
-        const progressPercent = task.gg_previste > 0 ? 
-            Math.round((task.gg_effettuate_filtrate || task.gg_effettuate || 0) / task.gg_previste * 100) : 0;
+        // Calcolo percentuale di avanzamento
+        const ggEffettuateCalc = task.gg_effettuate_filtrate || task.gg_effettuate || 0;
+        let progressPercent;
+        
+        if (task.gg_previste > 0) {
+            // Caso normale: ci sono giorni previsti
+            progressPercent = Math.round(ggEffettuateCalc / task.gg_previste * 100);
+        } else if (ggEffettuateCalc === 0) {
+            // Caso speciale: 0 giorni previsti e 0 giorni effettuati = 100% (completato)
+            progressPercent = 100;
+        } else {
+            // Caso: 0 giorni previsti ma ci sono giorni effettuati = calcolo percentuale alta
+            progressPercent = 100;
+        }
         
         const isArchived = task.Stato_Task === 'Archiviato';
         const statusClass = task.Stato_Task?.toLowerCase().replace(' ', '-') || 'unknown';
@@ -471,7 +494,6 @@ class TaskManager {
                                 </div>
                             ` : ''}
                             <div><strong>Apertura:</strong> ${this.formatDate(task.Data_Apertura_Task)}</div>
-                            ${task.Data_Chiusura_Task ? `<div><strong>Chiusura:</strong> ${this.formatDate(task.Data_Chiusura_Task)}</div>` : ''}
                         </div>
                         ` : `
                         <div class="small text-muted">
@@ -509,10 +531,8 @@ class TaskManager {
     }
     
     getProgressColor(percent) {
-        if (percent >= 100) return '#28a745';
-        if (percent >= 75) return '#17a2b8';
-        if (percent >= 50) return '#ffc107';
-        return '#dc3545';
+        if (percent >= 100) return '#28a745'; // Verde per 100%
+        return '#87CEEB'; // Azzurro chiaro per < 100%
     }
     
     formatDate(dateString) {
@@ -521,6 +541,17 @@ class TaskManager {
     }
     
     formatCurrency(amount) {
+        const value = parseFloat(amount) || 0;
+        
+        // Usa sempre la formattazione completa con una cifra decimale
+        return new Intl.NumberFormat('it-IT', {
+            minimumFractionDigits: 1,
+            maximumFractionDigits: 1
+        }).format(value);
+    }
+
+    formatCurrencyFull(amount) {
+        // Versione completa per i dettagli
         return new Intl.NumberFormat('it-IT', {
             minimumFractionDigits: 1,
             maximumFractionDigits: 1
@@ -584,6 +615,44 @@ class TaskManager {
         if (expandCollapseAll) {
             expandCollapseAll.addEventListener('change', () => {
                 this.toggleAllCommesse(expandCollapseAll.checked);
+            });
+        }
+
+        // Event listeners per modal commessa
+        const commessaModal = document.getElementById('commessaModal');
+        if (commessaModal) {
+            commessaModal.addEventListener('shown.bs.modal', () => {
+                this.loadClientiInCommessaModal();
+                this.loadCollaboratoriInCommessaModal();
+                this.initCommessaForm();
+            });
+            
+            commessaModal.addEventListener('hidden.bs.modal', () => {
+                this.resetCommessaForm();
+            });
+        }
+
+        // Event listeners per modal modifica commessa
+        const editCommessaModal = document.getElementById('editCommessaModal');
+        if (editCommessaModal) {
+            editCommessaModal.addEventListener('hidden.bs.modal', () => {
+                this.resetEditCommessaForm();
+            });
+        }
+
+        // Event listener per tipo commessa per mostrare/nascondere cliente
+        const commessaTipo = document.getElementById('commessaTipo');
+        if (commessaTipo) {
+            commessaTipo.addEventListener('change', () => {
+                this.toggleClienteField();
+            });
+        }
+
+        // Event listener per tipo commessa nel modal di modifica
+        const editCommessaTipo = document.getElementById('editCommessaTipo');
+        if (editCommessaTipo) {
+            editCommessaTipo.addEventListener('change', () => {
+                this.toggleEditClienteField();
             });
         }
     }
@@ -772,13 +841,11 @@ class TaskManager {
             'taskCollaboratore': task.ID_COLLABORATORE,
             'taskDescrizione': task.Desc_Task || '',
             'taskDataApertura': task.Data_Apertura_Task,
-            'taskDataChiusura': task.Data_Chiusura_Task || '',
             'taskStato': task.Stato_Task || 'In corso',
             'taskGgPreviste': task.gg_previste || '',
             'taskValoreGg': task.Valore_gg || '',
             'taskSpeseComprese': task.Spese_Comprese || 'No',
-            'taskValoreSpese': task.Valore_Spese_std || '',
-            'taskNote': task.Note || ''
+            'taskValoreSpese': task.Valore_Spese_std || ''
         };
         
         Object.entries(fields).forEach(([fieldId, value]) => {
@@ -807,16 +874,14 @@ class TaskManager {
             Task: document.getElementById('taskName').value,
             Desc_Task: document.getElementById('taskDescrizione').value,
             ID_COMMESSA: document.getElementById('taskCommessa').value,
-            ID_COLLABORATORE: document.getElementById('taskCollaboratore').value,
+            ID_COLLABORATORE: document.getElementById('taskCollaboratore').value || null,
             Tipo: document.getElementById('taskTipo').value,
             Data_Apertura_Task: document.getElementById('taskDataApertura').value,
-            Data_Chiusura_Task: document.getElementById('taskDataChiusura').value || null,
             Stato_Task: document.getElementById('taskStato').value,
             gg_previste: parseFloat(document.getElementById('taskGgPreviste').value) || null,
             Valore_gg: parseFloat(document.getElementById('taskValoreGg').value) || null,
             Spese_Comprese: document.getElementById('taskSpeseComprese').value,
-            Valore_Spese_std: parseFloat(document.getElementById('taskValoreSpese').value) || null,
-            Note: document.getElementById('taskNote').value
+            Valore_Spese_std: parseFloat(document.getElementById('taskValoreSpese').value) || null
         };
         
         try {
@@ -864,8 +929,7 @@ class TaskManager {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    Stato_Task: 'Archiviato',
-                    Data_Chiusura_Task: new Date().toISOString().split('T')[0]
+                    Stato_Task: 'Archiviato'
                 })
             });
             
@@ -1242,6 +1306,732 @@ class TaskManager {
             }
         }, 5000);
     }
+
+    // === GESTIONE MODAL COMMESSA ===
+    
+    async loadClientiInCommessaModal() {
+        try {
+            const response = await fetch(`${this.API_BASE}?resource=clienti&limit=100`);
+            const data = await response.json();
+            
+            if (data.success) {
+                const select = document.getElementById('commessaCliente');
+                if (select) {
+                    const firstOption = select.children[0].outerHTML;
+                    select.innerHTML = firstOption;
+                    
+                    const clienti = data.data.data || [];
+                    clienti.forEach(cliente => {
+                        const option = document.createElement('option');
+                        option.value = cliente.ID_CLIENTE;
+                        option.textContent = cliente.Cliente;
+                        select.appendChild(option);
+                    });
+                }
+            }
+        } catch (error) {
+            console.error('Errore caricamento clienti per modal commessa:', error);
+        }
+    }
+
+    async loadCollaboratoriInCommessaModal() {
+        try {
+            // Popola il select responsabile commessa
+            const responsabileSelect = document.getElementById('commessaResponsabile');
+            if (responsabileSelect && this.collaboratoriList.length > 0) {
+                const firstOption = responsabileSelect.children[0].outerHTML;
+                responsabileSelect.innerHTML = firstOption;
+                
+                this.collaboratoriList.forEach(collaboratore => {
+                    const option = document.createElement('option');
+                    option.value = collaboratore.ID_COLLABORATORE;
+                    option.textContent = collaboratore.Collaboratore;
+                    responsabileSelect.appendChild(option);
+                });
+            }
+
+            // Popola anche il select del collaboratore per i task
+            const select = document.querySelector('.task-collaboratore');
+            if (select && this.collaboratoriList.length > 0) {
+                const firstOption = select.children[0].outerHTML;
+                select.innerHTML = firstOption;
+                
+                this.collaboratoriList.forEach(collaboratore => {
+                    const option = document.createElement('option');
+                    option.value = collaboratore.ID_COLLABORATORE;
+                    option.textContent = collaboratore.Collaboratore;
+                    select.appendChild(option);
+                });
+            }
+        } catch (error) {
+            console.error('Errore caricamento collaboratori per modal commessa:', error);
+        }
+    }
+
+    initCommessaForm() {
+        // Imposta data apertura a oggi
+        const dataApertura = document.getElementById('commessaDataApertura');
+        if (dataApertura) {
+            dataApertura.value = new Date().toISOString().split('T')[0];
+        }
+
+        // Imposta data apertura per il primo task
+        const taskDataApertura = document.querySelector('.task-data-apertura');
+        if (taskDataApertura) {
+            taskDataApertura.value = new Date().toISOString().split('T')[0];
+        }
+
+        // Popola i collaboratori nel primo task
+        this.populateTaskCollaboratori();
+
+        // Inizializza il contatore task
+        this.taskCounter = 1;
+    }
+
+    toggleClienteField() {
+        const tipoCommessa = document.getElementById('commessaTipo').value;
+        const clienteGroup = document.getElementById('commessaCliente').closest('.col-md-6');
+        
+        if (clienteGroup) {
+            if (tipoCommessa === 'Interna') {
+                clienteGroup.style.display = 'none';
+                document.getElementById('commessaCliente').value = '';
+            } else {
+                clienteGroup.style.display = 'block';
+            }
+        }
+    }
+
+    addTaskToCommessa() {
+        this.taskCounter = this.taskCounter || 1;
+        this.taskCounter++;
+        
+        const container = document.getElementById('tasksContainer');
+        const newTaskHtml = `
+            <div class="task-item border rounded p-3 mb-3" data-task-index="${this.taskCounter - 1}">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <h6 class="mb-0">Task #${this.taskCounter}</h6>
+                    <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeTaskFromCommessa(${this.taskCounter - 1})">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+                
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Nome Task *</label>
+                        <input type="text" class="form-control task-nome" required>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Tipo *</label>
+                        <select class="form-select task-tipo" required>
+                            <option value="">Seleziona tipo</option>
+                            <option value="Campo">Campo</option>
+                            <option value="Ufficio">Ufficio</option>
+                            <option value="Monitoraggio">Monitoraggio</option>
+                            <option value="Promo">Promo</option>
+                            <option value="Sviluppo">Sviluppo</option>
+                            <option value="Formazione">Formazione</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Collaboratore</label>
+                        <select class="form-select task-collaboratore">
+                            <option value="">Nessuno specifico</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="row g-3 mt-2">
+                    <div class="col-md-12">
+                        <label class="form-label">Descrizione</label>
+                        <textarea class="form-control task-descrizione" rows="2"></textarea>
+                    </div>
+                </div>
+
+                <div class="row g-3 mt-2">
+                    <div class="col-md-3">
+                        <label class="form-label">Data Apertura</label>
+                        <input type="date" class="form-control task-data-apertura" value="${new Date().toISOString().split('T')[0]}">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Giorni Previsti</label>
+                        <input type="number" class="form-control task-gg-previste" step="0.5" min="0">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Valore/Giorno (€)</label>
+                        <input type="number" class="form-control task-valore-gg" step="0.01" min="0">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Spese Comprese</label>
+                        <select class="form-select task-spese-comprese">
+                            <option value="No">No</option>
+                            <option value="Sì">Sì</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        container.insertAdjacentHTML('beforeend', newTaskHtml);
+        
+        // Popola il select collaboratori per il nuovo task
+        this.populateTaskCollaboratori(container.lastElementChild);
+        
+        // Aggiorna i pulsanti di rimozione
+        this.updateRemoveButtons();
+    }
+
+    populateTaskCollaboratori(taskElement) {
+        const select = taskElement ? taskElement.querySelector('.task-collaboratore') : document.querySelector('.task-collaboratore');
+        if (select && this.collaboratoriList.length > 0) {
+            const firstOption = select.children[0].outerHTML;
+            select.innerHTML = firstOption;
+            
+            this.collaboratoriList.forEach(collaboratore => {
+                const option = document.createElement('option');
+                option.value = collaboratore.ID_COLLABORATORE;
+                option.textContent = collaboratore.Collaboratore;
+                select.appendChild(option);
+            });
+        }
+    }
+
+    removeTaskFromCommessa(taskIndex) {
+        const taskItem = document.querySelector(`[data-task-index="${taskIndex}"]`);
+        if (taskItem) {
+            taskItem.remove();
+            this.updateTaskNumbers();
+            this.updateRemoveButtons();
+        }
+    }
+
+    updateTaskNumbers() {
+        const taskItems = document.querySelectorAll('.task-item');
+        taskItems.forEach((item, index) => {
+            const header = item.querySelector('h6');
+            if (header) {
+                header.textContent = `Task #${index + 1}`;
+            }
+            item.setAttribute('data-task-index', index);
+            
+            // Aggiorna il pulsante rimuovi
+            const removeBtn = item.querySelector('.btn-outline-danger');
+            if (removeBtn) {
+                removeBtn.setAttribute('onclick', `removeTaskFromCommessa(${index})`);
+            }
+        });
+    }
+
+    updateRemoveButtons() {
+        const taskItems = document.querySelectorAll('.task-item');
+        taskItems.forEach((item, index) => {
+            const removeBtn = item.querySelector('.btn-outline-danger');
+            if (removeBtn) {
+                // Mostra il pulsante rimuovi solo se ci sono più di un task
+                removeBtn.style.display = taskItems.length > 1 ? 'inline-block' : 'none';
+            }
+        });
+    }
+
+    resetCommessaForm() {
+        const form = document.getElementById('commessaForm');
+        if (form) {
+            form.reset();
+            form.classList.remove('was-validated');
+        }
+
+        // Reset del container task al solo primo task
+        const container = document.getElementById('tasksContainer');
+        if (container) {
+            const firstTask = container.querySelector('.task-item');
+            container.innerHTML = '';
+            if (firstTask) {
+                firstTask.setAttribute('data-task-index', '0');
+                firstTask.querySelector('h6').textContent = 'Task #1';
+                firstTask.querySelector('.btn-outline-danger').style.display = 'none';
+                container.appendChild(firstTask);
+            }
+        }
+
+        this.taskCounter = 1;
+    }
+
+    resetEditCommessaForm() {
+        const form = document.getElementById('editCommessaForm');
+        if (form) {
+            form.reset();
+            form.classList.remove('was-validated');
+        }
+        
+        // Reset statistiche
+        document.getElementById('editStatsTasks').textContent = '0';
+        document.getElementById('editStatsGiornate').textContent = '0';
+        document.getElementById('editStatsValore').textContent = '€0';
+        document.getElementById('editStatsFatturato').textContent = '€0';
+    }
+
+    async saveCommessaWithTasks() {
+        const form = document.getElementById('commessaForm');
+        
+        // Validazione base del form
+        if (!form.checkValidity()) {
+            form.classList.add('was-validated');
+            this.showAlert('Compila tutti i campi richiesti della commessa', 'warning');
+            return;
+        }
+
+        // Raccogli dati commessa
+        const commessaData = {
+            Commessa: document.getElementById('commessaNome').value.trim(),
+            Desc_Commessa: document.getElementById('commessaDescrizione').value.trim(),
+            Tipo_Commessa: document.getElementById('commessaTipo').value,
+            ID_CLIENTE: document.getElementById('commessaCliente').value || null,
+            ID_COLLABORATORE: document.getElementById('commessaResponsabile').value || null,
+            Data_Apertura_Commessa: document.getElementById('commessaDataApertura').value || null,
+            Stato_Commessa: document.getElementById('commessaStato').value || 'In corso',
+            Commissione: parseFloat(document.getElementById('commessaCommissione').value) || 0
+        };
+
+        // Validazione tipo commessa/cliente
+        if (commessaData.Tipo_Commessa === 'Cliente' && !commessaData.ID_CLIENTE) {
+            this.showAlert('Per le commesse di tipo "Cliente" è obbligatorio selezionare un cliente', 'warning');
+            return;
+        }
+
+        // Raccogli dati task
+        const taskItems = document.querySelectorAll('.task-item');
+        const tasks = [];
+        let hasValidationErrors = false;
+
+        taskItems.forEach((item, index) => {
+            const taskNome = item.querySelector('.task-nome').value.trim();
+            const taskTipo = item.querySelector('.task-tipo').value;
+
+            if (!taskNome || !taskTipo) {
+                hasValidationErrors = true;
+                this.showAlert(`Task #${index + 1}: Nome e Tipo sono obbligatori`, 'warning');
+                return;
+            }
+
+            const taskData = {
+                Task: taskNome,
+                Desc_Task: item.querySelector('.task-descrizione').value.trim() || null,
+                Tipo: taskTipo,
+                ID_COLLABORATORE: item.querySelector('.task-collaboratore').value || null,
+                Data_Apertura_Task: item.querySelector('.task-data-apertura').value || null,
+                Stato_Task: 'In corso',
+                gg_previste: parseFloat(item.querySelector('.task-gg-previste').value) || null,
+                Valore_gg: parseFloat(item.querySelector('.task-valore-gg').value) || null,
+                Spese_Comprese: item.querySelector('.task-spese-comprese').value || 'No',
+                Valore_Spese_std: null
+            };
+
+            tasks.push(taskData);
+        });
+
+        if (hasValidationErrors) {
+            return;
+        }
+
+        if (tasks.length === 0) {
+            this.showAlert('È necessario definire almeno un task per la commessa', 'warning');
+            return;
+        }
+
+        try {
+            // Disabilita il pulsante di salvataggio per evitare doppi click
+            const saveBtn = document.querySelector('#commessaModal .btn-primary');
+            if (saveBtn) {
+                saveBtn.disabled = true;
+                saveBtn.innerHTML = '<i class="bi bi-hourglass me-1"></i>Salvataggio...';
+            }
+
+            // Step 1: Crea la commessa
+            console.log('Creating commessa:', commessaData);
+            const commessaResponse = await fetch(`${this.API_BASE}?resource=commesse`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(commessaData)
+            });
+
+            const commessaResult = await commessaResponse.json();
+            console.log('Commessa creation result:', commessaResult);
+
+            if (!commessaResult.success) {
+                throw new Error(commessaResult.error || 'Errore nella creazione della commessa');
+            }
+
+            const commessaId = commessaResult.data.ID_COMMESSA;
+            console.log('Created commessa with ID:', commessaId);
+
+            // Step 2: Crea i task associati alla commessa
+            const taskPromises = tasks.map(taskData => {
+                taskData.ID_COMMESSA = commessaId;
+                console.log('Creating task:', taskData);
+                
+                return fetch(`${this.API_BASE}?resource=task`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(taskData)
+                });
+            });
+
+            const taskResponses = await Promise.all(taskPromises);
+            
+            // Verifica che tutti i task siano stati creati con successo
+            const taskResults = await Promise.all(
+                taskResponses.map(response => response.json())
+            );
+
+            const failedTasks = taskResults.filter(result => !result.success);
+            
+            if (failedTasks.length > 0) {
+                console.error('Some tasks failed to create:', failedTasks);
+                throw new Error(`Errore nella creazione di ${failedTasks.length} task`);
+            }
+
+            console.log('All tasks created successfully');
+
+            // Successo!
+            this.showAlert(
+                `Commessa "${commessaData.Commessa}" creata con successo con ${tasks.length} task`, 
+                'success'
+            );
+
+            // Chiudi il modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('commessaModal'));
+            modal.hide();
+
+            // Ricarica i dati
+            await this.loadInitialData();
+
+        } catch (error) {
+            console.error('Errore completo nel salvataggio:', error);
+            this.showAlert(`Errore nel salvataggio: ${error.message}`, 'danger');
+        } finally {
+            // Riabilita il pulsante di salvataggio
+            const saveBtn = document.querySelector('#commessaModal .btn-primary');
+            if (saveBtn) {
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = '<i class="bi bi-save me-1"></i>Salva Commessa e Task';
+            }
+        }
+    }
+
+    // === GESTIONE MODIFICA COMMESSA ===
+    
+    async editCommessa(commessaId) {
+        try {
+            console.log('Editing commessa:', commessaId);
+            
+            // Carica i dati della commessa
+            const response = await fetch(`${this.API_BASE}?resource=commesse&id=${commessaId}`);
+            const data = await response.json();
+            
+            if (!data.success || !data.data) {
+                throw new Error('Errore nel caricamento dei dati della commessa');
+            }
+            
+            const commessa = data.data;
+            console.log('Commessa data:', commessa);
+            
+            // Popola il form di modifica
+            document.getElementById('editCommessaId').value = commessa.ID_COMMESSA;
+            document.getElementById('editCommessaNome').value = commessa.Commessa || '';
+            document.getElementById('editCommessaTipo').value = commessa.Tipo_Commessa || '';
+            document.getElementById('editCommessaCliente').value = commessa.ID_CLIENTE || '';
+            document.getElementById('editCommessaResponsabile').value = commessa.ID_COLLABORATORE || '';
+            document.getElementById('editCommessaStato').value = commessa.Stato_Commessa || '';
+            document.getElementById('editCommessaDataApertura').value = commessa.Data_Apertura_Commessa || '';
+            document.getElementById('editCommessaCommissione').value = commessa.Commissione || '';
+            document.getElementById('editCommessaDescrizione').value = commessa.Desc_Commessa || '';
+            
+            // Carica le liste per i select
+            await this.loadSelectsForEditModal();
+            
+            // Gestisci la visibilità del campo cliente
+            this.toggleEditClienteField();
+            
+            // Carica e mostra le statistiche
+            this.loadCommessaStats(commessa);
+            
+            // Mostra il modal
+            const modal = new bootstrap.Modal(document.getElementById('editCommessaModal'));
+            modal.show();
+            
+        } catch (error) {
+            console.error('Errore nella modifica commessa:', error);
+            this.showAlert(`Errore nel caricamento della commessa: ${error.message}`, 'danger');
+        }
+    }
+
+    async loadSelectsForEditModal() {
+        try {
+            // Carica clienti
+            const clientiResponse = await fetch(`${this.API_BASE}?resource=clienti&limit=100`);
+            const clientiData = await clientiResponse.json();
+            
+            if (clientiData.success) {
+                const select = document.getElementById('editCommessaCliente');
+                const currentValue = select.value;
+                const firstOption = select.children[0].outerHTML;
+                select.innerHTML = firstOption;
+                
+                const clienti = clientiData.data.data || [];
+                clienti.forEach(cliente => {
+                    const option = document.createElement('option');
+                    option.value = cliente.ID_CLIENTE;
+                    option.textContent = cliente.Cliente;
+                    select.appendChild(option);
+                });
+                
+                if (currentValue) select.value = currentValue;
+            }
+            
+            // Carica collaboratori
+            const responsabileSelect = document.getElementById('editCommessaResponsabile');
+            const currentResponsabile = responsabileSelect.value;
+            const firstOption = responsabileSelect.children[0].outerHTML;
+            responsabileSelect.innerHTML = firstOption;
+            
+            this.collaboratoriList.forEach(collaboratore => {
+                const option = document.createElement('option');
+                option.value = collaboratore.ID_COLLABORATORE;
+                option.textContent = collaboratore.Collaboratore;
+                responsabileSelect.appendChild(option);
+            });
+            
+            if (currentResponsabile) responsabileSelect.value = currentResponsabile;
+            
+        } catch (error) {
+            console.error('Errore nel caricamento delle liste per il modal di modifica:', error);
+        }
+    }
+
+    toggleEditClienteField() {
+        const tipoCommessa = document.getElementById('editCommessaTipo').value;
+        const clienteGroup = document.getElementById('editCommessaCliente').closest('.col-md-6');
+        
+        if (clienteGroup) {
+            if (tipoCommessa === 'Interna') {
+                clienteGroup.style.display = 'none';
+                document.getElementById('editCommessaCliente').value = '';
+            } else {
+                clienteGroup.style.display = 'block';
+            }
+        }
+    }
+
+    loadCommessaStats(commessa) {
+        // Mostra le statistiche se disponibili
+        const stats = commessa.statistics || {};
+        
+        document.getElementById('editStatsTasks').textContent = stats.task_totali || '0';
+        document.getElementById('editStatsGiornate').textContent = (stats.giornate_lavorate || 0).toFixed(1);
+        document.getElementById('editStatsValore').textContent = `€${this.formatCurrency(stats.valore_maturato || 0)}`;
+        document.getElementById('editStatsFatturato').textContent = `€${this.formatCurrency(stats.fatturato_totale || 0)}`;
+    }
+
+    async saveEditCommessa() {
+        const form = document.getElementById('editCommessaForm');
+        
+        // Validazione base del form
+        if (!form.checkValidity()) {
+            form.classList.add('was-validated');
+            this.showAlert('Compila tutti i campi richiesti', 'warning');
+            return;
+        }
+
+        // Raccogli dati commessa
+        const commessaId = document.getElementById('editCommessaId').value;
+        const commessaData = {
+            Commessa: document.getElementById('editCommessaNome').value.trim(),
+            Desc_Commessa: document.getElementById('editCommessaDescrizione').value.trim(),
+            Tipo_Commessa: document.getElementById('editCommessaTipo').value,
+            ID_CLIENTE: document.getElementById('editCommessaCliente').value || null,
+            ID_COLLABORATORE: document.getElementById('editCommessaResponsabile').value || null,
+            Data_Apertura_Commessa: document.getElementById('editCommessaDataApertura').value || null,
+            Stato_Commessa: document.getElementById('editCommessaStato').value || 'In corso',
+            Commissione: parseFloat(document.getElementById('editCommessaCommissione').value) || 0
+        };
+
+        // Validazione tipo commessa/cliente
+        if (commessaData.Tipo_Commessa === 'Cliente' && !commessaData.ID_CLIENTE) {
+            this.showAlert('Per le commesse di tipo "Cliente" è obbligatorio selezionare un cliente', 'warning');
+            return;
+        }
+
+        try {
+            // Disabilita il pulsante di salvataggio
+            const saveBtn = document.querySelector('#editCommessaModal .btn-primary');
+            if (saveBtn) {
+                saveBtn.disabled = true;
+                saveBtn.innerHTML = '<i class="bi bi-hourglass me-1"></i>Salvataggio...';
+            }
+
+            console.log('Updating commessa:', commessaId, commessaData);
+            
+            const response = await fetch(`${this.API_BASE}?resource=commesse&id=${commessaId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(commessaData)
+            });
+
+            const result = await response.json();
+            console.log('Update result:', result);
+
+            if (!result.success) {
+                throw new Error(result.error || 'Errore nell\'aggiornamento della commessa');
+            }
+
+            // Successo!
+            this.showAlert(`Commessa "${commessaData.Commessa}" aggiornata con successo`, 'success');
+
+            // Chiudi il modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('editCommessaModal'));
+            modal.hide();
+
+            // Ricarica i dati
+            await this.loadInitialData();
+
+        } catch (error) {
+            console.error('Errore nel salvataggio della commessa:', error);
+            this.showAlert(`Errore nel salvataggio: ${error.message}`, 'danger');
+        } finally {
+            // Riabilita il pulsante di salvataggio
+            const saveBtn = document.querySelector('#editCommessaModal .btn-primary');
+            if (saveBtn) {
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = '<i class="bi bi-save me-1"></i>Salva Modifiche';
+            }
+        }
+    }
+
+    // Funzione per salvare un nuovo cliente
+    async saveCliente() {
+        const form = document.getElementById('clienteForm');
+        if (!form.checkValidity()) {
+            form.classList.add('was-validated');
+            return;
+        }
+
+        const clienteData = {
+            Cliente: document.getElementById('clienteNome').value,
+            Email: document.getElementById('clienteEmail').value || null,
+            Telefono: document.getElementById('clienteTelefono').value || null,
+            Indirizzo: document.getElementById('clienteIndirizzo').value || null
+        };
+
+        try {
+            const response = await fetch(`${this.API_BASE}?resource=clienti`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(clienteData)
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                this.showAlert('Cliente creato con successo!', 'success');
+                // Chiudi il modal
+                const modal = bootstrap.Modal.getInstance(document.getElementById('clienteModal'));
+                modal.hide();
+                // Reset form
+                form.reset();
+                form.classList.remove('was-validated');
+                // Ricarica la lista clienti
+                await this.loadClienti();
+            } else {
+                this.showAlert('Errore nel salvataggio del cliente: ' + (result.message || 'Errore sconosciuto'), 'danger');
+            }
+        } catch (error) {
+            console.error('Errore salvataggio cliente:', error);
+            this.showAlert('Errore di connessione durante il salvataggio del cliente', 'danger');
+        }
+    }
+
+    // Funzione per salvare un nuovo collaboratore
+    async saveCollaboratore() {
+        const form = document.getElementById('collaboratoreForm');
+        if (!form.checkValidity()) {
+            form.classList.add('was-validated');
+            return;
+        }
+
+        // Validazione password
+        const password = document.getElementById('collaboratorePassword').value;
+        const passwordConfirm = document.getElementById('collaboratorePasswordConfirm').value;
+        
+        // Controllo lunghezza minima password (come da API)
+        if (password.length < 6) {
+            this.showAlert('La password deve essere di almeno 6 caratteri!', 'warning');
+            return;
+        }
+        
+        if (password !== passwordConfirm) {
+            this.showAlert('Le password non corrispondono!', 'warning');
+            return;
+        }
+
+        const collaboratoreData = {
+            Collaboratore: document.getElementById('collaboratoreNome').value,
+            User: document.getElementById('collaboratoreUser').value,
+            Email: document.getElementById('collaboratoreEmail').value,
+            Ruolo: document.getElementById('collaboratoreRuolo').value,
+            PWD: password,
+            PIVA: document.getElementById('collaboratorePIVA').value || null
+        };
+
+        try {
+            const response = await fetch(`${this.API_BASE}?resource=collaboratori`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(collaboratoreData)
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                this.showAlert('Collaboratore creato con successo!', 'success');
+                // Chiudi il modal
+                const modal = bootstrap.Modal.getInstance(document.getElementById('collaboratoreModal'));
+                modal.hide();
+                // Reset form
+                form.reset();
+                form.classList.remove('was-validated');
+                // Ricarica la lista collaboratori
+                await this.loadCollaboratori();
+            } else {
+                this.showAlert('Errore nel salvataggio del collaboratore: ' + (result.message || 'Errore sconosciuto'), 'danger');
+            }
+        } catch (error) {
+            console.error('Errore salvataggio collaboratore:', error);
+            this.showAlert('Errore di connessione durante il salvataggio del collaboratore', 'danger');
+        }
+    }
+
+    // Funzione per caricare la lista clienti
+    async loadClienti() {
+        try {
+            const response = await fetch(`${this.API_BASE}?resource=clienti&limit=100`);
+            const data = await response.json();
+            
+            if (data.success) {
+                this.clientiList = data.data.data || [];
+                // Aggiorna eventuali dropdown clienti nei form
+            }
+        } catch (error) {
+            console.error('Errore caricamento clienti:', error);
+        }
+    }
 }
 
 // Variabile globale per l'accesso da HTML
@@ -1269,5 +2059,29 @@ function saveTask() {
 function addGiornata() {
     if (taskManager) {
         taskManager.addGiornata();
+    }
+}
+
+function addTaskToCommessa() {
+    if (taskManager) {
+        taskManager.addTaskToCommessa();
+    }
+}
+
+function removeTaskFromCommessa(taskIndex) {
+    if (taskManager) {
+        taskManager.removeTaskFromCommessa(taskIndex);
+    }
+}
+
+function saveCommessaWithTasks() {
+    if (taskManager) {
+        taskManager.saveCommessaWithTasks();
+    }
+}
+
+function saveEditCommessa() {
+    if (taskManager) {
+        taskManager.saveEditCommessa();
     }
 }
