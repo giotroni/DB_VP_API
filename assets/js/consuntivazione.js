@@ -49,11 +49,15 @@ class ConsuntivazioneApp {
             }
         });
         
-        // Logout button
+        // Logout and Change Password buttons
         document.addEventListener('click', (e) => {
             if (e.target.id === 'logoutBtn') {
                 e.preventDefault();
                 this.handleLogout();
+            }
+            if (e.target.id === 'changePwdBtn') {
+                e.preventDefault();
+                this.showChangePasswordModal();
             }
         });
         
@@ -278,6 +282,9 @@ class ConsuntivazioneApp {
                         <div class="col-md-4 text-end">
                             <div class="vp-user-info">
                                 <p class="vp-user-welcome">Benvenuto, <span class="vp-user-name">${this.currentUser.name}</span></p>
+                                <button id="changePwdBtn" class="btn btn-vp-secondary btn-sm me-2">
+                                    <i class="fas fa-key me-1"></i>Cambia Pwd
+                                </button>
                                 <button id="logoutBtn" class="btn btn-vp-danger btn-sm">Logout</button>
                             </div>
                         </div>
@@ -853,6 +860,12 @@ class ConsuntivazioneApp {
                 <div class="consuntivazione-header">
                     <div class="consuntivazione-data">${this.formatDate(cons.Data)}</div>
                     <div class="consuntivazione-ore">${cons.gg} gg</div>
+                    <div class="consuntivazione-status">
+                        ${cons.Confermata === 'Si' ? 
+                            '<span class="badge bg-success">Confermata</span>' : 
+                            '<span class="badge bg-warning text-dark">Non Confermata</span>'
+                        }
+                    </div>
                 </div>
                 <div class="consuntivazione-details">
                     <strong>${cons.Task}</strong> - ${cons.Commessa}<br>
@@ -865,6 +878,16 @@ class ConsuntivazioneApp {
                     <span>Altre: € ${parseFloat(cons.Altri_costi || 0).toFixed(2)}</span>
                     <strong>Tot: € ${parseFloat(cons.Totale_Spese || 0).toFixed(2)}</strong>
                 </div>
+                ${cons.Confermata === 'No' ? `
+                    <div class="consuntivazione-actions mt-2">
+                        <button class="btn btn-sm btn-outline-primary me-1" onclick="app.editConsuntivazione('${cons.ID_GIORNATA}')">
+                            <i class="fas fa-edit me-1"></i>Modifica
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="app.deleteConsuntivazione('${cons.ID_GIORNATA}')">
+                            <i class="fas fa-trash me-1"></i>Elimina
+                        </button>
+                    </div>
+                ` : ''}
             </div>
         `).join('');
     }
@@ -1142,7 +1165,9 @@ class ConsuntivazioneApp {
                             <th>Task</th>
                             <th class="text-center">Giorni</th>
                             <th class="text-end">Spese</th>
+                            <th class="text-center">Stato</th>
                             <th>Note</th>
+                            <th class="text-center">Azioni</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -1163,8 +1188,24 @@ class ConsuntivazioneApp {
                     <td class="text-end">
                         € ${parseFloat(cons.Totale_Spese || 0).toFixed(2)}
                     </td>
+                    <td class="text-center">
+                        ${cons.Confermata === 'Si' ? 
+                            '<span class="badge bg-success">Confermata</span>' : 
+                            '<span class="badge bg-warning text-dark">Non Confermata</span>'
+                        }
+                    </td>
                     <td>
                         ${cons.Note ? `<small>${cons.Note}</small>` : '<span class="text-muted">-</span>'}
+                    </td>
+                    <td class="text-center">
+                        ${cons.Confermata === 'No' ? `
+                            <button class="btn btn-sm btn-outline-primary me-1" onclick="app.editConsuntivazione('${cons.ID_GIORNATA}')">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="app.deleteConsuntivazione('${cons.ID_GIORNATA}')">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        ` : '<span class="text-muted">-</span>'}
                     </td>
                 </tr>
             `;
@@ -1242,9 +1283,498 @@ class ConsuntivazioneApp {
         link.click();
         document.body.removeChild(link);
     }
+    
+    // ========== METODI PER EDITING E CANCELLAZIONE ==========
+    
+    async editConsuntivazione(idGiornata) {
+        try {
+            // Carica i dati della consuntivazione
+            const response = await fetch('API/ConsuntivazioneAPI.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    action: 'get_consuntivazione',
+                    id_giornata: idGiornata
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                this.showEditModal(result.data);
+            } else {
+                alert('Errore: ' + result.message);
+            }
+        } catch (error) {
+            console.error('Errore caricamento consuntivazione:', error);
+            alert('Errore durante il caricamento della consuntivazione');
+        }
+    }
+    
+    showEditModal(consuntivazione) {
+        const modalHtml = `
+            <div class="modal fade" id="editModal" tabindex="-1">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header bg-primary text-white">
+                            <h5 class="modal-title">
+                                <i class="fas fa-edit me-2"></i>
+                                Modifica Consuntivazione
+                            </h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <form id="editForm">
+                                <input type="hidden" id="editIdGiornata" value="${consuntivazione.ID_GIORNATA}">
+                                
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group mb-3">
+                                            <label for="editData" class="form-label">Data *</label>
+                                            <input type="date" id="editData" class="form-control" 
+                                                   value="${consuntivazione.Data}" required>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group mb-3">
+                                            <label for="editGiornate" class="form-label">Giornate *</label>
+                                            <input type="number" id="editGiornate" class="form-control" 
+                                                   min="0.1" max="2" step="0.1" value="${consuntivazione.gg}" required>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group mb-3">
+                                            <label for="editCommessa" class="form-label">Progetto *</label>
+                                            <select id="editCommessa" class="form-control" required>
+                                                <option value="">Seleziona progetto...</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group mb-3">
+                                            <label for="editTask" class="form-label">Task/Attività *</label>
+                                            <select id="editTask" class="form-control" required>
+                                                <option value="">Prima seleziona un progetto</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <hr class="my-4">
+                                <h6 class="mb-3">
+                                    <i class="fas fa-money-bill-wave me-2"></i>
+                                    Spese Sostenute
+                                </h6>
+                                
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <div class="form-group mb-3">
+                                            <label for="editSpeseViaggio" class="form-label">Spese Viaggio (€)</label>
+                                            <input type="number" id="editSpeseViaggio" class="form-control" 
+                                                   min="0" step="0.01" value="${consuntivazione.Spese_Viaggi}">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-group mb-3">
+                                            <label for="editVittoAlloggio" class="form-label">Vitto/Alloggio (€)</label>
+                                            <input type="number" id="editVittoAlloggio" class="form-control" 
+                                                   min="0" step="0.01" value="${consuntivazione.Vitto_alloggio}">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-group mb-3">
+                                            <label for="editAltreSpese" class="form-label">Altre Spese (€)</label>
+                                            <input type="number" id="editAltreSpese" class="form-control" 
+                                                   min="0" step="0.01" value="${consuntivazione.Altri_costi}">
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="form-group mb-3">
+                                    <label for="editNote" class="form-label">Note</label>
+                                    <textarea id="editNote" class="form-control" rows="3">${consuntivazione.Note || ''}</textarea>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                            <button type="button" class="btn btn-primary" onclick="app.saveEdit()">
+                                <i class="fas fa-save me-1"></i>Salva Modifiche
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Rimuovi modal esistente e aggiungi il nuovo
+        const existingModal = document.getElementById('editModal');
+        if (existingModal) {
+            existingModal.remove();
+        }
+        
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        
+        // Popola le select
+        this.populateEditSelects(consuntivazione);
+        
+        // Mostra il modal
+        const modal = new bootstrap.Modal(document.getElementById('editModal'));
+        modal.show();
+    }
+    
+    async populateEditSelects(consuntivazione) {
+        // Popola commesse
+        const commessaSelect = document.getElementById('editCommessa');
+        if (this.commesse) {
+            this.commesse.forEach(commessa => {
+                const option = document.createElement('option');
+                option.value = commessa.ID_COMMESSA;
+                option.textContent = `${commessa.Commessa} - ${commessa.Cliente}`;
+                if (commessa.ID_COMMESSA == consuntivazione.ID_COMMESSA) {
+                    option.selected = true;
+                }
+                commessaSelect.appendChild(option);
+            });
+        }
+        
+        // Carica tasks per la commessa selezionata
+        if (consuntivazione.ID_COMMESSA) {
+            await this.loadTasksForEdit(consuntivazione.ID_COMMESSA, consuntivazione.ID_TASK);
+        }
+        
+        // Event listener per cambio commessa
+        commessaSelect.addEventListener('change', (e) => {
+            this.loadTasksForEdit(e.target.value);
+        });
+    }
+    
+    async loadTasksForEdit(commessaId, selectedTaskId = null) {
+        const taskSelect = document.getElementById('editTask');
+        taskSelect.innerHTML = '<option value="">Caricamento tasks...</option>';
+        
+        try {
+            const response = await fetch('API/ConsuntivazioneAPI.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    action: 'get_tasks',
+                    commessa_id: commessaId
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                taskSelect.innerHTML = '<option value="">Seleziona task...</option>';
+                result.data.forEach(task => {
+                    const option = document.createElement('option');
+                    option.value = task.ID_TASK;
+                    option.textContent = task.Task;
+                    if (task.ID_TASK == selectedTaskId) {
+                        option.selected = true;
+                    }
+                    taskSelect.appendChild(option);
+                });
+            }
+        } catch (error) {
+            console.error('Errore caricamento tasks:', error);
+            taskSelect.innerHTML = '<option value="">Errore caricamento</option>';
+        }
+    }
+    
+    async saveEdit() {
+        const formData = {
+            id_giornata: document.getElementById('editIdGiornata').value,
+            data: document.getElementById('editData').value,
+            gg: document.getElementById('editGiornate').value,
+            id_task: document.getElementById('editTask').value,
+            spese_viaggi: document.getElementById('editSpeseViaggio').value || 0,
+            vitto_alloggio: document.getElementById('editVittoAlloggio').value || 0,
+            altri_costi: document.getElementById('editAltreSpese').value || 0,
+            note: document.getElementById('editNote').value
+        };
+        
+        // Validazione
+        if (!formData.data || !formData.gg || !formData.id_task) {
+            alert('Compila tutti i campi obbligatori');
+            return;
+        }
+        
+        try {
+            const response = await fetch('API/ConsuntivazioneAPI.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    action: 'update_consuntivazione',
+                    ...formData
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                // Chiudi modal
+                const modal = bootstrap.Modal.getInstance(document.getElementById('editModal'));
+                modal.hide();
+                
+                // Ricarica dati
+                this.loadInitialData();
+                
+                alert('Consuntivazione aggiornata con successo!');
+            } else {
+                alert('Errore: ' + result.message);
+            }
+        } catch (error) {
+            console.error('Errore salvataggio:', error);
+            alert('Errore durante il salvataggio');
+        }
+    }
+    
+    async deleteConsuntivazione(idGiornata) {
+        if (!confirm('Sei sicuro di voler cancellare questa consuntivazione? L\'operazione non può essere annullata.')) {
+            return;
+        }
+        
+        try {
+            const response = await fetch('API/ConsuntivazioneAPI.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    action: 'delete_consuntivazione',
+                    id_giornata: idGiornata
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                // Ricarica dati
+                this.loadInitialData();
+                alert('Consuntivazione cancellata con successo!');
+            } else {
+                alert('Errore: ' + result.message);
+            }
+        } catch (error) {
+            console.error('Errore cancellazione:', error);
+            alert('Errore durante la cancellazione');
+        }
+    }
+    
+    // ========== METODI PER CAMBIO PASSWORD ==========
+    
+    showChangePasswordModal() {
+        const modalHtml = `
+            <div class="modal fade" id="changePwdModal" tabindex="-1">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header bg-primary text-white">
+                            <h5 class="modal-title">
+                                <i class="fas fa-key me-2"></i>
+                                Cambia Password
+                            </h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <form id="changePwdForm">
+                                <div class="form-group mb-3">
+                                    <label for="currentPassword" class="form-label">Password Attuale *</label>
+                                    <div class="input-group">
+                                        <input type="password" id="currentPassword" class="form-control" required>
+                                        <button class="btn btn-outline-secondary" type="button" 
+                                                onclick="app.togglePasswordVisibility('currentPassword', this)">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <div class="form-group mb-3">
+                                    <label for="newPassword" class="form-label">Nuova Password *</label>
+                                    <div class="input-group">
+                                        <input type="password" id="newPassword" class="form-control" 
+                                               minlength="6" required>
+                                        <button class="btn btn-outline-secondary" type="button" 
+                                                onclick="app.togglePasswordVisibility('newPassword', this)">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                    </div>
+                                    <div class="form-text">La password deve essere lunga almeno 6 caratteri</div>
+                                </div>
+                                
+                                <div class="form-group mb-3">
+                                    <label for="confirmPassword" class="form-label">Conferma Nuova Password *</label>
+                                    <div class="input-group">
+                                        <input type="password" id="confirmPassword" class="form-control" 
+                                               minlength="6" required>
+                                        <button class="btn btn-outline-secondary" type="button" 
+                                                onclick="app.togglePasswordVisibility('confirmPassword', this)">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <div id="passwordMessage" class="mt-3"></div>
+                            </form>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                            <button type="button" class="btn btn-primary" onclick="app.changePassword()">
+                                <i class="fas fa-save me-1"></i>Cambia Password
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Rimuovi modal esistente e aggiungi il nuovo
+        const existingModal = document.getElementById('changePwdModal');
+        if (existingModal) {
+            existingModal.remove();
+        }
+        
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        
+        // Aggiungi validazione in tempo reale
+        this.setupPasswordValidation();
+        
+        // Mostra il modal
+        const modal = new bootstrap.Modal(document.getElementById('changePwdModal'));
+        modal.show();
+    }
+    
+    setupPasswordValidation() {
+        const newPasswordField = document.getElementById('newPassword');
+        const confirmPasswordField = document.getElementById('confirmPassword');
+        const messageDiv = document.getElementById('passwordMessage');
+        
+        function validatePasswords() {
+            const newPassword = newPasswordField.value;
+            const confirmPassword = confirmPasswordField.value;
+            
+            messageDiv.innerHTML = '';
+            
+            // Controlla lunghezza minima
+            if (newPassword.length > 0 && newPassword.length < 6) {
+                messageDiv.innerHTML = '<div class="alert alert-warning">La password deve essere lunga almeno 6 caratteri</div>';
+                return false;
+            }
+            
+            // Controlla se le password coincidono
+            if (confirmPassword.length > 0 && newPassword !== confirmPassword) {
+                messageDiv.innerHTML = '<div class="alert alert-danger">Le password non coincidono</div>';
+                return false;
+            }
+            
+            // Password valide
+            if (newPassword.length >= 6 && newPassword === confirmPassword && confirmPassword.length > 0) {
+                messageDiv.innerHTML = '<div class="alert alert-success">Password valida e confermata</div>';
+                return true;
+            }
+            
+            return false;
+        }
+        
+        newPasswordField.addEventListener('input', validatePasswords);
+        confirmPasswordField.addEventListener('input', validatePasswords);
+    }
+    
+    async changePassword() {
+        const currentPassword = document.getElementById('currentPassword').value;
+        const newPassword = document.getElementById('newPassword').value;
+        const confirmPassword = document.getElementById('confirmPassword').value;
+        const messageDiv = document.getElementById('passwordMessage');
+        
+        // Validazioni lato client
+        if (!currentPassword || !newPassword || !confirmPassword) {
+            messageDiv.innerHTML = '<div class="alert alert-danger">Compila tutti i campi</div>';
+            return;
+        }
+        
+        if (newPassword.length < 6) {
+            messageDiv.innerHTML = '<div class="alert alert-danger">La password deve essere lunga almeno 6 caratteri</div>';
+            return;
+        }
+        
+        if (newPassword !== confirmPassword) {
+            messageDiv.innerHTML = '<div class="alert alert-danger">Le password non coincidono</div>';
+            return;
+        }
+        
+        // Disabilita il pulsante e mostra loading
+        const saveBtn = document.querySelector('#changePwdModal .btn-primary');
+        const originalText = saveBtn.innerHTML;
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<span class="loading-spinner"></span> Cambiando password...';
+        
+        try {
+            const response = await fetch('API/auth.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    action: 'change_password',
+                    current_password: currentPassword,
+                    new_password: newPassword
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                // Chiudi modal
+                const modal = bootstrap.Modal.getInstance(document.getElementById('changePwdModal'));
+                modal.hide();
+                
+                // Mostra messaggio di successo
+                alert('Password cambiata con successo! È stata inviata una email di conferma.');
+            } else {
+                messageDiv.innerHTML = `<div class="alert alert-danger">${result.message}</div>`;
+            }
+        } catch (error) {
+            console.error('Errore cambio password:', error);
+            messageDiv.innerHTML = '<div class="alert alert-danger">Errore durante il cambio password. Riprova.</div>';
+        } finally {
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = originalText;
+        }
+    }
+    
+    /**
+     * Toggle visibility della password
+     */
+    togglePasswordVisibility(inputId, button) {
+        const input = document.getElementById(inputId);
+        const icon = button.querySelector('i');
+        
+        if (input.type === 'password') {
+            input.type = 'text';
+            icon.className = 'fas fa-eye-slash';
+            button.title = 'Nascondi password';
+        } else {
+            input.type = 'password';
+            icon.className = 'fas fa-eye';
+            button.title = 'Mostra password';
+        }
+    }
 }
+
+// Variabile globale per accesso dall'HTML
+let app;
 
 // Avvia l'applicazione quando il DOM è caricato
 document.addEventListener('DOMContentLoaded', () => {
-    new ConsuntivazioneApp();
+    app = new ConsuntivazioneApp();
 });

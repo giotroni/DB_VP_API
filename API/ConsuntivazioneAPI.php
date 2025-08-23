@@ -114,6 +114,7 @@ class ConsuntivazioneAPI {
                         COALESCE(g.Altri_costi, 0) as Altri_costi,
                         (COALESCE(g.Spese_Viaggi, 0) + COALESCE(g.Vitto_alloggio, 0) + COALESCE(g.Altri_costi, 0)) as Totale_Spese,
                         g.Note,
+                        g.Confermata,
                         t.Task,
                         c.Commessa,
                         cl.Cliente
@@ -167,6 +168,7 @@ class ConsuntivazioneAPI {
                         COALESCE(g.Altri_costi, 0) as Altri_costi,
                         (COALESCE(g.Spese_Viaggi, 0) + COALESCE(g.Vitto_alloggio, 0) + COALESCE(g.Altri_costi, 0)) as Totale_Spese,
                         g.Note,
+                        g.Confermata,
                         t.Task,
                         c.Commessa,
                         cl.Cliente,
@@ -359,6 +361,228 @@ class ConsuntivazioneAPI {
             ];
         }
     }
+    
+    /**
+     * Ottieni una singola consuntivazione per ID
+     */
+    public function getConsuntivazione($idGiornata) {
+        try {
+            if (!$this->authAPI->isAuthenticated()) {
+                return [
+                    'success' => false,
+                    'message' => 'Utente non autenticato'
+                ];
+            }
+            
+            if (!$idGiornata) {
+                return [
+                    'success' => false,
+                    'message' => 'ID Giornata obbligatorio'
+                ];
+            }
+            
+            $user = $this->authAPI->getCurrentUser();
+            
+            $sql = "SELECT 
+                        g.ID_GIORNATA,
+                        g.Data,
+                        g.gg,
+                        g.Tipo,
+                        g.ID_TASK,
+                        COALESCE(g.Spese_Viaggi, 0) as Spese_Viaggi,
+                        COALESCE(g.Vitto_alloggio, 0) as Vitto_alloggio,
+                        COALESCE(g.Altri_costi, 0) as Altri_costi,
+                        g.Note,
+                        g.Confermata,
+                        t.Task,
+                        t.ID_COMMESSA,
+                        c.Commessa,
+                        cl.Cliente
+                    FROM FACT_GIORNATE g
+                    LEFT JOIN ANA_TASK t ON g.ID_TASK = t.ID_TASK
+                    LEFT JOIN ANA_COMMESSE c ON t.ID_COMMESSA = c.ID_COMMESSA
+                    LEFT JOIN ANA_CLIENTI cl ON c.ID_CLIENTE = cl.ID_CLIENTE
+                    WHERE g.ID_GIORNATA = ? AND g.ID_COLLABORATORE = ?";
+            
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([$idGiornata, $user['id']]);
+            
+            $consuntivazione = $stmt->fetch();
+            
+            if (!$consuntivazione) {
+                return [
+                    'success' => false,
+                    'message' => 'Consuntivazione non trovata'
+                ];
+            }
+            
+            return [
+                'success' => true,
+                'data' => $consuntivazione
+            ];
+            
+        } catch (Exception $e) {
+            return [
+                'success' => false,
+                'message' => 'Errore durante il recupero della consuntivazione: ' . $e->getMessage()
+            ];
+        }
+    }
+    
+    /**
+     * Aggiorna una consuntivazione (solo se non confermata)
+     */
+    public function updateConsuntivazione($data) {
+        try {
+            if (!$this->authAPI->isAuthenticated()) {
+                return [
+                    'success' => false,
+                    'message' => 'Utente non autenticato'
+                ];
+            }
+            
+            $user = $this->authAPI->getCurrentUser();
+            $idGiornata = $data['id_giornata'] ?? null;
+            
+            if (!$idGiornata) {
+                return [
+                    'success' => false,
+                    'message' => 'ID Giornata obbligatorio'
+                ];
+            }
+            
+            // Verifica che la consuntivazione esista e non sia confermata
+            $checkSql = "SELECT Confermata FROM FACT_GIORNATE WHERE ID_GIORNATA = ? AND ID_COLLABORATORE = ?";
+            $checkStmt = $this->db->prepare($checkSql);
+            $checkStmt->execute([$idGiornata, $user['id']]);
+            $existing = $checkStmt->fetch();
+            
+            if (!$existing) {
+                return [
+                    'success' => false,
+                    'message' => 'Consuntivazione non trovata'
+                ];
+            }
+            
+            if ($existing['Confermata'] === 'Si') {
+                return [
+                    'success' => false,
+                    'message' => 'Non è possibile modificare una consuntivazione già confermata'
+                ];
+            }
+            
+            // Aggiorna la consuntivazione
+            $sql = "UPDATE FACT_GIORNATE SET 
+                        Data = ?,
+                        ID_TASK = ?,
+                        gg = ?,
+                        Spese_Viaggi = ?,
+                        Vitto_alloggio = ?,
+                        Altri_costi = ?,
+                        Note = ?,
+                        Data_Modifica = NOW(),
+                        ID_UTENTE_MODIFICA = ?
+                    WHERE ID_GIORNATA = ? AND ID_COLLABORATORE = ?";
+            
+            $stmt = $this->db->prepare($sql);
+            $result = $stmt->execute([
+                $data['data'],
+                $data['id_task'],
+                $data['gg'],
+                $data['spese_viaggi'] ?? 0,
+                $data['vitto_alloggio'] ?? 0,
+                $data['altri_costi'] ?? 0,
+                $data['note'] ?? '',
+                $user['id'], // ID_UTENTE_MODIFICA
+                $idGiornata,
+                $user['id']  // ID_COLLABORATORE per WHERE
+            ]);
+            
+            if ($result) {
+                return [
+                    'success' => true,
+                    'message' => 'Consuntivazione aggiornata con successo'
+                ];
+            } else {
+                return [
+                    'success' => false,
+                    'message' => 'Errore durante l\'aggiornamento'
+                ];
+            }
+            
+        } catch (Exception $e) {
+            return [
+                'success' => false,
+                'message' => 'Errore durante l\'aggiornamento: ' . $e->getMessage()
+            ];
+        }
+    }
+    
+    /**
+     * Cancella una consuntivazione (solo se non confermata)
+     */
+    public function deleteConsuntivazione($idGiornata) {
+        try {
+            if (!$this->authAPI->isAuthenticated()) {
+                return [
+                    'success' => false,
+                    'message' => 'Utente non autenticato'
+                ];
+            }
+            
+            if (!$idGiornata) {
+                return [
+                    'success' => false,
+                    'message' => 'ID Giornata obbligatorio'
+                ];
+            }
+            
+            $user = $this->authAPI->getCurrentUser();
+            
+            // Verifica che la consuntivazione esista e non sia confermata
+            $checkSql = "SELECT Confermata FROM FACT_GIORNATE WHERE ID_GIORNATA = ? AND ID_COLLABORATORE = ?";
+            $checkStmt = $this->db->prepare($checkSql);
+            $checkStmt->execute([$idGiornata, $user['id']]);
+            $existing = $checkStmt->fetch();
+            
+            if (!$existing) {
+                return [
+                    'success' => false,
+                    'message' => 'Consuntivazione non trovata'
+                ];
+            }
+            
+            if ($existing['Confermata'] === 'Si') {
+                return [
+                    'success' => false,
+                    'message' => 'Non è possibile cancellare una consuntivazione già confermata'
+                ];
+            }
+            
+            // Cancella la consuntivazione
+            $sql = "DELETE FROM FACT_GIORNATE WHERE ID_GIORNATA = ? AND ID_COLLABORATORE = ?";
+            $stmt = $this->db->prepare($sql);
+            $result = $stmt->execute([$idGiornata, $user['id']]);
+            
+            if ($result) {
+                return [
+                    'success' => true,
+                    'message' => 'Consuntivazione cancellata con successo'
+                ];
+            } else {
+                return [
+                    'success' => false,
+                    'message' => 'Errore durante la cancellazione'
+                ];
+            }
+            
+        } catch (Exception $e) {
+            return [
+                'success' => false,
+                'message' => 'Errore durante la cancellazione: ' . $e->getMessage()
+            ];
+        }
+    }
 }
 
 // Gestione delle richieste API
@@ -396,6 +620,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
         case 'get_anni_consuntivazioni':
             $result = $consuntivazioneAPI->getAnniConsuntivazioni();
+            echo json_encode($result);
+            break;
+            
+        case 'get_consuntivazione':
+            $idGiornata = $input['id_giornata'] ?? null;
+            $result = $consuntivazioneAPI->getConsuntivazione($idGiornata);
+            echo json_encode($result);
+            break;
+            
+        case 'update_consuntivazione':
+            $result = $consuntivazioneAPI->updateConsuntivazione($input);
+            echo json_encode($result);
+            break;
+            
+        case 'delete_consuntivazione':
+            $idGiornata = $input['id_giornata'] ?? null;
+            $result = $consuntivazioneAPI->deleteConsuntivazione($idGiornata);
             echo json_encode($result);
             break;
             

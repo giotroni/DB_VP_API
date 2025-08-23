@@ -48,17 +48,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             break;
             
         case 'reset_password':
-            $newPassword = $input['new_password'] ?? '';
+            $email = $input['email'] ?? '';
             
-            if (empty($newPassword)) {
+            if (empty($email)) {
                 echo json_encode([
                     'success' => false,
-                    'message' => 'Nuova password richiesta'
+                    'message' => 'Email richiesta'
                 ]);
                 exit;
             }
             
-            $result = $authAPI->resetPassword($newPassword);
+            $result = $authAPI->forgotPassword($email);
+            echo json_encode($result);
+            break;
+            
+        case 'change_password':
+            $currentPassword = $input['current_password'] ?? '';
+            $newPassword = $input['new_password'] ?? '';
+            
+            if (empty($currentPassword) || empty($newPassword)) {
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Password attuale e nuova password sono richieste'
+                ]);
+                exit;
+            }
+            
+            $result = $authAPI->changePassword($currentPassword, $newPassword);
             echo json_encode($result);
             break;
             
