@@ -78,13 +78,48 @@ class ConsuntivazioneAPI {
             $stmt4->execute([$user['id']]);
             $giorniLavorati = $stmt4->fetch()['giorni_lavorati'];
             
+            // Calcolo del Costo giornaliero
+            $sql5 = "SELECT 
+                        SUM(
+                            g.gg * COALESCE(
+                                -- Tariffa specifica per commessa se esiste
+                                (SELECT tc.Tariffa_gg 
+                                 FROM ANA_TARIFFE_COLLABORATORI tc
+                                 WHERE tc.ID_COLLABORATORE = g.ID_COLLABORATORE
+                                 AND tc.ID_COMMESSA = c.ID_COMMESSA
+                                 AND tc.Dal <= g.Data
+                                 ORDER BY tc.Dal DESC
+                                 LIMIT 1),
+                                -- Altrimenti tariffa standard (ID_COMMESSA è NULL)
+                                (SELECT ts.Tariffa_gg
+                                 FROM ANA_TARIFFE_COLLABORATORI ts
+                                 WHERE ts.ID_COLLABORATORE = g.ID_COLLABORATORE
+                                 AND ts.ID_COMMESSA IS NULL
+                                 AND ts.Dal <= g.Data
+                                 ORDER BY ts.Dal DESC
+                                 LIMIT 1),
+                                0
+                            )
+                        ) as costo_gg
+                     FROM FACT_GIORNATE g
+                     LEFT JOIN ANA_TASK t ON g.ID_TASK = t.ID_TASK
+                     LEFT JOIN ANA_COMMESSE c ON t.ID_COMMESSA = c.ID_COMMESSA
+                     WHERE g.ID_COLLABORATORE = ? 
+                     AND MONTH(g.Data) = MONTH(CURDATE()) 
+                     AND YEAR(g.Data) = YEAR(CURDATE())";
+            
+            $stmt5 = $this->db->prepare($sql5);
+            $stmt5->execute([$user['id']]);
+            $costoGg = $stmt5->fetch()['costo_gg'] ?? 0;
+            
             return [
                 'success' => true,
                 'data' => [
                     'ore_mese' => number_format($oreMese, 1),
                     'spese_mese' => number_format($speseMese, 2),
                     'spese_rimborsabili' => number_format(max(0, $speseRimborsabili), 2),
-                    'giorni_lavorati' => $giorniLavorati
+                    'giorni_lavorati' => $giorniLavorati,
+                    'costo_gg' => number_format($costoGg, 2)
                 ]
             ];
             

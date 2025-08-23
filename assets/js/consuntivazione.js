@@ -17,19 +17,7 @@ class ConsuntivazioneApp {
         // Controlla se l'utente è già autenticato
         this.checkAuthentication().then(() => {
             if (this.currentUser) {
-               statsGrid.innerHTML = `
-            <div class="stat-card">
-                <div class="stat-number">${this.statistiche.ore_mese || '0'}</div>
-                <div class="stat-label">Giornate Questo Mese</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-number">€ ${this.statistiche.spese_mese || '0'}</div>
-                <div class="stat-label">Spese del mese</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-number">${this.statistiche.giorni_lavorati || '0'}</div>
-                <div class="stat-label">Date inserite</div>
-            </div>`;wDashboard();
+                this.showDashboard();
                 this.loadInitialData();
             } else {
                 this.showLogin();
@@ -676,6 +664,10 @@ class ConsuntivazioneApp {
             <div class="stat-card">
                 <div class="stat-number">€ ${this.statistiche.spese_rimborsabili || '0'}</div>
                 <div class="stat-label">Spese Rimborsabili</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">€ ${this.statistiche.costo_gg || '0'}</div>
+                <div class="stat-label">Costo gg</div>
             </div>
             <div class="stat-card">
                 <div class="stat-number">${this.statistiche.giorni_lavorati || '0'}</div>
