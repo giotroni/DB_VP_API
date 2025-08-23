@@ -1,0 +1,12 @@
+Esportazione Database - 2025-08-23 13:58:18
+========================================
+Tabelle esportate: 7
+Record totali: 259
+
+ANA_CLIENTI: 18 record
+ANA_COLLABORATORI: 5 record
+ANA_COMMESSE: 15 record
+ANA_TARIFFE_COLLABORATORI: 5 record
+ANA_TASK: 28 record
+FACT_FATTURE: 37 record
+FACT_GIORNATE: 151 record
