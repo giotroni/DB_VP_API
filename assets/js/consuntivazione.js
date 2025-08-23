@@ -413,6 +413,73 @@ class ConsuntivazioneApp {
                         </div>
                     </div>
                 </div>
+
+                <!-- Sezione Consultazione Consuntivazioni -->
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <div class="table-vp">
+                            <div class="modal-header">
+                                <h2 class="modal-title">
+                                    <i class="fas fa-search me-2"></i>
+                                    Consulta Consuntivazioni
+                                </h2>
+                            </div>
+                            <div class="modal-body">
+                                <!-- Filtri -->
+                                <div class="row mb-3">
+                                    <div class="col-md-3">
+                                        <label for="filterAnno" class="form-label">Anno</label>
+                                        <select id="filterAnno" class="form-control">
+                                            <option value="">Tutti gli anni</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label for="filterMese" class="form-label">Mese</label>
+                                        <select id="filterMese" class="form-control">
+                                            <option value="">Tutti i mesi</option>
+                                            <option value="1">Gennaio</option>
+                                            <option value="2">Febbraio</option>
+                                            <option value="3">Marzo</option>
+                                            <option value="4">Aprile</option>
+                                            <option value="5">Maggio</option>
+                                            <option value="6">Giugno</option>
+                                            <option value="7">Luglio</option>
+                                            <option value="8">Agosto</option>
+                                            <option value="9">Settembre</option>
+                                            <option value="10">Ottobre</option>
+                                            <option value="11">Novembre</option>
+                                            <option value="12">Dicembre</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label for="filterCommessa" class="form-label">Progetto</label>
+                                        <select id="filterCommessa" class="form-control">
+                                            <option value="">Tutti i progetti</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3 d-flex align-items-end">
+                                        <button id="btnRicerca" class="btn btn-primary me-2">
+                                            <i class="fas fa-search me-1"></i>
+                                            Cerca
+                                        </button>
+                                        <button id="btnEsporta" class="btn btn-outline-primary">
+                                            <i class="fas fa-download me-1"></i>
+                                            Esporta
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <!-- Risultati -->
+                                <div id="consuntivazioni-risultati" class="table-responsive">
+                                    <div class="text-center text-muted py-4">
+                                        <i class="fas fa-info-circle me-2"></i>
+                                        Seleziona i filtri e clicca "Cerca" per visualizzare le consuntivazioni
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
                 
                 <!-- Messagi di sistema -->
                 <div id="message" class="mt-3"></div>
@@ -493,8 +560,11 @@ class ConsuntivazioneApp {
         await Promise.all([
             this.loadStatistiche(),
             this.loadCommesse(),
-            this.loadUltimeConsuntivazioni()
+            this.loadUltimeConsuntivazioni(),
+            this.loadAnniConsuntivazioni(),
+            this.loadComessePerFiltri()
         ]);
+        this.initConsultazionePage();
     }
     
     async loadStatistiche() {
@@ -841,6 +911,336 @@ class ConsuntivazioneApp {
             month: '2-digit',
             day: '2-digit'
         });
+    }
+    
+    // ========== METODI PER CONSULTAZIONE CONSUNTIVAZIONI ==========
+    
+    async loadAnniConsuntivazioni() {
+        try {
+            const response = await fetch('API/ConsuntivazioneAPI.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    action: 'get_anni_consuntivazioni'
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                this.anniDisponibili = result.data;
+            }
+        } catch (error) {
+            console.error('Errore caricamento anni:', error);
+        }
+    }
+    
+    async loadComessePerFiltri() {
+        try {
+            const response = await fetch('API/ConsuntivazioneAPI.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    action: 'get_commesse'
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                this.commessePerFiltri = result.data;
+            }
+        } catch (error) {
+            console.error('Errore caricamento commesse per filtri:', error);
+        }
+    }
+    
+    initConsultazionePage() {
+        // Popola select degli anni
+        const selectAnno = document.getElementById('filterAnno');
+        if (selectAnno && this.anniDisponibili) {
+            this.anniDisponibili.forEach(item => {
+                const option = document.createElement('option');
+                option.value = item.anno;
+                option.textContent = item.anno;
+                selectAnno.appendChild(option);
+            });
+        }
+        
+        // Popola select delle commesse
+        const selectCommessa = document.getElementById('filterCommessa');
+        if (selectCommessa && this.commessePerFiltri) {
+            this.commessePerFiltri.forEach(commessa => {
+                const option = document.createElement('option');
+                option.value = commessa.ID_COMMESSA;
+                option.textContent = `${commessa.Commessa} - ${commessa.Cliente}`;
+                selectCommessa.appendChild(option);
+            });
+        }
+        
+        // Aggiungi event listeners
+        const btnRicerca = document.getElementById('btnRicerca');
+        if (btnRicerca) {
+            btnRicerca.addEventListener('click', () => this.cercaConsuntivazioni());
+        }
+        
+        const btnEsporta = document.getElementById('btnEsporta');
+        if (btnEsporta) {
+            btnEsporta.addEventListener('click', () => this.esportaConsuntivazioni());
+        }
+    }
+    
+    async cercaConsuntivazioni() {
+        const anno = document.getElementById('filterAnno').value;
+        const mese = document.getElementById('filterMese').value;
+        const commessaId = document.getElementById('filterCommessa').value;
+        const risultatiDiv = document.getElementById('consuntivazioni-risultati');
+        
+        // Mostra loading
+        risultatiDiv.innerHTML = `
+            <div class="text-center py-4">
+                <i class="fas fa-spinner fa-spin me-2"></i>
+                Ricerca in corso...
+            </div>
+        `;
+        
+        try {
+            const response = await fetch('API/ConsuntivazioneAPI.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    action: 'cerca_consuntivazioni',
+                    anno: anno || null,
+                    mese: mese || null,
+                    commessa_id: commessaId || null
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                this.mostraRisultatiRicerca(result.data);
+            } else {
+                risultatiDiv.innerHTML = `
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        ${result.message}
+                    </div>
+                `;
+            }
+        } catch (error) {
+            console.error('Errore ricerca consuntivazioni:', error);
+            risultatiDiv.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-times me-2"></i>
+                    Errore durante la ricerca. Riprova.
+                </div>
+            `;
+        }
+    }
+    
+    mostraRisultatiRicerca(data) {
+        const risultatiDiv = document.getElementById('consuntivazioni-risultati');
+        const { consuntivazioni, statistiche, raggruppamento_mese } = data;
+        
+        if (consuntivazioni.length === 0) {
+            risultatiDiv.innerHTML = `
+                <div class="text-center text-muted py-4">
+                    <i class="fas fa-search me-2"></i>
+                    Nessuna consuntivazione trovata con i filtri selezionati
+                </div>
+            `;
+            return;
+        }
+        
+        let html = `
+            <!-- Statistiche Generali -->
+            <div class="row mb-4">
+                <div class="col-md-4">
+                    <div class="card bg-primary text-white">
+                        <div class="card-body text-center">
+                            <h5>${statistiche.numero_consuntivazioni}</h5>
+                            <small>Consuntivazioni Trovate</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card bg-success text-white">
+                        <div class="card-body text-center">
+                            <h5>${statistiche.totale_giornate.toFixed(1)}</h5>
+                            <small>Totale Giornate</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card bg-info text-white">
+                        <div class="card-body text-center">
+                            <h5>€ ${statistiche.totale_spese.toFixed(2)}</h5>
+                            <small>Totale Spese</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Raggruppamento per mese se presente
+        if (raggruppamento_mese.length > 1) {
+            html += `
+                <h6 class="mb-3">
+                    <i class="fas fa-calendar-alt me-2"></i>
+                    Riepilogo per Mese
+                </h6>
+                <div class="table-responsive mb-4">
+                    <table class="table table-sm">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Mese</th>
+                                <th class="text-center">Consuntivazioni</th>
+                                <th class="text-center">Giornate</th>
+                                <th class="text-end">Spese</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+            
+            raggruppamento_mese.forEach(mese => {
+                html += `
+                    <tr>
+                        <td>${mese.nome_mese} ${mese.anno}</td>
+                        <td class="text-center">${mese.count}</td>
+                        <td class="text-center">${mese.giornate.toFixed(1)}</td>
+                        <td class="text-end">€ ${mese.spese.toFixed(2)}</td>
+                    </tr>
+                `;
+            });
+            
+            html += `
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        }
+        
+        // Tabella dettagliata delle consuntivazioni
+        html += `
+            <h6 class="mb-3">
+                <i class="fas fa-list me-2"></i>
+                Dettaglio Consuntivazioni
+            </h6>
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Data</th>
+                            <th>Progetto</th>
+                            <th>Task</th>
+                            <th class="text-center">Giorni</th>
+                            <th class="text-end">Spese</th>
+                            <th>Note</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+        
+        consuntivazioni.forEach(cons => {
+            html += `
+                <tr>
+                    <td>${this.formatDate(cons.Data)}</td>
+                    <td>
+                        <strong>${cons.Commessa}</strong><br>
+                        <small class="text-muted">${cons.Cliente || 'Progetto interno'}</small>
+                    </td>
+                    <td>${cons.Task}</td>
+                    <td class="text-center">
+                        <span class="badge bg-primary">${cons.gg}</span>
+                    </td>
+                    <td class="text-end">
+                        € ${parseFloat(cons.Totale_Spese || 0).toFixed(2)}
+                    </td>
+                    <td>
+                        ${cons.Note ? `<small>${cons.Note}</small>` : '<span class="text-muted">-</span>'}
+                    </td>
+                </tr>
+            `;
+        });
+        
+        html += `
+                    </tbody>
+                </table>
+            </div>
+        `;
+        
+        risultatiDiv.innerHTML = html;
+    }
+    
+    async esportaConsuntivazioni() {
+        const anno = document.getElementById('filterAnno').value;
+        const mese = document.getElementById('filterMese').value;
+        const commessaId = document.getElementById('filterCommessa').value;
+        
+        try {
+            const response = await fetch('API/ConsuntivazioneAPI.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    action: 'cerca_consuntivazioni',
+                    anno: anno || null,
+                    mese: mese || null,
+                    commessa_id: commessaId || null
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success && result.data.consuntivazioni.length > 0) {
+                this.downloadCSV(result.data.consuntivazioni, 'consuntivazioni_export.csv');
+            } else {
+                alert('Nessun dato da esportare con i filtri selezionati');
+            }
+        } catch (error) {
+            console.error('Errore esportazione:', error);
+            alert('Errore durante l\'esportazione');
+        }
+    }
+    
+    downloadCSV(data, filename) {
+        const headers = ['Data', 'Progetto', 'Cliente', 'Task', 'Giorni', 'Spese Viaggio', 'Vitto/Alloggio', 'Altre Spese', 'Totale Spese', 'Note'];
+        
+        let csvContent = headers.join(';') + '\n';
+        
+        data.forEach(row => {
+            const csvRow = [
+                this.formatDate(row.Data),
+                `"${row.Commessa || ''}"`,
+                `"${row.Cliente || ''}"`,
+                `"${row.Task || ''}"`,
+                row.gg,
+                row.Spese_Viaggi || 0,
+                row.Vitto_alloggio || 0,
+                row.Altri_costi || 0,
+                row.Totale_Spese || 0,
+                `"${row.Note || ''}"`
+            ].join(';');
+            csvContent += csvRow + '\n';
+        });
+        
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', filename);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     }
 }
 

@@ -109,10 +109,10 @@ class ConsuntivazioneAPI {
                         g.Data,
                         g.gg,
                         g.Tipo,
-                        g.Spese_Viaggi,
-                        g.Vitto_alloggio,
-                        g.Altri_costi,
-                        (g.Spese_Viaggi + g.Vitto_alloggio + g.Altri_costi) as Totale_Spese,
+                        COALESCE(g.Spese_Viaggi, 0) as Spese_Viaggi,
+                        COALESCE(g.Vitto_alloggio, 0) as Vitto_alloggio,
+                        COALESCE(g.Altri_costi, 0) as Altri_costi,
+                        (COALESCE(g.Spese_Viaggi, 0) + COALESCE(g.Vitto_alloggio, 0) + COALESCE(g.Altri_costi, 0)) as Totale_Spese,
                         g.Note,
                         t.Task,
                         c.Commessa,
@@ -139,6 +139,152 @@ class ConsuntivazioneAPI {
             return [
                 'success' => false,
                 'message' => 'Errore durante il recupero delle consuntivazioni: ' . $e->getMessage()
+            ];
+        }
+    }
+    
+    /**
+     * Cerca consuntivazioni con filtri per anno, mese e commessa
+     */
+    public function cercaConsuntivazioni($anno = null, $mese = null, $commessaId = null) {
+        try {
+            if (!$this->authAPI->isAuthenticated()) {
+                return [
+                    'success' => false,
+                    'message' => 'Utente non autenticato'
+                ];
+            }
+            
+            $user = $this->authAPI->getCurrentUser();
+            
+            $sql = "SELECT 
+                        g.ID_GIORNATA,
+                        g.Data,
+                        g.gg,
+                        g.Tipo,
+                        COALESCE(g.Spese_Viaggi, 0) as Spese_Viaggi,
+                        COALESCE(g.Vitto_alloggio, 0) as Vitto_alloggio,
+                        COALESCE(g.Altri_costi, 0) as Altri_costi,
+                        (COALESCE(g.Spese_Viaggi, 0) + COALESCE(g.Vitto_alloggio, 0) + COALESCE(g.Altri_costi, 0)) as Totale_Spese,
+                        g.Note,
+                        t.Task,
+                        c.Commessa,
+                        cl.Cliente,
+                        YEAR(g.Data) as Anno,
+                        MONTH(g.Data) as Mese,
+                        MONTHNAME(g.Data) as Nome_Mese
+                    FROM FACT_GIORNATE g
+                    LEFT JOIN ANA_TASK t ON g.ID_TASK = t.ID_TASK
+                    LEFT JOIN ANA_COMMESSE c ON t.ID_COMMESSA = c.ID_COMMESSA
+                    LEFT JOIN ANA_CLIENTI cl ON c.ID_CLIENTE = cl.ID_CLIENTE
+                    WHERE g.ID_COLLABORATORE = ?";
+            
+            $params = [$user['id']];
+            
+            // Aggiungi filtro anno
+            if ($anno) {
+                $sql .= " AND YEAR(g.Data) = ?";
+                $params[] = $anno;
+            }
+            
+            // Aggiungi filtro mese
+            if ($mese) {
+                $sql .= " AND MONTH(g.Data) = ?";
+                $params[] = $mese;
+            }
+            
+            // Aggiungi filtro commessa
+            if ($commessaId) {
+                $sql .= " AND c.ID_COMMESSA = ?";
+                $params[] = $commessaId;
+            }
+            
+            $sql .= " ORDER BY g.Data DESC, g.Data_Creazione DESC";
+            
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute($params);
+            
+            $consuntivazioni = $stmt->fetchAll();
+            
+            // Calcola statistiche
+            $totaleGiornate = 0;
+            $totaleSpese = 0;
+            $raggruppatePer_Mese = [];
+            
+            foreach ($consuntivazioni as $cons) {
+                $totaleGiornate += $cons['gg'];
+                $totaleSpese += $cons['Totale_Spese'];
+                
+                $chiaveMese = $cons['Anno'] . '-' . str_pad($cons['Mese'], 2, '0', STR_PAD_LEFT);
+                if (!isset($raggruppatePer_Mese[$chiaveMese])) {
+                    $raggruppatePer_Mese[$chiaveMese] = [
+                        'anno' => $cons['Anno'],
+                        'mese' => $cons['Mese'],
+                        'nome_mese' => $cons['Nome_Mese'],
+                        'giornate' => 0,
+                        'spese' => 0,
+                        'count' => 0
+                    ];
+                }
+                $raggruppatePer_Mese[$chiaveMese]['giornate'] += $cons['gg'];
+                $raggruppatePer_Mese[$chiaveMese]['spese'] += $cons['Totale_Spese'];
+                $raggruppatePer_Mese[$chiaveMese]['count']++;
+            }
+            
+            return [
+                'success' => true,
+                'data' => [
+                    'consuntivazioni' => $consuntivazioni,
+                    'statistiche' => [
+                        'totale_giornate' => $totaleGiornate,
+                        'totale_spese' => $totaleSpese,
+                        'numero_consuntivazioni' => count($consuntivazioni)
+                    ],
+                    'raggruppamento_mese' => array_values($raggruppatePer_Mese)
+                ]
+            ];
+            
+        } catch (Exception $e) {
+            return [
+                'success' => false,
+                'message' => 'Errore durante la ricerca delle consuntivazioni: ' . $e->getMessage()
+            ];
+        }
+    }
+    
+    /**
+     * Ottieni gli anni disponibili per le consuntivazioni
+     */
+    public function getAnniConsuntivazioni() {
+        try {
+            if (!$this->authAPI->isAuthenticated()) {
+                return [
+                    'success' => false,
+                    'message' => 'Utente non autenticato'
+                ];
+            }
+            
+            $user = $this->authAPI->getCurrentUser();
+            
+            $sql = "SELECT DISTINCT YEAR(Data) as anno 
+                    FROM FACT_GIORNATE 
+                    WHERE ID_COLLABORATORE = ? 
+                    ORDER BY anno DESC";
+            
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([$user['id']]);
+            
+            $anni = $stmt->fetchAll();
+            
+            return [
+                'success' => true,
+                'data' => $anni
+            ];
+            
+        } catch (Exception $e) {
+            return [
+                'success' => false,
+                'message' => 'Errore durante il recupero degli anni: ' . $e->getMessage()
             ];
         }
     }
@@ -237,6 +383,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         case 'get_ultime_consuntivazioni':
             $limit = $input['limit'] ?? 10;
             $result = $consuntivazioneAPI->getUltimeConsuntivazioni($limit);
+            echo json_encode($result);
+            break;
+            
+        case 'cerca_consuntivazioni':
+            $anno = $input['anno'] ?? null;
+            $mese = $input['mese'] ?? null;
+            $commessaId = $input['commessa_id'] ?? null;
+            $result = $consuntivazioneAPI->cercaConsuntivazioni($anno, $mese, $commessaId);
+            echo json_encode($result);
+            break;
+            
+        case 'get_anni_consuntivazioni':
+            $result = $consuntivazioneAPI->getAnniConsuntivazioni();
             echo json_encode($result);
             break;
             
