@@ -78,7 +78,7 @@ class ConsuntivazioneAPI {
             $stmt4->execute([$user['id']]);
             $giorniLavorati = $stmt4->fetch()['giorni_lavorati'];
             
-            // Calcolo del Costo giornaliero
+            // Calcolo del Costo giornaliero - SOLO per giornate di tipo "Campo"
             $sql5 = "SELECT 
                         SUM(
                             g.gg * COALESCE(
@@ -105,6 +105,7 @@ class ConsuntivazioneAPI {
                      LEFT JOIN ANA_TASK t ON g.ID_TASK = t.ID_TASK
                      LEFT JOIN ANA_COMMESSE c ON t.ID_COMMESSA = c.ID_COMMESSA
                      WHERE g.ID_COLLABORATORE = ? 
+                     AND g.Tipo = 'Campo'
                      AND MONTH(g.Data) = MONTH(CURDATE()) 
                      AND YEAR(g.Data) = YEAR(CURDATE())";
             
@@ -256,12 +257,20 @@ class ConsuntivazioneAPI {
             $totaleGiornate = 0;
             $totaleSpese = 0;
             $totaleFattVP = 0;
+            $totaleCostoGg = 0;
             $raggruppatePer_Mese = [];
             
-            foreach ($consuntivazioni as $cons) {
+            foreach ($consuntivazioni as &$cons) {
                 $totaleGiornate += $cons['gg'];
                 $totaleSpese += $cons['Totale_Spese'];
                 $totaleFattVP += $cons['Spese_Fatturate_VP'];
+                
+                // Calcola il costo gg per questa consuntivazione
+                $costoGgConsuntivazione = $this->calcolaCostoGgConsuntivazione($user['id'], $cons);
+                $totaleCostoGg += $costoGgConsuntivazione;
+                
+                // Aggiungi il costo_gg ai dati della consuntivazione per l'esportazione CSV
+                $cons['costo_gg'] = $costoGgConsuntivazione;
                 
                 $chiaveMese = $cons['Anno'] . '-' . str_pad($cons['Mese'], 2, '0', STR_PAD_LEFT);
                 if (!isset($raggruppatePer_Mese[$chiaveMese])) {
@@ -273,6 +282,7 @@ class ConsuntivazioneAPI {
                         'spese' => 0,
                         'spese_fatturate_vp' => 0,
                         'spese_rimborsabili' => 0,
+                        'costo_gg' => 0,
                         'count' => 0
                     ];
                 }
@@ -280,6 +290,7 @@ class ConsuntivazioneAPI {
                 $raggruppatePer_Mese[$chiaveMese]['spese'] += $cons['Totale_Spese'];
                 $raggruppatePer_Mese[$chiaveMese]['spese_fatturate_vp'] += $cons['Spese_Fatturate_VP'];
                 $raggruppatePer_Mese[$chiaveMese]['spese_rimborsabili'] = $raggruppatePer_Mese[$chiaveMese]['spese'] - $raggruppatePer_Mese[$chiaveMese]['spese_fatturate_vp'];
+                $raggruppatePer_Mese[$chiaveMese]['costo_gg'] += $costoGgConsuntivazione;
                 $raggruppatePer_Mese[$chiaveMese]['count']++;
             }
             
@@ -292,6 +303,7 @@ class ConsuntivazioneAPI {
                         'totale_spese' => $totaleSpese,
                         'totale_spese_fatturate_vp' => $totaleFattVP,
                         'totale_spese_rimborsabili' => max(0, $totaleSpese - $totaleFattVP),
+                        'totale_costo_gg' => $totaleCostoGg,
                         'numero_consuntivazioni' => count($consuntivazioni)
                     ],
                     'raggruppamento_mese' => array_values($raggruppatePer_Mese)
@@ -303,6 +315,63 @@ class ConsuntivazioneAPI {
                 'success' => false,
                 'message' => 'Errore durante la ricerca delle consuntivazioni: ' . $e->getMessage()
             ];
+        }
+    }
+    
+    /**
+     * Calcola il costo gg per una singola consuntivazione
+     */
+    private function calcolaCostoGgConsuntivazione($collaboratoreId, $consuntivazione) {
+        try {
+            // IMPORTANTE: calcolo solo per giornate di tipo "Campo"
+            if (!isset($consuntivazione['Tipo']) || $consuntivazione['Tipo'] !== 'Campo') {
+                return 0;
+            }
+            
+            // Query per ottenere la tariffa appropriata per questa consuntivazione
+            $sql = "SELECT 
+                        COALESCE(
+                            -- Tariffa specifica per commessa se esiste
+                            (SELECT tc.Tariffa_gg 
+                             FROM ANA_TARIFFE_COLLABORATORI tc
+                             WHERE tc.ID_COLLABORATORE = ?
+                             AND tc.ID_COMMESSA = (
+                                 SELECT c.ID_COMMESSA 
+                                 FROM ANA_TASK t 
+                                 JOIN ANA_COMMESSE c ON t.ID_COMMESSA = c.ID_COMMESSA 
+                                 WHERE t.Task = ?
+                             )
+                             AND tc.Dal <= ?
+                             ORDER BY tc.Dal DESC
+                             LIMIT 1),
+                            -- Altrimenti tariffa standard (ID_COMMESSA è NULL)
+                            (SELECT ts.Tariffa_gg
+                             FROM ANA_TARIFFE_COLLABORATORI ts
+                             WHERE ts.ID_COLLABORATORE = ?
+                             AND ts.ID_COMMESSA IS NULL
+                             AND ts.Dal <= ?
+                             ORDER BY ts.Dal DESC
+                             LIMIT 1),
+                            0
+                        ) as tariffa_gg";
+            
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([
+                $collaboratoreId,
+                $consuntivazione['Task'] ?? '',
+                $consuntivazione['Data'],
+                $collaboratoreId,
+                $consuntivazione['Data']
+            ]);
+            
+            $result = $stmt->fetch();
+            $tariffaGg = $result['tariffa_gg'] ?? 0;
+            
+            return $consuntivazione['gg'] * $tariffaGg;
+            
+        } catch (Exception $e) {
+            // In caso di errore, ritorna 0
+            return 0;
         }
     }
     

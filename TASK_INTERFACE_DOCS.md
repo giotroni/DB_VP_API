@@ -73,7 +73,7 @@ class TaskManager {
 ```
 
 ### **API Integration**
-- **Endpoint base:** `/gestione_VP/API`
+- **Endpoint base:** `/../API`
 - **Metodi supportati:** GET, POST, PUT
 - **Formato dati:** JSON
 - **Gestione errori** completa

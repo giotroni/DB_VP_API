@@ -5,7 +5,7 @@
  */
 
 // Configurazione test
-$baseUrl = 'https://vaglioandpartners.com/gestione_VP/API/index.php'; // URL base con index.php
+$baseUrl = 'https://vaglioandpartners.com/../API/index.php'; // URL base con index.php
 $testData = [];
 
 echo "=== TEST API VAGLIO & PARTNERS ===\n";

@@ -16,7 +16,7 @@ if (isset($_GET['debug'])) {
 $config_paths = [
     __DIR__ . '/../DB/config.php',
     dirname(__DIR__) . '/DB/config.php',
-    $_SERVER['DOCUMENT_ROOT'] . '/gestione_VP/DB/config.php'
+    $_SERVER['DOCUMENT_ROOT'] . '/../DB/config.php'
 ];
 
 $config_loaded = false;

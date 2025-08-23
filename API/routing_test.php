@@ -30,9 +30,9 @@ echo "ID: " . ($id ?? 'null') . "\n";
 
 echo "\nTEST CASES:\n";
 $test_cases = [
-    '/gestione_VP/API/status',
-    '/gestione_VP/API/clienti',
-    '/gestione_VP/API/clienti/123',
+    '/../API/status',
+    '/../API/clienti',
+    '/../API/clienti/123',
     '/API/status',
     '/status'
 ];

@@ -92,7 +92,7 @@ Utilizza le credenziali dei collaboratori memorizzate nel database:
 Le password nel database devono essere crittografate. Puoi usare:
 
 #### **🌐 Tool Web (Raccomandato)**
-Apri nel browser: `http://your-domain.com/gestione_VP/DB/password_admin.html`
+Apri nel browser: `http://your-domain.com/../DB/password_admin.html`
 
 **Funzionalità disponibili:**
 - ✅ **Controllo automatico** stato password all'apertura
@@ -119,10 +119,10 @@ php DB/password_hasher.php test mario@company.com password123
 #### **🌐 URL diretti (solo lettura)**
 ```
 # Controlla stato password
-http://your-domain.com/gestione_VP/DB/password_hasher.php?action=check
+http://your-domain.com/../DB/password_hasher.php?action=check
 
 # Testa una password
-http://your-domain.com/gestione_VP/DB/password_hasher.php?action=test&email=mario@company.com&password=password123
+http://your-domain.com/../DB/password_hasher.php?action=test&email=mario@company.com&password=password123
 ```
 
 ## 📋 Funzionalità Dettagliate

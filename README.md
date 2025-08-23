@@ -115,19 +115,19 @@ php DB/test_connection.php
 
 ### **Base URL**
 ```
-http://your-domain.com/gestione_VP/API/index.php
+http://your-domain.com/../API/index.php
 ```
 
 ### **Formato Chiamate**
 ```bash
 # GET - Lista risorse
-GET /gestione_VP/API/index.php?resource=clienti
+GET /../API/index.php?resource=clienti
 
 # GET - Risorsa specifica
-GET /gestione_VP/API/index.php?resource=clienti&id=1
+GET /../API/index.php?resource=clienti&id=1
 
 # POST - Crea nuova risorsa
-POST /gestione_VP/API/index.php?resource=clienti
+POST /../API/index.php?resource=clienti
 Content-Type: application/json
 {
     "Cliente": "Nuovo Cliente SRL",
@@ -135,14 +135,14 @@ Content-Type: application/json
 }
 
 # PUT - Aggiorna risorsa
-PUT /gestione_VP/API/index.php?resource=clienti&id=1
+PUT /../API/index.php?resource=clienti&id=1
 Content-Type: application/json
 {
     "Cliente": "Cliente Modificato SRL"
 }
 
 # DELETE - Elimina risorsa
-DELETE /gestione_VP/API/index.php?resource=clienti&id=1
+DELETE /../API/index.php?resource=clienti&id=1
 ```
 
 ### **Risorse Disponibili**

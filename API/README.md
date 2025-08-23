@@ -21,7 +21,7 @@
 
 Le API Vaglio & Partners forniscono accesso completo al database aziendale tramite interfacce REST. Tutte le API supportano operazioni CRUD (Create, Read, Update, Delete) con validazione completa dei dati e gestione delle relazioni.
 
-**Base URL**: `http://your-domain.com/gestione_VP/API/index.php`
+**Base URL**: `http://your-domain.com/../API/index.php`
 **Versione API**: 1.0.0
 **Formato**: JSON
 
@@ -29,15 +29,15 @@ Le API Vaglio & Partners forniscono accesso completo al database aziendale trami
 
 Le API utilizzano un sistema di routing basato su parametri GET:
 
-- **Formato base**: `GET /gestione_VP/API/index.php?resource={risorsa}`
-- **Con ID**: `GET /gestione_VP/API/index.php?resource={risorsa}&id={id}`
-- **Con filtri**: `GET /gestione_VP/API/index.php?resource={risorsa}&page=1&limit=50`
+- **Formato base**: `GET /../API/index.php?resource={risorsa}`
+- **Con ID**: `GET /../API/index.php?resource={risorsa}&id={id}`
+- **Con filtri**: `GET /../API/index.php?resource={risorsa}&page=1&limit=50`
 
 **Esempi**:
-- `GET /gestione_VP/API/index.php?resource=task` - Lista task
-- `GET /gestione_VP/API/index.php?resource=task&id=TAS00001` - Task specifico
-- `POST /gestione_VP/API/index.php?resource=task` - Crea nuovo task
-- `PUT /gestione_VP/API/index.php?resource=task&id=TAS00001` - Aggiorna task
+- `GET /../API/index.php?resource=task` - Lista task
+- `GET /../API/index.php?resource=task&id=TAS00001` - Task specifico
+- `POST /../API/index.php?resource=task` - Crea nuovo task
+- `PUT /../API/index.php?resource=task&id=TAS00001` - Aggiorna task
 
 ## Autenticazione
 
@@ -90,7 +90,7 @@ Tutte le liste supportano la paginazione:
 - `page`: Numero di pagina (default: 1)
 - `limit`: Elementi per pagina (default: 50, max: 200)
 
-**Esempio**: `GET /gestione_VP/API/index.php?resource=clienti&page=2&limit=25`
+**Esempio**: `GET /../API/index.php?resource=clienti&page=2&limit=25`
 
 ## Filtri e Ordinamento
 
@@ -98,7 +98,7 @@ Tutte le liste supportano la paginazione:
 - `sort`: Campo per ordinamento
 - `order`: ASC o DESC (default: ASC)
 
-**Esempio**: `GET /gestione_VP/API/index.php?resource=clienti&sort=Cliente&order=DESC`
+**Esempio**: `GET /../API/index.php?resource=clienti&sort=Cliente&order=DESC`
 
 ### Filtri Comuni
 Ogni endpoint supporta filtri specifici documentati nelle singole sezioni.
@@ -111,7 +111,7 @@ Ogni endpoint supporta filtri specifici documentati nelle singole sezioni.
 
 Gestione dell'anagrafica clienti.
 
-### GET /gestione_VP/API/index.php?resource=clienti
+### GET /../API/index.php?resource=clienti
 Recupera la lista dei clienti.
 
 **Filtri disponibili:**
@@ -122,17 +122,17 @@ Recupera la lista dei clienti.
 
 **Esempio:**
 ```
-GET /gestione_VP/API/index.php?resource=clienti&cliente=CALVI&provincia=MI&page=1&limit=10
+GET /../API/index.php?resource=clienti&cliente=CALVI&provincia=MI&page=1&limit=10
 ```
 
-### GET /gestione_VP/API/index.php?resource=clienti&id={id}
+### GET /../API/index.php?resource=clienti&id={id}
 Recupera un singolo cliente per ID.
 
 **Risposta include:**
 - Dati base del cliente
 - Statistiche: commesse, fatturato, ultima fattura
 
-### POST /gestione_VP/API/index.php?resource=clienti
+### POST /../API/index.php?resource=clienti
 Crea un nuovo cliente.
 
 **Campi richiesti:**
@@ -148,7 +148,7 @@ Crea un nuovo cliente.
 
 **Esempio:**
 ```json
-POST /gestione_VP/API/index.php?resource=clienti
+POST /../API/index.php?resource=clienti
 {
   "Cliente": "ACME SRL",
   "Denominazione_Sociale": "ACME Soluzioni SRL",
@@ -160,10 +160,10 @@ POST /gestione_VP/API/index.php?resource=clienti
 }
 ```
 
-### PUT /gestione_VP/API/index.php?resource=clienti&id={id}
+### PUT /../API/index.php?resource=clienti&id={id}
 Aggiorna un cliente esistente.
 
-### DELETE /gestione_VP/API/index.php?resource=clienti&id={id}
+### DELETE /../API/index.php?resource=clienti&id={id}
 Elimina un cliente (solo se non ha commesse o fatture associate).
 
 ---
@@ -172,7 +172,7 @@ Elimina un cliente (solo se non ha commesse o fatture associate).
 
 Gestione dell'anagrafica collaboratori.
 
-### GET /gestione_VP/API/index.php?resource=collaboratori
+### GET /../API/index.php?resource=collaboratori
 Recupera la lista dei collaboratori.
 
 **Filtri disponibili:**
@@ -180,12 +180,12 @@ Recupera la lista dei collaboratori.
 - `email`: Filtra per email (ricerca parziale)
 - `ruolo`: Filtra per ruolo (Admin, Manager, User, Amministrazione)
 
-### GET /gestione_VP/API/index.php?resource=collaboratori&id={id}
+### GET /../API/index.php?resource=collaboratori&id={id}
 Recupera un singolo collaboratore per ID.
 
 **Nota**: La password non viene mai restituita nelle risposte.
 
-### POST /gestione_VP/API/index.php?resource=collaboratori
+### POST /../API/index.php?resource=collaboratori
 Crea un nuovo collaboratore.
 
 **Campi richiesti:**
@@ -199,7 +199,7 @@ Crea un nuovo collaboratore.
 
 **Esempio:**
 ```json
-POST /gestione_VP/API/index.php?resource=collaboratori
+POST /../API/index.php?resource=collaboratori
 {
   "Collaboratore": "Mario Rossi",
   "Email": "mario.rossi@company.com",
@@ -208,10 +208,10 @@ POST /gestione_VP/API/index.php?resource=collaboratori
 }
 ```
 
-### PUT /gestione_VP/API/index.php?resource=collaboratori&id={id}
+### PUT /../API/index.php?resource=collaboratori&id={id}
 Aggiorna un collaboratore esistente.
 
-### DELETE /gestione_VP/API/index.php?resource=collaboratori&id={id}
+### DELETE /../API/index.php?resource=collaboratori&id={id}
 Elimina un collaboratore (solo se non ha attività associate).
 
 ---
@@ -220,7 +220,7 @@ Elimina un collaboratore (solo se non ha attività associate).
 
 Gestione delle commesse di lavoro.
 
-### GET /gestione_VP/API/index.php?resource=commesse
+### GET /../API/index.php?resource=commesse
 Recupera la lista delle commesse.
 
 **Filtri disponibili:**
@@ -238,10 +238,10 @@ Recupera la lista delle commesse.
 - `Cliente_ID`: ID del cliente associato
 - `Cliente`: Nome del cliente (JOIN)
 
-### GET /gestione_VP/API/index.php?resource=commesse&id={id}
+### GET /../API/index.php?resource=commesse&id={id}
 Recupera una singola commessa per ID.
 
-### POST /gestione_VP/API/index.php?resource=commesse
+### POST /../API/index.php?resource=commesse
 Crea una nuova commessa.
 
 **Campi richiesti:**
@@ -256,7 +256,7 @@ Crea una nuova commessa.
 
 **Esempio:**
 ```json
-POST /gestione_VP/API/index.php?resource=commesse
+POST /../API/index.php?resource=commesse
 {
   "Commessa": "Nuovo Sito Web E-commerce",
   "Cliente_ID": 1,
@@ -267,10 +267,10 @@ POST /gestione_VP/API/index.php?resource=commesse
 }
 ```
 
-### PUT /gestione_VP/API/index.php?resource=commesse&id={id}
+### PUT /../API/index.php?resource=commesse&id={id}
 Aggiorna una commessa esistente.
 
-### DELETE /gestione_VP/API/index.php?resource=commesse&id={id}
+### DELETE /../API/index.php?resource=commesse&id={id}
 Elimina una commessa (solo se non ha task associate).
 
 ---
@@ -279,7 +279,7 @@ Elimina una commessa (solo se non ha task associate).
 
 Gestione dei task di commessa.
 
-### GET /gestione_VP/API/index.php?resource=task
+### GET /../API/index.php?resource=task
 Recupera la lista dei task.
 
 **Filtri disponibili:**
@@ -312,10 +312,10 @@ Recupera la lista dei task.
 - **Valore_Spese_Maturato**: Se Spese_Comprese='No', considera Valore_Spese_std o la somma delle spese dalle giornate, altrimenti 0
 - **Valore_TOT_Maturato**: Somma di Valore_GG_Maturato + Valore_Spese_Maturato
 
-### GET /gestione_VP/API/index.php?resource=task&id={id}
+### GET /../API/index.php?resource=task&id={id}
 Recupera un singolo task per ID con informazioni correlate.
 
-### POST /gestione_VP/API/index.php?resource=task
+### POST /../API/index.php?resource=task
 Crea un nuovo task.
 
 **Campi richiesti:**
@@ -332,7 +332,7 @@ Crea un nuovo task.
 
 **Esempio:**
 ```json
-POST /gestione_VP/API/index.php?resource=task
+POST /../API/index.php?resource=task
 {
   "Task": "Sviluppo Frontend",
   "Commessa_ID": 1,
@@ -345,10 +345,10 @@ POST /gestione_VP/API/index.php?resource=task
 }
 ```
 
-### PUT /gestione_VP/API/index.php?resource=task&id={id}
+### PUT /../API/index.php?resource=task&id={id}
 Aggiorna un task esistente.
 
-### DELETE /gestione_VP/API/index.php?resource=task&id={id}
+### DELETE /../API/index.php?resource=task&id={id}
 Elimina un task (solo se non ha giornate associate).
 
 ---
@@ -357,7 +357,7 @@ Elimina un task (solo se non ha giornate associate).
 
 Gestione delle tariffe collaboratori.
 
-### GET /gestione_VP/API/index.php?resource=tariffe
+### GET /../API/index.php?resource=tariffe
 Recupera la lista delle tariffe.
 
 **Filtri disponibili:**
@@ -375,10 +375,10 @@ Recupera la lista delle tariffe.
 - `Dal`: Data inizio validità (YYYY-MM-DD)
 - `Al`: Data fine validità (YYYY-MM-DD)
 
-### GET /gestione_VP/API/index.php?resource=tariffe&id={id}
+### GET /../API/index.php?resource=tariffe&id={id}
 Recupera una singola tariffa per ID.
 
-### POST /gestione_VP/API/index.php?resource=tariffe
+### POST /../API/index.php?resource=tariffe
 Crea una nuova tariffa.
 
 **Campi richiesti:**
@@ -392,7 +392,7 @@ Crea una nuova tariffa.
 
 **Esempio:**
 ```json
-POST /gestione_VP/API/index.php?resource=tariffe
+POST /../API/index.php?resource=tariffe
 {
   "Collaboratore_ID": 1,
   "Commessa_ID": 5,
@@ -402,10 +402,10 @@ POST /gestione_VP/API/index.php?resource=tariffe
 }
 ```
 
-### PUT /gestione_VP/API/index.php?resource=tariffe&id={id}
+### PUT /../API/index.php?resource=tariffe&id={id}
 Aggiorna una tariffa esistente.
 
-### DELETE /gestione_VP/API/index.php?resource=tariffe&id={id}
+### DELETE /../API/index.php?resource=tariffe&id={id}
 Elimina una tariffa (solo se non ha giornate associate).
 
 ---
@@ -414,7 +414,7 @@ Elimina una tariffa (solo se non ha giornate associate).
 
 Gestione delle giornate lavorative.
 
-### GET /gestione_VP/API/index.php?resource=giornate
+### GET /../API/index.php?resource=giornate
 Recupera la lista delle giornate.
 
 **Filtri disponibili:**
@@ -435,10 +435,10 @@ Recupera la lista delle giornate.
 - `Tariffa_GG`: Tariffa applicata (decimale)
 - `Note`: Note aggiuntive
 
-### GET /gestione_VP/API/index.php?resource=giornate&id={id}
+### GET /../API/index.php?resource=giornate&id={id}
 Recupera una singola giornata per ID.
 
-### POST /gestione_VP/API/index.php?resource=giornate
+### POST /../API/index.php?resource=giornate
 Crea una nuova giornata lavorativa.
 
 **Campi richiesti:**
@@ -453,7 +453,7 @@ Crea una nuova giornata lavorativa.
 
 **Esempio:**
 ```json
-POST /gestione_VP/API/index.php?resource=giornate
+POST /../API/index.php?resource=giornate
 {
   "Data": "2024-01-20",
   "Collaboratore_ID": 1,
@@ -464,10 +464,10 @@ POST /gestione_VP/API/index.php?resource=giornate
 }
 ```
 
-### PUT /gestione_VP/API/index.php?resource=giornate&id={id}
+### PUT /../API/index.php?resource=giornate&id={id}
 Aggiorna una giornata esistente.
 
-### DELETE /gestione_VP/API/index.php?resource=giornate&id={id}
+### DELETE /../API/index.php?resource=giornate&id={id}
 Elimina una giornata.
 
 ---
@@ -476,7 +476,7 @@ Elimina una giornata.
 
 Gestione delle fatture emesse.
 
-### GET /gestione_VP/API/index.php?resource=fatture
+### GET /../API/index.php?resource=fatture
 Recupera la lista delle fatture.
 
 **Filtri disponibili:**
@@ -497,10 +497,10 @@ Recupera la lista delle fatture.
 - `Scadenza`: Data scadenza (YYYY-MM-DD)
 - `Pagata`: Flag pagamento (boolean)
 
-### GET /gestione_VP/API/index.php?resource=fatture&id={id}
+### GET /../API/index.php?resource=fatture&id={id}
 Recupera una singola fattura per ID con dettagli completi.
 
-### POST /gestione_VP/API/index.php?resource=fatture
+### POST /../API/index.php?resource=fatture
 Crea una nuova fattura.
 
 **Campi richiesti:**
@@ -517,7 +517,7 @@ Crea una nuova fattura.
 
 **Esempio:**
 ```json
-POST /gestione_VP/API/index.php?resource=fatture
+POST /../API/index.php?resource=fatture
 {
   "Cliente_ID": 1,
   "Data_Emissione": "2024-01-15",
@@ -528,10 +528,10 @@ POST /gestione_VP/API/index.php?resource=fatture
 }
 ```
 
-### PUT /gestione_VP/API/index.php?resource=fatture&id={id}
+### PUT /../API/index.php?resource=fatture&id={id}
 Aggiorna una fattura esistente.
 
-### DELETE /gestione_VP/API/index.php?resource=fatture&id={id}
+### DELETE /../API/index.php?resource=fatture&id={id}
 Elimina una fattura.
 
 ---
@@ -542,7 +542,7 @@ Elimina una fattura.
 
 ```bash
 # 1. Crea cliente
-curl -X POST "http://your-domain.com/gestione_VP/API/index.php?resource=clienti" \
+curl -X POST "http://your-domain.com/../API/index.php?resource=clienti" \
   -H "Content-Type: application/json" \
   -d '{
     "Cliente": "TECH SOLUTIONS SRL",
@@ -551,7 +551,7 @@ curl -X POST "http://your-domain.com/gestione_VP/API/index.php?resource=clienti"
   }'
 
 # 2. Crea commessa
-curl -X POST "http://your-domain.com/gestione_VP/API/index.php?resource=commesse" \
+curl -X POST "http://your-domain.com/../API/index.php?resource=commesse" \
   -H "Content-Type: application/json" \
   -d '{
     "Commessa": "Implementazione Sito Web",
@@ -561,7 +561,7 @@ curl -X POST "http://your-domain.com/gestione_VP/API/index.php?resource=commesse
   }'
 
 # 3. Crea task
-curl -X POST "http://your-domain.com/gestione_VP/API/index.php?resource=task" \
+curl -X POST "http://your-domain.com/../API/index.php?resource=task" \
   -H "Content-Type: application/json" \
   -d '{
     "Task": "Analisi Requisiti",
@@ -576,7 +576,7 @@ curl -X POST "http://your-domain.com/gestione_VP/API/index.php?resource=task" \
 
 ```bash
 # Registra giornata
-curl -X POST "http://your-domain.com/gestione_VP/API/index.php?resource=giornate" \
+curl -X POST "http://your-domain.com/../API/index.php?resource=giornate" \
   -H "Content-Type: application/json" \
   -d '{
     "Data": "2024-02-05",
@@ -591,13 +591,13 @@ curl -X POST "http://your-domain.com/gestione_VP/API/index.php?resource=giornate
 
 ```bash
 # Lista task per commessa con paginazione
-curl "http://your-domain.com/gestione_VP/API/index.php?resource=task&commessa=1&page=1&limit=50"
+curl "http://your-domain.com/../API/index.php?resource=task&commessa=1&page=1&limit=50"
 
 # Lista giornate per collaboratore in un periodo
-curl "http://your-domain.com/gestione_VP/API/index.php?resource=giornate&collaboratore=2&data_da=2024-02-01&data_a=2024-02-29"
+curl "http://your-domain.com/../API/index.php?resource=giornate&collaboratore=2&data_da=2024-02-01&data_a=2024-02-29"
 
 # Lista fatture per cliente
-curl "http://your-domain.com/gestione_VP/API/index.php?resource=fatture&cliente=1&data_da=2024-01-01"
+curl "http://your-domain.com/../API/index.php?resource=fatture&cliente=1&data_da=2024-01-01"
 ```
 
 ---
@@ -645,7 +645,7 @@ curl "http://your-domain.com/gestione_VP/API/index.php?resource=fatture&cliente=
 
 ### Architettura del Sistema
 - **Routing**: Sistema parametrico via `?resource=nome_risorsa`
-- **Base URL**: `/gestione_VP/API/index.php`
+- **Base URL**: `/../API/index.php`
 - **Versione**: 1.0.0
 - **Formato**: JSON per request/response
 - **Encoding**: UTF-8

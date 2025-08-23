@@ -654,19 +654,19 @@ class ConsuntivazioneApp {
         
         statsGrid.innerHTML = `
             <div class="stat-card">
-                <div class="stat-number">${this.statistiche.ore_mese || '0'}</div>
+                <div class="stat-number">${parseFloat(this.statistiche.ore_mese || '0').toFixed(1)}</div>
                 <div class="stat-label">Giornate nel Mese</div>
             </div>
             <div class="stat-card">
-                <div class="stat-number">€ ${this.statistiche.spese_mese || '0'}</div>
+                <div class="stat-number">€ ${this.formatItalianNumber(this.statistiche.spese_mese || '0')}</div>
                 <div class="stat-label">Spese del mese</div>
             </div>
             <div class="stat-card">
-                <div class="stat-number">€ ${this.statistiche.spese_rimborsabili || '0'}</div>
+                <div class="stat-number">€ ${this.formatItalianNumber(this.statistiche.spese_rimborsabili || '0')}</div>
                 <div class="stat-label">Spese Rimborsabili</div>
             </div>
             <div class="stat-card">
-                <div class="stat-number">€ ${this.statistiche.costo_gg || '0'}</div>
+                <div class="stat-number">€ ${this.formatItalianNumber(this.statistiche.costo_gg || '0')}</div>
                 <div class="stat-label">Costo gg</div>
             </div>
             <div class="stat-card">
@@ -806,11 +806,11 @@ class ConsuntivazioneApp {
         const rimborsabiliElement = document.getElementById('speseRimborsabili');
         
         if (totaleElement) {
-            totaleElement.textContent = totale.toFixed(2);
+            totaleElement.textContent = this.formatItalianNumber(totale);
         }
         
         if (rimborsabiliElement) {
-            rimborsabiliElement.textContent = Math.max(0, rimborsabili).toFixed(2);
+            rimborsabiliElement.textContent = this.formatItalianNumber(Math.max(0, rimborsabili));
         }
     }
     
@@ -949,8 +949,8 @@ class ConsuntivazioneApp {
                     <span>Vitto/Alloggio: € ${parseFloat(cons.Vitto_alloggio || 0).toFixed(2)}</span>
                     <span>Altre: € ${parseFloat(cons.Altri_costi || 0).toFixed(2)}</span>
                     <span>Fatturate VP: € ${parseFloat(cons.Spese_Fatturate_VP || 0).toFixed(2)}</span>
-                    <strong>Tot: € ${parseFloat(cons.Totale_Spese || 0).toFixed(2)}</strong>
-                    <strong>Rimborsabili: € ${Math.max(0, parseFloat(cons.Totale_Spese || 0) - parseFloat(cons.Spese_Fatturate_VP || 0)).toFixed(2)}</strong>
+                    <strong>Tot: € ${this.formatItalianNumber(cons.Totale_Spese || 0)}</strong>
+                    <strong>Rimborsabili: € ${this.formatItalianNumber(Math.max(0, parseFloat(cons.Totale_Spese || 0) - parseFloat(cons.Spese_Fatturate_VP || 0)))}</strong>
                 </div>
                 ${cons.Confermata === 'No' ? `
                     <div class="consuntivazione-actions mt-2">
@@ -1185,7 +1185,7 @@ class ConsuntivazioneApp {
         let html = `
             <!-- Statistiche Generali -->
             <div class="row mb-4">
-                <div class="col-md-3">
+                <div class="col-md-2 col-sm-6 mb-3">
                     <div class="card bg-primary text-white">
                         <div class="card-body text-center">
                             <h5>${statistiche.numero_consuntivazioni}</h5>
@@ -1193,7 +1193,7 @@ class ConsuntivazioneApp {
                         </div>
                     </div>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2 col-sm-6 mb-3">
                     <div class="card bg-success text-white">
                         <div class="card-body text-center">
                             <h5>${statistiche.totale_giornate.toFixed(1)}</h5>
@@ -1201,19 +1201,27 @@ class ConsuntivazioneApp {
                         </div>
                     </div>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2 col-sm-6 mb-3">
                     <div class="card bg-info text-white">
                         <div class="card-body text-center">
-                            <h5>€ ${statistiche.totale_spese.toFixed(2)}</h5>
+                            <h5>€ ${this.formatItalianNumber(statistiche.totale_spese)}</h5>
                             <small>Totale Spese</small>
                         </div>
                     </div>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2 col-sm-6 mb-3">
                     <div class="card bg-warning text-dark">
                         <div class="card-body text-center">
-                            <h5>€ ${(statistiche.totale_spese_rimborsabili || 0).toFixed(2)}</h5>
+                            <h5>€ ${this.formatItalianNumber(statistiche.totale_spese_rimborsabili || 0)}</h5>
                             <small>Spese Rimborsabili</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4 col-sm-12 mb-3">
+                    <div class="card bg-dark text-white">
+                        <div class="card-body text-center">
+                            <h5>€ ${this.formatItalianNumber(statistiche.totale_costo_gg || 0)}</h5>
+                            <small>Costo gg Totale</small>
                         </div>
                     </div>
                 </div>
@@ -1236,6 +1244,7 @@ class ConsuntivazioneApp {
                                 <th class="text-center">Giornate</th>
                                 <th class="text-end">Spese Totali</th>
                                 <th class="text-end">Spese Rimborsabili</th>
+                                <th class="text-end">Costo gg</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -1247,8 +1256,9 @@ class ConsuntivazioneApp {
                         <td>${mese.nome_mese} ${mese.anno}</td>
                         <td class="text-center">${mese.count}</td>
                         <td class="text-center">${mese.giornate.toFixed(1)}</td>
-                        <td class="text-end">€ ${mese.spese.toFixed(2)}</td>
-                        <td class="text-end">€ ${(mese.spese_rimborsabili || 0).toFixed(2)}</td>
+                        <td class="text-end">€ ${this.formatItalianNumber(mese.spese)}</td>
+                        <td class="text-end">€ ${this.formatItalianNumber(mese.spese_rimborsabili || 0)}</td>
+                        <td class="text-end">€ ${this.formatItalianNumber(mese.costo_gg || 0)}</td>
                     </tr>
                 `;
             });
@@ -1315,7 +1325,7 @@ class ConsuntivazioneApp {
                         <span class="badge bg-primary">${cons.gg}</span>
                     </td>
                     <td class="text-end">
-                        € ${parseFloat(cons.Totale_Spese || 0).toFixed(2)}
+                        € ${this.formatItalianNumber(cons.Totale_Spese || 0)}
                     </td>
                     <td class="text-center">
                         ${cons.Confermata === 'Si' ? 
@@ -1382,6 +1392,17 @@ class ConsuntivazioneApp {
     }
     
     /**
+     * Formatta un numero in formato italiano (virgola per decimali, punto per migliaia)
+     */
+    formatItalianNumber(value) {
+        const num = parseFloat(value || 0);
+        return num.toLocaleString('it-IT', { 
+            minimumFractionDigits: 2, 
+            maximumFractionDigits: 2 
+        });
+    }
+
+    /**
      * Formatta un numero per l'esportazione CSV usando la virgola come separatore decimale (formato italiano)
      */
     formatNumberForCSV(value) {
@@ -1391,7 +1412,7 @@ class ConsuntivazioneApp {
     }
     
     downloadCSV(data, filename) {
-        const headers = ['Data', 'Progetto', 'Cliente', 'Task', 'Giorni', 'Spese Viaggio', 'Vitto/Alloggio', 'Altre Spese', 'Spese Fatturate VP', 'Totale Spese', 'Spese Rimborsabili', 'Note'];
+        const headers = ['Data', 'Progetto', 'Cliente', 'Task', 'Tipo', 'Giorni', 'Spese Viaggio', 'Vitto/Alloggio', 'Altre Spese', 'Spese Fatturate VP', 'Totale Spese', 'Spese Rimborsabili', 'Costo gg', 'Note'];
         
         let csvContent = headers.join(';') + '\n';
         
@@ -1405,6 +1426,7 @@ class ConsuntivazioneApp {
                 `"${row.Commessa || ''}"`,
                 `"${row.Cliente || ''}"`,
                 `"${row.Task || ''}"`,
+                `"${row.Tipo || ''}"`,
                 this.formatNumberForCSV(row.gg),
                 this.formatNumberForCSV(row.Spese_Viaggi || 0),
                 this.formatNumberForCSV(row.Vitto_alloggio || 0),
@@ -1412,6 +1434,7 @@ class ConsuntivazioneApp {
                 this.formatNumberForCSV(speseFattVP),
                 this.formatNumberForCSV(totaleSpese),
                 this.formatNumberForCSV(speseRimborsabili),
+                this.formatNumberForCSV(row.costo_gg || 0),
                 `"${row.Note || ''}"`
             ].join(';');
             csvContent += csvRow + '\n';

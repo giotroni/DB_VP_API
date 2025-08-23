@@ -1,6 +1,6 @@
 [2025-08-20 10:59:41] === INIZIO IMPORTAZIONE CSV ===
 [2025-08-20 10:59:41] Data/Ora: 2025-08-20 10:59:41
-[2025-08-20 10:59:41] Cartella dati: /home2/vaglioty/public_html/gestione_VP/DB/Dati
+[2025-08-20 10:59:41] Cartella dati: /home2/vaglioty/public_html/../DB/Dati
 [2025-08-20 10:59:41] Utente ha scelto di svuotare le tabelle
 [2025-08-20 10:59:41] Tabella FACT_FATTURE svuotata
 [2025-08-20 10:59:41] Tabella FACT_GIORNATE svuotata
@@ -18,7 +18,7 @@
 [2025-08-20 10:59:41] File trovato: FACT_FATTURE.csv (8223 bytes)
 [2025-08-20 10:59:41] Inizio importazione: ANA_CLIENTI.csv → ANA_CLIENTI
 [2025-08-20 10:59:41] === INIZIO IMPORTAZIONE ANA_CLIENTI ===
-[2025-08-20 10:59:41] File: /home2/vaglioty/public_html/gestione_VP/DB/Dati/ANA_CLIENTI.csv
+[2025-08-20 10:59:41] File: /home2/vaglioty/public_html/../DB/Dati/ANA_CLIENTI.csv
 [2025-08-20 10:59:41] Headers originali: ID_CLIENTE, Cliente, Denominazione_Sociale, Indirizzo, Citta, CAP, Provincia, P_IVA, Data_Creazione, ID_UTENTE_CREAZIONE, Data_Modifica, ID_UTENTE_MODIFICA, 
 [2025-08-20 10:59:41] Headers puliti: ID_CLIENTE, Cliente, Denominazione_Sociale, Indirizzo, Citta, CAP, Provincia, P_IVA, Data_Creazione, ID_UTENTE_CREAZIONE, Data_Modifica, ID_UTENTE_MODIFICA
 [2025-08-20 10:59:41] Numero di colonne header: 12
@@ -51,7 +51,7 @@
 [2025-08-20 10:59:41] Riga 17: regolato numero campi da 13 a 12
 [2025-08-20 10:59:41] Riga 18: regolato numero campi da 13 a 12
 [2025-08-20 10:59:41] Riga 19: regolato numero campi da 13 a 12
-[2025-08-20 10:59:41] Completata lettura file /home2/vaglioty/public_html/gestione_VP/DB/Dati/ANA_CLIENTI.csv:
+[2025-08-20 10:59:41] Completata lettura file /home2/vaglioty/public_html/../DB/Dati/ANA_CLIENTI.csv:
 [2025-08-20 10:59:41] - Righe totali processate: 18
 [2025-08-20 10:59:41] - Record importati con successo: 18
 [2025-08-20 10:59:41] - Record saltati/duplicati: 0
@@ -59,7 +59,7 @@
 [2025-08-20 10:59:41] Completata importazione ANA_CLIENTI: 18 record importati, 0 errori, 0 saltati
 [2025-08-20 10:59:41] Inizio importazione: ANA_COLLABORATORI.csv → ANA_COLLABORATORI
 [2025-08-20 10:59:41] === INIZIO IMPORTAZIONE ANA_COLLABORATORI ===
-[2025-08-20 10:59:41] File: /home2/vaglioty/public_html/gestione_VP/DB/Dati/ANA_COLLABORATORI.csv
+[2025-08-20 10:59:41] File: /home2/vaglioty/public_html/../DB/Dati/ANA_COLLABORATORI.csv
 [2025-08-20 10:59:41] Headers originali: ID_COLLABORATORE, Collaboratore, Email, PWD, Ruolo, PIVA, Data_Creazione, ID_UTENTE_CREAZIONE, Data_Modifica, ID_UTENTE_MODIFICA
 [2025-08-20 10:59:41] Headers puliti: ID_COLLABORATORE, Collaboratore, Email, PWD, Ruolo, PIVA, Data_Creazione, ID_UTENTE_CREAZIONE, Data_Modifica, ID_UTENTE_MODIFICA
 [2025-08-20 10:59:41] Numero di colonne header: 10
@@ -74,7 +74,7 @@
 [2025-08-20 10:59:41] Riga 4 dati grezzi: CONS003 | Giorgio Troni | gtroni@vaglioandpartners.com | Partner1963 | Admin |  |  |  |  | 
 [2025-08-20 10:59:41] Numero di campi riga 4: 10
 [2025-08-20 10:59:41] Record 3 parametri: {"ID_COLLABORATORE":"CONS003","Collaboratore":"Giorgio Troni","Email":"gtroni@vaglioandpartners.com","PWD":"Partner1963","Ruolo":"Admin","PIVA":null,"Data_Creazione":null,"ID_UTENTE_CREAZIONE":null,"Data_Modifica":null,"ID_UTENTE_MODIFICA":null}
-[2025-08-20 10:59:41] Completata lettura file /home2/vaglioty/public_html/gestione_VP/DB/Dati/ANA_COLLABORATORI.csv:
+[2025-08-20 10:59:41] Completata lettura file /home2/vaglioty/public_html/../DB/Dati/ANA_COLLABORATORI.csv:
 [2025-08-20 10:59:41] - Righe totali processate: 5
 [2025-08-20 10:59:41] - Record importati con successo: 5
 [2025-08-20 10:59:41] - Record saltati/duplicati: 0
@@ -82,7 +82,7 @@
 [2025-08-20 10:59:41] Completata importazione ANA_COLLABORATORI: 5 record importati, 0 errori, 0 saltati
 [2025-08-20 10:59:41] Inizio importazione: ANA_COMMESSE.csv → ANA_COMMESSE
 [2025-08-20 10:59:41] === INIZIO IMPORTAZIONE ANA_COMMESSE ===
-[2025-08-20 10:59:41] File: /home2/vaglioty/public_html/gestione_VP/DB/Dati/ANA_COMMESSE.csv
+[2025-08-20 10:59:41] File: /home2/vaglioty/public_html/../DB/Dati/ANA_COMMESSE.csv
 [2025-08-20 10:59:41] Headers originali: ID_COMMESSA, Commessa, Desc_Commessa, Tipo_Commessa, ID_CLIENTE, Commissione, ID_COLLABORATORE, Data_Apertura_Commessa, Stato_Commessa, Documento_Offerta, Documento_Ordine, Data_Creazione, ID_UTENTE_CREAZIONE, Data_Modifica, ID_UTENTE_MODIFICA
 [2025-08-20 10:59:41] Headers puliti: ID_COMMESSA, Commessa, Desc_Commessa, Tipo_Commessa, ID_CLIENTE, Commissione, ID_COLLABORATORE, Data_Apertura_Commessa, Stato_Commessa, Documento_Offerta, Documento_Ordine, Data_Creazione, ID_UTENTE_CREAZIONE, Data_Modifica, ID_UTENTE_MODIFICA
 [2025-08-20 10:59:41] Numero di colonne header: 15
@@ -97,7 +97,7 @@
 [2025-08-20 10:59:41] Riga 4 dati grezzi: COM0003 | MANTUA | Supporto Sviluppo | Cliente | CLI0006 |  0,27  | CONS001 | 01/12/24 | In corso |  |  |  |  |  | 
 [2025-08-20 10:59:41] Numero di campi riga 4: 15
 [2025-08-20 10:59:41] Record 3 parametri: {"ID_COMMESSA":"COM0003","Commessa":"MANTUA","Desc_Commessa":"Supporto Sviluppo","Tipo_Commessa":"Cliente","ID_CLIENTE":"CLI0006","Commissione":"0,27","ID_COLLABORATORE":"CONS001","Data_Apertura_Commessa":"2024-12-01","Stato_Commessa":"In corso","Documento_Offerta":null,"Documento_Ordine":null,"Data_Creazione":null,"ID_UTENTE_CREAZIONE":null,"Data_Modifica":null,"ID_UTENTE_MODIFICA":null}
-[2025-08-20 10:59:41] Completata lettura file /home2/vaglioty/public_html/gestione_VP/DB/Dati/ANA_COMMESSE.csv:
+[2025-08-20 10:59:41] Completata lettura file /home2/vaglioty/public_html/../DB/Dati/ANA_COMMESSE.csv:
 [2025-08-20 10:59:41] - Righe totali processate: 15
 [2025-08-20 10:59:41] - Record importati con successo: 15
 [2025-08-20 10:59:41] - Record saltati/duplicati: 0
@@ -105,7 +105,7 @@
 [2025-08-20 10:59:41] Completata importazione ANA_COMMESSE: 15 record importati, 0 errori, 0 saltati
 [2025-08-20 10:59:41] Inizio importazione: ANA_TASK.csv → ANA_TASK
 [2025-08-20 10:59:41] === INIZIO IMPORTAZIONE ANA_TASK ===
-[2025-08-20 10:59:41] File: /home2/vaglioty/public_html/gestione_VP/DB/Dati/ANA_TASK.csv
+[2025-08-20 10:59:41] File: /home2/vaglioty/public_html/../DB/Dati/ANA_TASK.csv
 [2025-08-20 10:59:41] Headers originali: ID_TASK, Task, Desc_Task, ID_COMMESSA, ID_COLLABORATORE, Tipo, Data_Apertura_Task, Stato_Task, gg_previste, Spese_Comprese, Valore_Spese_std, Valore_gg, Data_Creazione, ID_UTENTE_CREAZIONE, Data_Modifica, ID_UTENTE_MODIFICA
 [2025-08-20 10:59:41] Headers puliti: ID_TASK, Task, Desc_Task, ID_COMMESSA, ID_COLLABORATORE, Tipo, Data_Apertura_Task, Stato_Task, gg_previste, Spese_Comprese, Valore_Spese_std, Valore_gg, Data_Creazione, ID_UTENTE_CREAZIONE, Data_Modifica, ID_UTENTE_MODIFICA
 [2025-08-20 10:59:41] Numero di colonne header: 16
@@ -120,7 +120,7 @@
 [2025-08-20 10:59:41] Riga 4 dati grezzi: TAS00003 | CALVI COORDINAMENTO | Coordinamento | COM0001 | CONS001 | Monitoraggio | 01/12/24 | In corso |  | Si |  | 0,1 |  |  |  | 
 [2025-08-20 10:59:41] Numero di campi riga 4: 16
 [2025-08-20 10:59:41] Record 3 parametri: {"ID_TASK":"TAS00003","Task":"CALVI COORDINAMENTO","Desc_Task":"Coordinamento","ID_COMMESSA":"COM0001","ID_COLLABORATORE":"CONS001","Tipo":"Monitoraggio","Data_Apertura_Task":"2024-12-01","Stato_Task":"In corso","gg_previste":null,"Spese_Comprese":"Si","Valore_Spese_std":null,"Valore_gg":"0,1","Data_Creazione":null,"ID_UTENTE_CREAZIONE":null,"Data_Modifica":null,"ID_UTENTE_MODIFICA":null}
-[2025-08-20 10:59:41] Completata lettura file /home2/vaglioty/public_html/gestione_VP/DB/Dati/ANA_TASK.csv:
+[2025-08-20 10:59:41] Completata lettura file /home2/vaglioty/public_html/../DB/Dati/ANA_TASK.csv:
 [2025-08-20 10:59:41] - Righe totali processate: 28
 [2025-08-20 10:59:41] - Record importati con successo: 28
 [2025-08-20 10:59:41] - Record saltati/duplicati: 0
@@ -128,7 +128,7 @@
 [2025-08-20 10:59:41] Completata importazione ANA_TASK: 28 record importati, 0 errori, 0 saltati
 [2025-08-20 10:59:41] Inizio importazione: ANA_TARIFFE_COLLABORATORI.csv → ANA_TARIFFE_COLLABORATORI
 [2025-08-20 10:59:41] === INIZIO IMPORTAZIONE ANA_TARIFFE_COLLABORATORI ===
-[2025-08-20 10:59:41] File: /home2/vaglioty/public_html/gestione_VP/DB/Dati/ANA_TARIFFE_COLLABORATORI.csv
+[2025-08-20 10:59:41] File: /home2/vaglioty/public_html/../DB/Dati/ANA_TARIFFE_COLLABORATORI.csv
 [2025-08-20 10:59:41] Headers originali: ID_TARIFFA, ID_COLLABORATORE, ID_COMMESSA, Tariffa_gg, Spese_comprese, Dal, Data_Creazione, ID_UTENTE_CREAZIONE, Data_Modifica, ID_UTENTE_MODIFICA
 [2025-08-20 10:59:41] Headers puliti: ID_TARIFFA, ID_COLLABORATORE, ID_COMMESSA, Tariffa_gg, Spese_comprese, Dal, Data_Creazione, ID_UTENTE_CREAZIONE, Data_Modifica, ID_UTENTE_MODIFICA
 [2025-08-20 10:59:41] Numero di colonne header: 10
@@ -143,7 +143,7 @@
 [2025-08-20 10:59:41] Riga 4 dati grezzi: TAR00003 | CONS003 |  | 850 | No | 01/12/2024 |  |  |  | 
 [2025-08-20 10:59:41] Numero di campi riga 4: 10
 [2025-08-20 10:59:41] Record 3 parametri: {"ID_TARIFFA":"TAR00003","ID_COLLABORATORE":"CONS003","ID_COMMESSA":null,"Tariffa_gg":"850","Spese_comprese":"No","Dal":"01\/12\/2024","Data_Creazione":null,"ID_UTENTE_CREAZIONE":null,"Data_Modifica":null,"ID_UTENTE_MODIFICA":null}
-[2025-08-20 10:59:41] Completata lettura file /home2/vaglioty/public_html/gestione_VP/DB/Dati/ANA_TARIFFE_COLLABORATORI.csv:
+[2025-08-20 10:59:41] Completata lettura file /home2/vaglioty/public_html/../DB/Dati/ANA_TARIFFE_COLLABORATORI.csv:
 [2025-08-20 10:59:41] - Righe totali processate: 5
 [2025-08-20 10:59:41] - Record importati con successo: 5
 [2025-08-20 10:59:41] - Record saltati/duplicati: 0
@@ -151,7 +151,7 @@
 [2025-08-20 10:59:41] Completata importazione ANA_TARIFFE_COLLABORATORI: 5 record importati, 0 errori, 0 saltati
 [2025-08-20 10:59:41] Inizio importazione: FACT_GIORNATE.csv → FACT_GIORNATE
 [2025-08-20 10:59:41] === INIZIO IMPORTAZIONE FACT_GIORNATE ===
-[2025-08-20 10:59:41] File: /home2/vaglioty/public_html/gestione_VP/DB/Dati/FACT_GIORNATE.csv
+[2025-08-20 10:59:41] File: /home2/vaglioty/public_html/../DB/Dati/FACT_GIORNATE.csv
 [2025-08-20 10:59:41] Headers originali: ID_GIORNATA, Data, ID_COLLABORATORE, ID_TASK, Tipo, Desk, gg, Spese_Viaggi, Vitto_alloggio, Altri_costi, Note, Data_Creazione, ID_UTENTE_CREAZIONE, Data_Modifica, ID_UTENTE_MODIFICA, 
 [2025-08-20 10:59:41] Headers puliti: ID_GIORNATA, Data, ID_COLLABORATORE, ID_TASK, Tipo, Desk, gg, Spese_Viaggi, Vitto_alloggio, Altri_costi, Note, Data_Creazione, ID_UTENTE_CREAZIONE, Data_Modifica, ID_UTENTE_MODIFICA
 [2025-08-20 10:59:41] Numero di colonne header: 15
@@ -319,7 +319,7 @@
 [2025-08-20 10:59:41] Riga 150: regolato numero campi da 16 a 15
 [2025-08-20 10:59:41] Riga 151: regolato numero campi da 16 a 15
 [2025-08-20 10:59:41] Riga 152: regolato numero campi da 16 a 15
-[2025-08-20 10:59:41] Completata lettura file /home2/vaglioty/public_html/gestione_VP/DB/Dati/FACT_GIORNATE.csv:
+[2025-08-20 10:59:41] Completata lettura file /home2/vaglioty/public_html/../DB/Dati/FACT_GIORNATE.csv:
 [2025-08-20 10:59:41] - Righe totali processate: 151
 [2025-08-20 10:59:41] - Record importati con successo: 151
 [2025-08-20 10:59:41] - Record saltati/duplicati: 0
@@ -327,17 +327,17 @@
 [2025-08-20 10:59:41] Completata importazione FACT_GIORNATE: 151 record importati, 0 errori, 0 saltati
 [2025-08-20 10:59:41] Inizio importazione: FACT_FATTURE.csv → FACT_FATTURE
 [2025-08-20 10:59:41] === INIZIO IMPORTAZIONE FACT_FATTURE ===
-[2025-08-20 10:59:41] File: /home2/vaglioty/public_html/gestione_VP/DB/Dati/FACT_FATTURE.csv
+[2025-08-20 10:59:41] File: /home2/vaglioty/public_html/../DB/Dati/FACT_FATTURE.csv
 [2025-08-20 10:59:41] Headers originali: ID_FATTURA, Data, ID_CLIENTE, TIPO, NR, ID_COMMESSA, Fatturato_gg, Fatturato_Spese, Fatturato_TOT, Note, Riferimento_Ordine, Data_Ordine, Tempi_Pagamento, Scadenza_Pagamento, Data_Pagamento, Valore_Pagato, Data_Creazione, ID_UTENTE_CREAZIONE, Data_Modifica, ID_UTENTE_MODIFICA
 [2025-08-20 10:59:41] Headers puliti: ID_FATTURA, Data, ID_CLIENTE, TIPO, NR, ID_COMMESSA, Fatturato_gg, Fatturato_Spese, Fatturato_TOT, Note, Riferimento_Ordine, Data_Ordine, Tempi_Pagamento, Scadenza_Pagamento, Data_Pagamento, Valore_Pagato, Data_Creazione, ID_UTENTE_CREAZIONE, Data_Modifica, ID_UTENTE_MODIFICA
 [2025-08-20 10:59:41] Numero di colonne header: 20
 [2025-08-20 10:59:41] Query preparata: INSERT IGNORE INTO `FACT_FATTURE` (`ID_FATTURA`, `Data`, `ID_CLIENTE`, `TIPO`, `NR`, `ID_COMMESSA`, `Fatturato_gg`, `Fatturato_Spese`, `Fatturato_TOT`, `Note`, `Riferimento_Ordine`, `Data_Ordine`, `Tempi_Pagamento`, `Scadenza_Pagamento`, `Data_Pagamento`, `Valore_Pagato`, `Data_Creazione`, `ID_UTENTE_CREAZIONE`, `Data_Modifica`, `ID_UTENTE_MODIFICA`) VALUES (:ID_FATTURA, :Data, :ID_CLIENTE, :TIPO, :NR, :ID_COMMESSA, :Fatturato_gg, :Fatturato_Spese, :Fatturato_TOT, :Note, :Riferimento_Ordine, :Data_Ordine, :Tempi_Pagamento, :Scadenza_Pagamento, :Data_Pagamento, :Valore_Pagato, :Data_Creazione, :ID_UTENTE_CREAZIONE, :Data_Modifica, :ID_UTENTE_MODIFICA)
 [2025-08-20 10:59:41] Numero totale di righe dati da processare: 37
-[2025-08-20 10:59:41] Riga 2 dati grezzi:  | 31/01/25 | CLI0006 | Fattura | 25_001 | COM0003 | 1550 | 250 | 1800 | Attivit� di supporto consulenziale c/o il Vostro 
+[2025-08-20 10:59:41] Riga 2 dati grezzi:  | 31/01/25 | CLI0006 | Fattura | 25_001 | COM0003 | 1550 | 250 | 1800 | Attivit� di supporto consulenziale c/o il Vostro 
 stabilimento di Mantova.  |  |  | 30 | 02/03/25 |  |  |  |  |  | 
 [2025-08-20 10:59:41] Numero di campi riga 2: 20
 [2025-08-20 10:59:41] Record 1 parametri: 
-[2025-08-20 10:59:41] Riga 3 dati grezzi:  | 23/12/24 | CLI0006 | Fattura | 24_001 | COM0003 | 1838 |  | 1838 | Attivit� di supporto consulenziale c/o il Vostro 
+[2025-08-20 10:59:41] Riga 3 dati grezzi:  | 23/12/24 | CLI0006 | Fattura | 24_001 | COM0003 | 1838 |  | 1838 | Attivit� di supporto consulenziale c/o il Vostro 
 stabilimento di Mantova.  |  |  | 30 | 22/01/25 | 20/02/25 |  |  |  |  | 
 [2025-08-20 10:59:41] Numero di campi riga 3: 20
 [2025-08-20 10:59:41] Record 2 parametri: 
@@ -381,7 +381,7 @@ stabilimento di Mantova.  |  |  | 30 | 22/01/25 | 20/02/25 |  |  |  |  |
 [2025-08-20 10:59:41] Record 2 parametri: {"ID_FATTURA":null,"Data":"2025-07-30","ID_CLIENTE":"CLI0012","TIPO":"Fattura","NR":"25_030","ID_COMMESSA":"COM0012","Fatturato_gg":"14416,5","Fatturato_Spese":null,"Fatturato_TOT":"14416,5","Note":"Audit Culturale Reggio Emilia e Corteolona come da \nVostro ordine n. 4512064618.","Riferimento_Ordine":"n. 4512064618","Data_Ordine":null,"Tempi_Pagamento":"60","Scadenza_Pagamento":"28\/09\/25","Data_Pagamento":null,"Valore_Pagato":null,"Data_Creazione":null,"ID_UTENTE_CREAZIONE":null,"Data_Modifica":null,"ID_UTENTE_MODIFICA":null}
 [2025-08-20 10:59:41] Record 2 parametri: 
 [2025-08-20 10:59:41] Record 2 parametri: 
-[2025-08-20 10:59:41] Completata lettura file /home2/vaglioty/public_html/gestione_VP/DB/Dati/FACT_FATTURE.csv:
+[2025-08-20 10:59:41] Completata lettura file /home2/vaglioty/public_html/../DB/Dati/FACT_FATTURE.csv:
 [2025-08-20 10:59:41] - Righe totali processate: 37
 [2025-08-20 10:59:41] - Record importati con successo: 1
 [2025-08-20 10:59:41] - Record saltati/duplicati: 36

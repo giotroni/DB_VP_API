@@ -11,7 +11,7 @@ echo "=== TEST API MODIFICATE ===\n\n";
 
 // Test 1: API Task
 echo "1. Test API Task:\n";
-$taskResponse = file_get_contents('https://vaglioandpartners.com/gestione_VP/API/task?limit=5');
+$taskResponse = file_get_contents('https://vaglioandpartners.com/../API/task?limit=5');
 if ($taskResponse) {
     echo "Risposta Task API (primi 500 caratteri):\n";
     echo substr($taskResponse, 0, 500) . "\n\n";
@@ -36,7 +36,7 @@ echo "\n" . str_repeat("-", 50) . "\n\n";
 
 // Test 2: API Commesse  
 echo "2. Test API Commesse:\n";
-$commesseResponse = file_get_contents('https://vaglioandpartners.com/gestione_VP/API/commesse?limit=5');
+$commesseResponse = file_get_contents('https://vaglioandpartners.com/../API/commesse?limit=5');
 if ($commesseResponse) {
     echo "Risposta Commesse API (primi 500 caratteri):\n";
     echo substr($commesseResponse, 0, 500) . "\n\n";
@@ -61,7 +61,7 @@ echo "\n" . str_repeat("-", 50) . "\n\n";
 
 // Test 3: API Collaboratori
 echo "3. Test API Collaboratori:\n";
-$collabResponse = file_get_contents('https://vaglioandpartners.com/gestione_VP/API/collaboratori?limit=5');
+$collabResponse = file_get_contents('https://vaglioandpartners.com/../API/collaboratori?limit=5');
 if ($collabResponse) {
     echo "Risposta Collaboratori API (primi 300 caratteri):\n";
     echo substr($collabResponse, 0, 300) . "\n\n";

@@ -11,7 +11,7 @@
 
 class TaskManager {
     constructor() {
-        this.API_BASE = '/gestione_VP/API/index.php';
+        this.API_BASE = '/../API/index.php';
         this.allTasks = [];
         this.commesseList = [];
         this.collaboratoriList = [];
