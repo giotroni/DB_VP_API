@@ -68,10 +68,12 @@ class ConsuntivazioneAPISimple {
             $sql = "SELECT 
                         ID_TASK,
                         Task,
-                        Desc_Task as Descrizione
+                        Desc_Task as Descrizione,
+                        Tipo
                     FROM ANA_TASK
                     WHERE ID_COMMESSA = :commessa_id
                     AND Stato_Task = 'In corso'
+                    AND Tipo != 'Monitoraggio'
                     ORDER BY Task";
             
             $stmt = $this->db->prepare($sql);

@@ -1389,6 +1389,15 @@ class ConsuntivazioneApp {
         }
     }
     
+    /**
+     * Formatta un numero per l'esportazione CSV usando la virgola come separatore decimale (formato italiano)
+     */
+    formatNumberForCSV(value) {
+        const num = parseFloat(value || 0);
+        // Usa toFixed per garantire 2 decimali, poi sostituisce il punto con la virgola
+        return num.toFixed(2).replace('.', ',');
+    }
+    
     downloadCSV(data, filename) {
         const headers = ['Data', 'Progetto', 'Cliente', 'Task', 'Giorni', 'Spese Viaggio', 'Vitto/Alloggio', 'Altre Spese', 'Spese Fatturate VP', 'Totale Spese', 'Spese Rimborsabili', 'Note'];
         
@@ -1404,13 +1413,13 @@ class ConsuntivazioneApp {
                 `"${row.Commessa || ''}"`,
                 `"${row.Cliente || ''}"`,
                 `"${row.Task || ''}"`,
-                row.gg,
-                row.Spese_Viaggi || 0,
-                row.Vitto_alloggio || 0,
-                row.Altri_costi || 0,
-                speseFattVP,
-                totaleSpese,
-                speseRimborsabili,
+                this.formatNumberForCSV(row.gg),
+                this.formatNumberForCSV(row.Spese_Viaggi || 0),
+                this.formatNumberForCSV(row.Vitto_alloggio || 0),
+                this.formatNumberForCSV(row.Altri_costi || 0),
+                this.formatNumberForCSV(speseFattVP),
+                this.formatNumberForCSV(totaleSpese),
+                this.formatNumberForCSV(speseRimborsabili),
                 `"${row.Note || ''}"`
             ].join(';');
             csvContent += csvRow + '\n';
