@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 120" class="vp-logo">
+  <defs>
+    <linearGradient id="vp-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#2c3e50;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#34495e;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="ampersand-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#52c41a;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#73d13d;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- V -->
+  <path d="M20 20 L60 100 L80 100 L120 20 L100 20 L70 80 L50 20 Z" fill="url(#vp-gradient)"/>
+  
+  <!-- & (Ampersand) -->
+  <path d="M140 35 C140 25, 150 20, 160 20 C170 20, 180 25, 180 35 C180 45, 170 50, 160 50 C150 50, 140 45, 140 35 Z M160 55 C175 55, 190 45, 195 60 C200 75, 190 85, 175 85 L150 85 C135 85, 125 75, 125 60 C125 45, 135 35, 150 35 C155 35, 160 40, 160 45 L180 65 C185 70, 190 75, 185 80 C180 85, 175 80, 170 75 L160 55 Z" fill="url(#ampersand-gradient)"/>
+  
+  <!-- P -->
+  <path d="M220 20 L220 100 L240 100 L240 65 L270 65 C285 65, 295 55, 295 40 C295 25, 285 20, 270 20 Z M240 35 L270 35 C275 35, 280 40, 280 45 C280 50, 275 50, 270 50 L240 50 Z" fill="url(#vp-gradient)"/>
+</svg>

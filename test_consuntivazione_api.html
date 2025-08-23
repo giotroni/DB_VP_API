@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Debug ConsuntivazioneAPI</title>
+</head>
+<body>
+    <h1>Test Debug ConsuntivazioneAPI</h1>
+    <button onclick="testStatistiche()">Test Statistiche</button>
+    <button onclick="testCommesse()">Test Commesse</button>
+    <button onclick="testDB()">Test Database</button>
+    <pre id="result"></pre>
+
+    <script>
+    async function testStatistiche() {
+        try {
+            const response = await fetch('API/ConsuntivazioneAPI.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ action: 'get_statistiche' })
+            });
+            
+            const text = await response.text();
+            document.getElementById('result').textContent = 'Status: ' + response.status + '\nResponse: ' + text;
+        } catch (error) {
+            document.getElementById('result').textContent = 'Error: ' + error.message;
+        }
+    }
+
+    async function testCommesse() {
+        try {
+            const response = await fetch('API/ConsuntivazioneAPI.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ action: 'get_commesse' })
+            });
+            
+            const text = await response.text();
+            document.getElementById('result').textContent = 'Status: ' + response.status + '\nResponse: ' + text;
+        } catch (error) {
+            document.getElementById('result').textContent = 'Error: ' + error.message;
+        }
+    }
+
+    async function testDB() {
+        try {
+            const response = await fetch('API/ConsuntivazioneAPI.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ action: 'test_db' })
+            });
+            
+            const text = await response.text();
+            document.getElementById('result').textContent = 'Status: ' + response.status + '\nResponse: ' + text;
+        } catch (error) {
+            document.getElementById('result').textContent = 'Error: ' + error.message;
+        }
+    }
+    </script>
+</body>
+</html>

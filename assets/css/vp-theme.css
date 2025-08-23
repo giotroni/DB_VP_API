@@ -1,0 +1,516 @@
+/* V&P Consuntivazione Theme - Ispirato al sito Vaglio&Partners */
+
+:root {
+    /* Colori V&P dal sito web */
+    --vp-primary: #2c3e50;      /* Blu scuro principale */
+    --vp-secondary: #34495e;     /* Blu scuro secondario */
+    --vp-accent: #52c41a;        /* Verde dell'ampersand */
+    --vp-light-green: #73d13d;   /* Verde più chiaro */
+    --vp-gradient-start: #2c3e50;
+    --vp-gradient-end: #34495e;
+    --vp-text-light: #ecf0f1;
+    --vp-text-dark: #2c3e50;
+    --vp-background: #f8f9fa;
+    --vp-card-bg: #ffffff;
+    --vp-border: #e1e8ed;
+    --vp-shadow: rgba(44, 62, 80, 0.1);
+    --vp-success: #52c41a;
+    --vp-warning: #faad14;
+    --vp-danger: #ff4d4f;
+}
+
+/* Reset e base */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', 'Roboto', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--vp-background);
+    color: var(--vp-text-dark);
+    line-height: 1.6;
+}
+
+/* Header principale con logo V&P */
+.vp-header {
+    background: linear-gradient(135deg, var(--vp-gradient-start) 0%, var(--vp-gradient-end) 100%);
+    padding: 1rem 0;
+    box-shadow: 0 2px 20px var(--vp-shadow);
+    position: relative;
+    overflow: hidden;
+}
+
+.vp-header::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 0 10" fill="none" stroke="rgba(255,255,255,0.03)" stroke-width="1"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
+    opacity: 0.5;
+}
+
+.vp-header .container {
+    position: relative;
+    z-index: 2;
+}
+
+.vp-logo-container {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.vp-logo {
+    height: 45px;
+    width: auto;
+}
+
+.vp-brand-text {
+    color: var(--vp-text-light);
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin: 0;
+}
+
+.vp-subtitle {
+    color: rgba(236, 240, 241, 0.8);
+    font-size: 0.9rem;
+    margin: 0;
+    font-weight: 300;
+}
+
+/* Navigation */
+.vp-nav {
+    background: var(--vp-card-bg);
+    border-bottom: 1px solid var(--vp-border);
+    padding: 1rem 0;
+}
+
+.vp-user-info {
+    background: var(--vp-card-bg);
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    box-shadow: 0 2px 8px var(--vp-shadow);
+    border: 1px solid var(--vp-border);
+}
+
+.vp-user-welcome {
+    color: var(--vp-text-dark);
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 500;
+}
+
+.vp-user-name {
+    color: var(--vp-accent);
+    font-weight: 600;
+}
+
+/* Login Form */
+.login-container {
+    min-height: 100vh;
+    background: linear-gradient(135deg, var(--vp-gradient-start) 0%, var(--vp-gradient-end) 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.login-container::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="dots" width="20" height="20" patternUnits="userSpaceOnUse"><circle cx="10" cy="10" r="1" fill="rgba(255,255,255,0.05)"/></pattern></defs><rect width="100" height="100" fill="url(%23dots)"/></svg>');
+}
+
+.login-card {
+    background: var(--vp-card-bg);
+    border-radius: 16px;
+    padding: 3rem;
+    width: 100%;
+    max-width: 420px;
+    box-shadow: 0 20px 60px rgba(44, 62, 80, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    position: relative;
+    z-index: 2;
+}
+
+.login-header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.login-header img {
+    display: block;
+    margin: 0 auto 1.5rem auto;
+}
+
+.login-icon {
+    width: auto;
+    height: auto;
+    background: none !important;
+    background-color: transparent !important;
+    border-radius: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1.5rem;
+    font-size: 2rem;
+    color: white;
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0;
+}
+
+.login-title {
+    color: var(--vp-text-dark);
+    font-size: 1.75rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+
+.login-subtitle {
+    color: #6c757d;
+    font-size: 0.95rem;
+    font-weight: 400;
+}
+
+/* Form Elements */
+.form-label {
+    color: var(--vp-text-dark);
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.form-control {
+    border: 2px solid var(--vp-border);
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    font-size: 0.95rem;
+    transition: all 0.3s ease;
+    background: #fff;
+}
+
+.form-control:focus {
+    border-color: var(--vp-accent);
+    box-shadow: 0 0 0 3px rgba(82, 196, 26, 0.1);
+    outline: none;
+}
+
+/* Buttons */
+.btn-vp-primary {
+    background: linear-gradient(135deg, var(--vp-accent) 0%, var(--vp-light-green) 100%);
+    border: none;
+    color: white;
+    padding: 0.875rem 2rem;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(82, 196, 26, 0.3);
+}
+
+.btn-vp-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(82, 196, 26, 0.4);
+    background: linear-gradient(135deg, var(--vp-light-green) 0%, var(--vp-accent) 100%);
+}
+
+.btn-vp-secondary {
+    background: var(--vp-secondary);
+    border: none;
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.btn-vp-secondary:hover {
+    background: var(--vp-primary);
+    transform: translateY(-1px);
+}
+
+.btn-vp-danger {
+    background: var(--vp-danger);
+    border: none;
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.btn-vp-danger:hover {
+    background: #ff7875;
+    transform: translateY(-1px);
+}
+
+/* Dashboard Cards */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.stat-card {
+    background: var(--vp-card-bg);
+    border-radius: 12px;
+    padding: 2rem;
+    text-align: center;
+    box-shadow: 0 4px 20px var(--vp-shadow);
+    border: 1px solid var(--vp-border);
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--vp-accent) 0%, var(--vp-light-green) 100%);
+}
+
+.stat-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 30px var(--vp-shadow);
+}
+
+.stat-number {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--vp-primary);
+    margin-bottom: 0.5rem;
+    background: linear-gradient(135deg, var(--vp-primary) 0%, var(--vp-accent) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.stat-label {
+    color: #6c757d;
+    font-size: 0.9rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Table Styling */
+.table-vp {
+    background: var(--vp-card-bg);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 20px var(--vp-shadow);
+    border: 1px solid var(--vp-border);
+}
+
+.table-vp thead th {
+    background: linear-gradient(135deg, var(--vp-primary) 0%, var(--vp-secondary) 100%);
+    color: var(--vp-text-light);
+    border: none;
+    padding: 1rem;
+    font-weight: 600;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.table-vp tbody td {
+    padding: 1rem;
+    border-bottom: 1px solid var(--vp-border);
+    vertical-align: middle;
+}
+
+.table-vp tbody tr:hover {
+    background: rgba(82, 196, 26, 0.05);
+}
+
+/* Modal Styling */
+.modal-content {
+    border: none;
+    border-radius: 16px;
+    box-shadow: 0 20px 60px rgba(44, 62, 80, 0.3);
+}
+
+.modal-header {
+    background: linear-gradient(135deg, var(--vp-primary) 0%, var(--vp-secondary) 100%);
+    color: var(--vp-text-light);
+    border-radius: 16px 16px 0 0;
+    padding: 1.5rem;
+}
+
+.modal-title {
+    font-weight: 600;
+    font-size: 1.25rem;
+}
+
+.modal-body {
+    padding: 2rem;
+}
+
+/* Alert Messages */
+.alert-vp-success {
+    background: rgba(82, 196, 26, 0.1);
+    border: 1px solid rgba(82, 196, 26, 0.3);
+    color: var(--vp-accent);
+    border-radius: 8px;
+    padding: 1rem;
+}
+
+.alert-vp-danger {
+    background: rgba(255, 77, 79, 0.1);
+    border: 1px solid rgba(255, 77, 79, 0.3);
+    color: var(--vp-danger);
+    border-radius: 8px;
+    padding: 1rem;
+}
+
+/* Loading Animation */
+.loading-spinner {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: white;
+    animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .login-card {
+        margin: 1rem;
+        padding: 2rem;
+    }
+    
+    .vp-header {
+        text-align: center;
+    }
+    
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .stat-card {
+        padding: 1.5rem;
+    }
+    
+    .stat-number {
+        font-size: 2rem;
+    }
+}
+
+/* V&P Logo Images */
+.vp-logo-img {
+    height: 50px;
+    width: auto;
+    object-fit: contain;
+}
+
+.vp-logo-img-compact {
+    height: 40px;
+    width: auto;
+    object-fit: contain;
+}
+
+.vp-logo-img-extended {
+    height: 50px;
+    width: auto;
+    object-fit: contain;
+    max-width: 250px;
+}
+
+/* Login logo image */
+.login-logo-img {
+    height: 80px;
+    width: auto;
+    object-fit: contain;
+    margin-bottom: 1rem;
+    background: none !important;
+    background-color: transparent !important;
+    box-shadow: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+}
+
+/* V&P Logo Styling - CSS Fallback */
+.vp-logo-text {
+    font-family: 'Arial Black', 'Helvetica', sans-serif;
+    font-weight: 900;
+    font-size: 2.2rem;
+    display: flex;
+    align-items: center;
+    gap: 0;
+    color: var(--vp-text-light);
+    text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+.vp-logo-v {
+    color: #ecf0f1;
+    letter-spacing: -2px;
+}
+
+.vp-logo-ampersand {
+    color: var(--vp-accent);
+    font-size: 2.4rem;
+    margin: 0 2px;
+    text-shadow: 0 2px 6px rgba(82, 196, 26, 0.4);
+}
+
+.vp-logo-p {
+    color: #ecf0f1;
+    letter-spacing: -2px;
+}
+
+.vp-logo-small {
+    font-size: 1.5rem;
+}
+
+.vp-logo-small .vp-logo-ampersand {
+    font-size: 1.7rem;
+}
+
+/* Login logo styling */
+.login-logo-text {
+    font-family: 'Arial Black', 'Helvetica', sans-serif;
+    font-weight: 900;
+    font-size: 3rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    color: var(--vp-text-dark);
+    margin-bottom: 1rem;
+}
+
+.login-logo-v {
+    color: var(--vp-primary);
+}
+
+.login-logo-ampersand {
+    color: var(--vp-accent);
+    font-size: 3.2rem;
+    text-shadow: 0 2px 8px rgba(82, 196, 26, 0.3);
+}
+
+.login-logo-p {
+    color: var(--vp-primary);
+}

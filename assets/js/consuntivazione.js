@@ -17,7 +17,19 @@ class ConsuntivazioneApp {
         // Controlla se l'utente è già autenticato
         this.checkAuthentication().then(() => {
             if (this.currentUser) {
-                this.showDashboard();
+               statsGrid.innerHTML = `
+            <div class="stat-card">
+                <div class="stat-number">${this.statistiche.ore_mese || '0'}</div>
+                <div class="stat-label">Giornate Questo Mese</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">€ ${this.statistiche.spese_mese || '0'}</div>
+                <div class="stat-label">Spese del mese</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">${this.statistiche.giorni_lavorati || '0'}</div>
+                <div class="stat-label">Date inserite</div>
+            </div>`;wDashboard();
                 this.loadInitialData();
             } else {
                 this.showLogin();
@@ -78,7 +90,7 @@ class ConsuntivazioneApp {
     
     async checkAuthentication() {
         try {
-            const response = await fetch('API/AuthAPI.php', {
+            const response = await fetch('API/auth.php', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -106,17 +118,16 @@ class ConsuntivazioneApp {
             <div class="login-container">
                 <div class="login-card">
                     <div class="login-header">
-                        <div class="login-icon">
-                            <i class="fas fa-lock"></i>
-                        </div>
-                        <h1 class="login-title">🔒 Accesso V&P Consuntivazione</h1>
+                        <img src="assets/images/logo_1.png" alt="V&P Logo" class="login-logo-img">
+                        <h1 class="login-title">Accesso V&P Consuntivazione</h1>
                         <p class="login-subtitle">Inserisci le tue credenziali per accedere</p>
                     </div>
                     
                     <form id="loginForm">
                         <div class="form-group">
-                            <label for="email" class="form-label">Email</label>
-                            <input type="email" id="email" class="form-control" placeholder="es. mario.rossi@company.com" required>
+                            <label for="emailOrUsername" class="form-label">Email o User Name</label>
+                            <input type="text" id="emailOrUsername" class="form-control" 
+                                   placeholder="es. mario.rossi@company.com o username" required>
                         </div>
                         
                         <div class="form-group">
@@ -124,127 +135,286 @@ class ConsuntivazioneApp {
                             <input type="password" id="password" class="form-control" placeholder="Password" required>
                         </div>
                         
-                        <button type="submit" class="btn btn-primary" id="loginBtn">
+                        <button type="submit" class="btn btn-vp-primary w-100" id="loginBtn">
                             🔓 Accedi
                         </button>
+                        
+                        <div class="forgot-password-link">
+                            <a href="#" id="forgotPasswordLink">Password dimenticata?</a>
+                        </div>
                     </form>
                     
                     <div id="loginMessage" class="mt-3"></div>
                 </div>
             </div>
         `;
+        
+        // Event listener per "Password dimenticata"
+        document.getElementById('forgotPasswordLink').addEventListener('click', (e) => {
+            e.preventDefault();
+            this.showForgotPasswordForm();
+        });
+    }
+    
+    showForgotPasswordForm() {
+        const appContainer = document.getElementById('appContainer') || document.body;
+        appContainer.innerHTML = `
+            <div class="login-container">
+                <div class="login-card">
+                    <div class="login-header">
+                        <div class="login-icon">
+                            <i class="fas fa-key"></i>
+                        </div>
+                        <h1 class="login-title">🔑 Recupera Password</h1>
+                        <p class="login-subtitle">Inserisci la tua email per ricevere una nuova password</p>
+                    </div>
+                    
+                    <form id="forgotPasswordForm">
+                        <div class="form-group">
+                            <label for="resetEmail" class="form-label">Email</label>
+                            <input type="email" id="resetEmail" class="form-control" 
+                                   placeholder="es. mario.rossi@company.com" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <button type="submit" class="btn btn-primary" id="resetBtn">
+                                📧 Invia Nuova Password
+                            </button>
+                            
+                            <button type="button" class="btn btn-outline-secondary" id="backToLoginBtn">
+                                ⬅️ Torna al Login
+                            </button>
+                        </div>
+                    </form>
+                    
+                    <div id="resetMessage" class="mt-3"></div>
+                </div>
+            </div>
+        `;
+        
+        // Event listener per tornare al login
+        document.getElementById('backToLoginBtn').addEventListener('click', () => {
+            this.showLogin();
+        });
+        
+        // Event listener per il form di reset password
+        document.getElementById('forgotPasswordForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.handleForgotPassword();
+        });
+    }
+
+    async handleForgotPassword() {
+        const email = document.getElementById('resetEmail').value;
+        const resetBtn = document.getElementById('resetBtn');
+        const messageDiv = document.getElementById('resetMessage');
+        
+        // Disabilita il pulsante durante l'invio
+        resetBtn.disabled = true;
+        resetBtn.innerHTML = '⏳ Invio in corso...';
+        
+        try {
+            const response = await fetch('API/auth.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    action: 'reset_password',
+                    email: email
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                messageDiv.innerHTML = `
+                    <div class="alert alert-success">
+                        ✅ Una nuova password è stata inviata alla tua email.
+                        Controlla la tua casella di posta e poi torna al login.
+                    </div>
+                `;
+                
+                // Dopo 3 secondi torna automaticamente al login
+                setTimeout(() => {
+                    this.showLogin();
+                }, 3000);
+            } else {
+                messageDiv.innerHTML = `
+                    <div class="alert alert-danger">
+                        ❌ ${data.message || 'Errore durante il reset della password'}
+                    </div>
+                `;
+            }
+        } catch (error) {
+            console.error('Errore reset password:', error);
+            messageDiv.innerHTML = `
+                <div class="alert alert-danger">
+                    ❌ Errore di connessione. Riprova più tardi.
+                </div>
+            `;
+        } finally {
+            // Riabilita il pulsante
+            resetBtn.disabled = false;
+            resetBtn.innerHTML = '📧 Invia Nuova Password';
+        }
     }
     
     showDashboard() {
         const appContainer = document.getElementById('appContainer') || document.body;
         appContainer.innerHTML = `
-            <div class="dashboard-container">
-                <header class="dashboard-header">
-                    <h1 class="dashboard-title">Dashboard Consuntivazione</h1>
-                    <div class="user-info">
-                        <span class="user-name">Benvenuto, ${this.currentUser.name}</span>
-                        <button id="logoutBtn" class="btn btn-logout">Logout</button>
+            <!-- Header V&P -->
+            <header class="vp-header">
+                <div class="container">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <div class="vp-logo-container">
+                                <img src="assets/images/white-logo.png" alt="Vaglio&Partners Logo" class="vp-logo-img-extended">
+                                <div>
+                                    <p class="vp-subtitle">Sistema di Consuntivazione</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <div class="vp-user-info">
+                                <p class="vp-user-welcome">Benvenuto, <span class="vp-user-name">${this.currentUser.name}</span></p>
+                                <button id="logoutBtn" class="btn btn-vp-danger btn-sm">Logout</button>
+                            </div>
+                        </div>
                     </div>
-                </header>
-                
+                </div>
+            </header>
+            
+            <!-- Main Content -->
+            <div class="container mt-4">
                 <div class="stats-grid" id="statsGrid">
                     <!-- Statistiche caricate dinamicamente -->
                 </div>
                 
-                <div class="consuntivazione-form">
-                    <h2 class="form-title">
-                        <i class="fas fa-plus-circle"></i>
-                        Consuntivazione Giornaliera
-                    </h2>
-                    
-                    <form id="consuntivazioneForm">
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="data" class="form-label">Data *</label>
-                                <input type="date" id="data" class="form-control" required>
+                <div class="row">
+                    <div class="col-12">
+                        <div class="table-vp">
+                            <div class="modal-header">
+                                <h2 class="modal-title">
+                                    <i class="fas fa-plus-circle me-2"></i>
+                                    Consuntivazione Giornaliera
+                                </h2>
                             </div>
-                            
-                            <div class="form-group">
-                                <label for="giornatelavorate" class="form-label">Giornate Lavorate *</label>
-                                <input type="number" id="giornatelavorate" class="form-control" 
-                                       min="0.1" max="1.0" step="0.1" value="1.0" required>
+                            <div class="modal-body">
+                                <form id="consuntivazioneForm">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="form-group mb-3">
+                                                <label for="data" class="form-label">Data *</label>
+                                                <input type="date" id="data" class="form-control" required>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="form-group mb-3">
+                                                <label for="giornatelavorate" class="form-label">Giornate Lavorate *</label>
+                                                <input type="number" id="giornatelavorate" class="form-control" 
+                                                       min="0.1" max="1.0" step="0.1" value="1.0" required>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="form-group mb-3">
+                                                <label for="commessa" class="form-label">Progetto *</label>
+                                                <select id="commessa" class="form-control" required>
+                                                    <option value="">Seleziona progetto...</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="form-group mb-3">
+                                                <label for="task" class="form-label">Task/Attività *</label>
+                                                <select id="task" class="form-control" required>
+                                                    <option value="">Prima seleziona un progetto</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <hr class="my-4">
+                                    <h5 class="mb-3">
+                                        <i class="fas fa-money-bill-wave me-2"></i>
+                                        Spese Sostenute
+                                    </h5>
+                                    
+                                    <div class="row">
+                                        <div class="col-md-4">
+                                            <div class="form-group mb-3">
+                                                <label for="speseViaggio" class="form-label">Spese Viaggio (€)</label>
+                                                <input type="number" id="speseViaggio" class="form-control" 
+                                                       min="0" step="0.01" value="0.00">
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="form-group mb-3">
+                                                <label for="vittoAlloggio" class="form-label">Vitto/Alloggio (€)</label>
+                                                <input type="number" id="vittoAlloggio" class="form-control" 
+                                                       min="0" step="0.01" value="0.00">
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="form-group mb-3">
+                                                <label for="altreSpese" class="form-label">Altre Spese (€)</label>
+                                                <input type="number" id="altreSpese" class="form-control" 
+                                                       min="0" step="0.01" value="0.00">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="alert alert-info">
+                                        <strong>Totale Spese: € <span id="totaleSpese">0.00</span></strong>
+                                    </div>
+                                    
+                                    <div class="form-group mb-3">
+                                        <label for="note" class="form-label">Note</label>
+                                        <textarea id="note" class="form-control" rows="4"
+                                                placeholder="Descrivi le attività svolte, dettagli sui clienti incontrati, obiettivi raggiunti, spese sostenute..."></textarea>
+                                    </div>
+                                    
+                                    <div class="d-flex justify-content-between">
+                                        <button type="button" id="resetForm" class="btn btn-vp-secondary">
+                                            <i class="fas fa-undo me-2"></i> Reset Form
+                                        </button>
+                                        <button type="submit" class="btn btn-vp-primary">
+                                            <i class="fas fa-save me-2"></i> Salva Consuntivazione
+                                        </button>
+                                    </div>
+                                </form>
                             </div>
                         </div>
-                        
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="commessa" class="form-label">Progetto *</label>
-                                <select id="commessa" class="form-select" required>
-                                    <option value="">Seleziona progetto...</option>
-                                </select>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label for="task" class="form-label">Task/Attività *</label>
-                                <select id="task" class="form-select" required>
-                                    <option value="">Prima seleziona un progetto</option>
-                                </select>
-                            </div>
-                        </div>
-                        
-                        <div class="spese-section">
-                            <h3 class="spese-title">
-                                <i class="fas fa-money-bill-wave"></i>
-                                💰 Spese Sostenute
-                            </h3>
-                            
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label for="speseViaggio" class="form-label">Spese Viaggio (€)</label>
-                                    <input type="number" id="speseViaggio" class="form-control" 
-                                           min="0" step="0.01" value="0.00">
-                                </div>
-                                
-                                <div class="form-group">
-                                    <label for="vittoAlloggio" class="form-label">Vitto/Alloggio (€)</label>
-                                    <input type="number" id="vittoAlloggio" class="form-control" 
-                                           min="0" step="0.01" value="0.00">
-                                </div>
-                                
-                                <div class="form-group">
-                                    <label for="altreSpese" class="form-label">Altre Spese (€)</label>
-                                    <input type="number" id="altreSpese" class="form-control" 
-                                           min="0" step="0.01" value="0.00">
-                                </div>
-                            </div>
-                            
-                            <div class="totale-spese" id="totaleSpese">
-                                Totale Spese: € 0.00
-                            </div>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="note" class="form-label">Note</label>
-                            <textarea id="note" class="form-textarea" 
-                                    placeholder="Descrivi le attività svolte, dettagli sui clienti incontrati, obiettivi raggiunti, spese sostenute..."></textarea>
-                        </div>
-                        
-                        <div class="form-row">
-                            <button type="button" id="resetForm" class="btn btn-secondary">
-                                <i class="fas fa-undo"></i> Reset Form
-                            </button>
-                            <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-save"></i> Salva Consuntivazione
-                            </button>
-                        </div>
-                    </form>
-                </div>
-                
-                <div class="consuntivazioni-list">
-                    <h2 class="form-title">
-                        <i class="fas fa-history"></i>
-                        📋 Ultime Consuntivazioni
-                    </h2>
-                    <div id="ultimeConsuntivazioni">
-                        <!-- Lista caricata dinamicamente -->
                     </div>
                 </div>
                 
+                <!-- Sezione Riepilogo Giornate -->
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <div class="table-vp">
+                            <div class="modal-header">
+                                <h2 class="modal-title">
+                                    <i class="fas fa-history me-2"></i>
+                                    Ultime Consuntivazioni
+                                </h2>
+                            </div>
+                            <div class="modal-body">
+                                <div id="ultimeConsuntivazioni" class="table-responsive">
+                                    <!-- Lista caricata dinamicamente -->
+                                    <div class="text-center text-muted">
+                                        <i class="fas fa-spinner fa-spin me-2"></i>
+                                        Caricamento consuntivazioni in corso...
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Messagi di sistema -->
                 <div id="message" class="mt-3"></div>
             </div>
         `;
@@ -257,7 +427,7 @@ class ConsuntivazioneApp {
     }
     
     async handleLogin() {
-        const email = document.getElementById('email').value;
+        const emailOrUsername = document.getElementById('emailOrUsername').value;
         const password = document.getElementById('password').value;
         const loginBtn = document.getElementById('loginBtn');
         const messageDiv = document.getElementById('loginMessage');
@@ -267,14 +437,14 @@ class ConsuntivazioneApp {
         loginBtn.innerHTML = '<span class="loading-spinner"></span> Accesso in corso...';
         
         try {
-            const response = await fetch('API/AuthAPI.php', {
+            const response = await fetch('API/auth.php', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
                     action: 'login',
-                    email: email,
+                    email: emailOrUsername,
                     password: password
                 })
             });
@@ -304,7 +474,7 @@ class ConsuntivazioneApp {
     
     async handleLogout() {
         try {
-            await fetch('API/AuthAPI.php', {
+            await fetch('API/auth.php', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -355,11 +525,7 @@ class ConsuntivazioneApp {
         statsGrid.innerHTML = `
             <div class="stat-card">
                 <div class="stat-number">${this.statistiche.ore_mese || '0'}</div>
-                <div class="stat-label">Ore Questo Mese</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-number">${this.statistiche.progetti_attivi || '0'}</div>
-                <div class="stat-label">Progetti Attivi</div>
+                <div class="stat-label">Giornate nel Mese</div>
             </div>
             <div class="stat-card">
                 <div class="stat-number">€ ${this.statistiche.spese_mese || '0'}</div>
@@ -367,7 +533,7 @@ class ConsuntivazioneApp {
             </div>
             <div class="stat-card">
                 <div class="stat-number">${this.statistiche.giorni_lavorati || '0'}</div>
-                <div class="stat-label">Giorni Lavorati</div>
+                <div class="stat-label">Date nel mese</div>
             </div>
         `;
     }
