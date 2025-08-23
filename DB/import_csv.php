@@ -55,7 +55,8 @@ class CSVImporter {
         'FACT_GIORNATE' => [
             'Spese_Viaggi' => 'Spese_Viaggi',
             'Vitto__alloggio' => 'Vitto_alloggio', 
-            'Altri_costi' => 'Altri_costi'
+            'Altri_costi' => 'Altri_costi',
+            'Spese_Fatturate_VP' => 'Spese_Fatturate_VP'
         ]
     ];
     
@@ -655,7 +656,7 @@ class CSVImporter {
                 
                 // Gestione speciale per campi numerici decimali
                 $isDecimalField = (
-                    in_array(strtolower($finalHeaders[$i]), ['gg', 'importo', 'valore', 'prezzo', 'costo', 'spese', 'vitto_alloggio', 'spese_viaggi', 'altri_costi']) ||
+                    in_array(strtolower($finalHeaders[$i]), ['gg', 'importo', 'valore', 'prezzo', 'costo', 'spese', 'vitto_alloggio', 'spese_viaggi', 'altri_costi', 'spese_fatturate_vp']) ||
                     strpos(strtolower($finalHeaders[$i]), 'valore') !== false ||
                     strpos(strtolower($finalHeaders[$i]), 'importo') !== false ||
                     strpos(strtolower($finalHeaders[$i]), 'spese') !== false ||
@@ -664,7 +665,8 @@ class CSVImporter {
                     strpos(strtolower($finalHeaders[$i]), 'tariffa') !== false ||
                     strpos(strtolower($finalHeaders[$i]), 'vitto') !== false ||
                     strpos(strtolower($finalHeaders[$i]), 'alloggio') !== false ||
-                    strpos(strtolower($finalHeaders[$i]), 'viaggi') !== false
+                    strpos(strtolower($finalHeaders[$i]), 'viaggi') !== false ||
+                    strpos(strtolower($finalHeaders[$i]), 'fatturate') !== false
                 );
                 
                 if ($isDateField && !empty($value)) {

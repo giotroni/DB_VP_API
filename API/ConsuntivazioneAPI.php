@@ -52,7 +52,9 @@ class ConsuntivazioneAPI {
             $oreMese = $stmt1->fetch()['ore_mese'];
             
             // Spese del mese
-            $sql3 = "SELECT COALESCE(SUM(Spese_Viaggi + Vitto_alloggio + Altri_costi), 0) as spese_mese
+            $sql3 = "SELECT 
+                        COALESCE(SUM(COALESCE(Spese_Viaggi, 0) + COALESCE(Vitto_alloggio, 0) + COALESCE(Altri_costi, 0)), 0) as spese_mese,
+                        COALESCE(SUM(COALESCE(Spese_Fatturate_VP, 0)), 0) as spese_fatturate_vp
                      FROM FACT_GIORNATE 
                      WHERE ID_COLLABORATORE = ? 
                      AND MONTH(Data) = MONTH(CURDATE()) 
@@ -60,7 +62,10 @@ class ConsuntivazioneAPI {
             
             $stmt3 = $this->db->prepare($sql3);
             $stmt3->execute([$user['id']]);
-            $speseMese = $stmt3->fetch()['spese_mese'];
+            $speseResult = $stmt3->fetch();
+            $speseMese = $speseResult['spese_mese'];
+            $speseFattVP = $speseResult['spese_fatturate_vp'];
+            $speseRimborsabili = $speseMese - $speseFattVP;
             
             // Giorni lavorati questo mese
             $sql4 = "SELECT COUNT(DISTINCT Data) as giorni_lavorati
@@ -78,6 +83,7 @@ class ConsuntivazioneAPI {
                 'data' => [
                     'ore_mese' => number_format($oreMese, 1),
                     'spese_mese' => number_format($speseMese, 2),
+                    'spese_rimborsabili' => number_format(max(0, $speseRimborsabili), 2),
                     'giorni_lavorati' => $giorniLavorati
                 ]
             ];
@@ -112,6 +118,7 @@ class ConsuntivazioneAPI {
                         COALESCE(g.Spese_Viaggi, 0) as Spese_Viaggi,
                         COALESCE(g.Vitto_alloggio, 0) as Vitto_alloggio,
                         COALESCE(g.Altri_costi, 0) as Altri_costi,
+                        COALESCE(g.Spese_Fatturate_VP, 0) as Spese_Fatturate_VP,
                         (COALESCE(g.Spese_Viaggi, 0) + COALESCE(g.Vitto_alloggio, 0) + COALESCE(g.Altri_costi, 0)) as Totale_Spese,
                         g.Note,
                         g.Confermata,
@@ -163,9 +170,11 @@ class ConsuntivazioneAPI {
                         g.Data,
                         g.gg,
                         g.Tipo,
+                        g.Desk,
                         COALESCE(g.Spese_Viaggi, 0) as Spese_Viaggi,
                         COALESCE(g.Vitto_alloggio, 0) as Vitto_alloggio,
                         COALESCE(g.Altri_costi, 0) as Altri_costi,
+                        COALESCE(g.Spese_Fatturate_VP, 0) as Spese_Fatturate_VP,
                         (COALESCE(g.Spese_Viaggi, 0) + COALESCE(g.Vitto_alloggio, 0) + COALESCE(g.Altri_costi, 0)) as Totale_Spese,
                         g.Note,
                         g.Confermata,
@@ -211,11 +220,13 @@ class ConsuntivazioneAPI {
             // Calcola statistiche
             $totaleGiornate = 0;
             $totaleSpese = 0;
+            $totaleFattVP = 0;
             $raggruppatePer_Mese = [];
             
             foreach ($consuntivazioni as $cons) {
                 $totaleGiornate += $cons['gg'];
                 $totaleSpese += $cons['Totale_Spese'];
+                $totaleFattVP += $cons['Spese_Fatturate_VP'];
                 
                 $chiaveMese = $cons['Anno'] . '-' . str_pad($cons['Mese'], 2, '0', STR_PAD_LEFT);
                 if (!isset($raggruppatePer_Mese[$chiaveMese])) {
@@ -225,11 +236,15 @@ class ConsuntivazioneAPI {
                         'nome_mese' => $cons['Nome_Mese'],
                         'giornate' => 0,
                         'spese' => 0,
+                        'spese_fatturate_vp' => 0,
+                        'spese_rimborsabili' => 0,
                         'count' => 0
                     ];
                 }
                 $raggruppatePer_Mese[$chiaveMese]['giornate'] += $cons['gg'];
                 $raggruppatePer_Mese[$chiaveMese]['spese'] += $cons['Totale_Spese'];
+                $raggruppatePer_Mese[$chiaveMese]['spese_fatturate_vp'] += $cons['Spese_Fatturate_VP'];
+                $raggruppatePer_Mese[$chiaveMese]['spese_rimborsabili'] = $raggruppatePer_Mese[$chiaveMese]['spese'] - $raggruppatePer_Mese[$chiaveMese]['spese_fatturate_vp'];
                 $raggruppatePer_Mese[$chiaveMese]['count']++;
             }
             
@@ -240,6 +255,8 @@ class ConsuntivazioneAPI {
                     'statistiche' => [
                         'totale_giornate' => $totaleGiornate,
                         'totale_spese' => $totaleSpese,
+                        'totale_spese_fatturate_vp' => $totaleFattVP,
+                        'totale_spese_rimborsabili' => max(0, $totaleSpese - $totaleFattVP),
                         'numero_consuntivazioni' => count($consuntivazioni)
                     ],
                     'raggruppamento_mese' => array_values($raggruppatePer_Mese)
@@ -388,10 +405,12 @@ class ConsuntivazioneAPI {
                         g.Data,
                         g.gg,
                         g.Tipo,
+                        g.Desk,
                         g.ID_TASK,
                         COALESCE(g.Spese_Viaggi, 0) as Spese_Viaggi,
                         COALESCE(g.Vitto_alloggio, 0) as Vitto_alloggio,
                         COALESCE(g.Altri_costi, 0) as Altri_costi,
+                        COALESCE(g.Spese_Fatturate_VP, 0) as Spese_Fatturate_VP,
                         g.Note,
                         g.Confermata,
                         t.Task,
@@ -475,10 +494,13 @@ class ConsuntivazioneAPI {
             $sql = "UPDATE FACT_GIORNATE SET 
                         Data = ?,
                         ID_TASK = ?,
+                        Tipo = ?,
+                        Desk = ?,
                         gg = ?,
                         Spese_Viaggi = ?,
                         Vitto_alloggio = ?,
                         Altri_costi = ?,
+                        Spese_Fatturate_VP = ?,
                         Note = ?,
                         Data_Modifica = NOW(),
                         ID_UTENTE_MODIFICA = ?
@@ -488,10 +510,13 @@ class ConsuntivazioneAPI {
             $result = $stmt->execute([
                 $data['data'],
                 $data['id_task'],
+                $data['tipo'] ?? 'Campo',
+                $data['desk'] ?? 'No',
                 $data['gg'],
                 $data['spese_viaggi'] ?? 0,
                 $data['vitto_alloggio'] ?? 0,
                 $data['altri_costi'] ?? 0,
+                $data['spese_fatturate_vp'] ?? 0,
                 $data['note'] ?? '',
                 $user['id'], // ID_UTENTE_MODIFICA
                 $idGiornata,

@@ -301,13 +301,16 @@ class ConsuntivazioneApp {
                 <div class="row">
                     <div class="col-12">
                         <div class="table-vp">
-                            <div class="modal-header">
+                            <div class="modal-header" data-bs-toggle="collapse" data-bs-target="#collapseConsuntivazione" 
+                                 aria-expanded="false" aria-controls="collapseConsuntivazione" style="cursor: pointer;">
                                 <h2 class="modal-title">
                                     <i class="fas fa-plus-circle me-2"></i>
                                     Consuntivazione Giornaliera
+                                    <i class="fas fa-chevron-down ms-2 collapse-icon"></i>
                                 </h2>
                             </div>
-                            <div class="modal-body">
+                            <div class="collapse" id="collapseConsuntivazione">
+                                <div class="modal-body">
                                 <form id="consuntivazioneForm">
                                     <div class="row">
                                         <div class="col-md-6">
@@ -319,8 +322,12 @@ class ConsuntivazioneApp {
                                         <div class="col-md-6">
                                             <div class="form-group mb-3">
                                                 <label for="giornatelavorate" class="form-label">Giornate Lavorate *</label>
-                                                <input type="number" id="giornatelavorate" class="form-control" 
-                                                       min="0.1" max="1.0" step="0.1" value="1.0" required>
+                                                <select id="giornatelavorate" class="form-control" required>
+                                                    <option value="1" selected>1 giornata</option>
+                                                    <option value="0.75">0,75 giornate</option>
+                                                    <option value="0.5">0,5 giornate</option>
+                                                    <option value="0.25">0,25 giornate</option>
+                                                </select>
                                             </div>
                                         </div>
                                     </div>
@@ -344,6 +351,32 @@ class ConsuntivazioneApp {
                                         </div>
                                     </div>
                                     
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="form-group mb-3">
+                                                <label for="tipo" class="form-label">Tipo Attività *</label>
+                                                <select id="tipo" class="form-control" required>
+                                                    <option value="Campo" selected>Campo</option>
+                                                    <option value="Promo">Promo</option>
+                                                    <option value="Sviluppo">Sviluppo</option>
+                                                    <option value="Formazione">Formazione</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="form-group mb-3">
+                                                <label for="desk" class="form-label">Modalità Lavoro</label>
+                                                <div class="form-check form-switch mt-2">
+                                                    <input class="form-check-input" type="checkbox" id="desk" value="Si">
+                                                    <label class="form-check-label" for="desk">
+                                                        <i class="fas fa-desktop me-2"></i>
+                                                        Lavoro da remoto (Desk)
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
                                     <hr class="my-4">
                                     <h5 class="mb-3">
                                         <i class="fas fa-money-bill-wave me-2"></i>
@@ -351,31 +384,45 @@ class ConsuntivazioneApp {
                                     </h5>
                                     
                                     <div class="row">
-                                        <div class="col-md-4">
+                                        <div class="col-md-3">
                                             <div class="form-group mb-3">
                                                 <label for="speseViaggio" class="form-label">Spese Viaggio (€)</label>
                                                 <input type="number" id="speseViaggio" class="form-control" 
                                                        min="0" step="0.01" value="0.00">
                                             </div>
                                         </div>
-                                        <div class="col-md-4">
+                                        <div class="col-md-3">
                                             <div class="form-group mb-3">
                                                 <label for="vittoAlloggio" class="form-label">Vitto/Alloggio (€)</label>
                                                 <input type="number" id="vittoAlloggio" class="form-control" 
                                                        min="0" step="0.01" value="0.00">
                                             </div>
                                         </div>
-                                        <div class="col-md-4">
+                                        <div class="col-md-3">
                                             <div class="form-group mb-3">
                                                 <label for="altreSpese" class="form-label">Altre Spese (€)</label>
                                                 <input type="number" id="altreSpese" class="form-control" 
                                                        min="0" step="0.01" value="0.00">
                                             </div>
                                         </div>
+                                        <div class="col-md-3">
+                                            <div class="form-group mb-3">
+                                                <label for="speseFattVP" class="form-label">Spese Fatturate VP (€)</label>
+                                                <input type="number" id="speseFattVP" class="form-control" 
+                                                       min="0" step="0.01" value="0.00">
+                                            </div>
+                                        </div>
                                     </div>
                                     
                                     <div class="alert alert-info">
-                                        <strong>Totale Spese: € <span id="totaleSpese">0.00</span></strong>
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <strong>Totale Spese: € <span id="totaleSpese">0.00</span></strong>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <strong>Spese Rimborsabili: € <span id="speseRimborsabili">0.00</span></strong>
+                                            </div>
+                                        </div>
                                     </div>
                                     
                                     <div class="form-group mb-3">
@@ -402,13 +449,16 @@ class ConsuntivazioneApp {
                 <div class="row mt-4">
                     <div class="col-12">
                         <div class="table-vp">
-                            <div class="modal-header">
+                            <div class="modal-header" data-bs-toggle="collapse" data-bs-target="#collapseUltime" 
+                                 aria-expanded="false" aria-controls="collapseUltime" style="cursor: pointer;">
                                 <h2 class="modal-title">
                                     <i class="fas fa-history me-2"></i>
                                     Ultime Consuntivazioni
+                                    <i class="fas fa-chevron-down ms-2 collapse-icon"></i>
                                 </h2>
                             </div>
-                            <div class="modal-body">
+                            <div class="collapse" id="collapseUltime">
+                                <div class="modal-body">
                                 <div id="ultimeConsuntivazioni" class="table-responsive">
                                     <!-- Lista caricata dinamicamente -->
                                     <div class="text-center text-muted">
@@ -425,13 +475,16 @@ class ConsuntivazioneApp {
                 <div class="row mt-4">
                     <div class="col-12">
                         <div class="table-vp">
-                            <div class="modal-header">
+                            <div class="modal-header" data-bs-toggle="collapse" data-bs-target="#collapseConsulta" 
+                                 aria-expanded="false" aria-controls="collapseConsulta" style="cursor: pointer;">
                                 <h2 class="modal-title">
                                     <i class="fas fa-search me-2"></i>
                                     Consulta Consuntivazioni
+                                    <i class="fas fa-chevron-down ms-2 collapse-icon"></i>
                                 </h2>
                             </div>
-                            <div class="modal-body">
+                            <div class="collapse" id="collapseConsulta">
+                                <div class="modal-body">
                                 <!-- Filtri -->
                                 <div class="row mb-3">
                                     <div class="col-md-3">
@@ -498,6 +551,18 @@ class ConsuntivazioneApp {
         
         // Calcola totale spese iniziale
         this.calcolaTotaleSpese();
+        
+        // Aggiungi event listeners per ricalcolo automatico delle spese
+        ['speseViaggio', 'vittoAlloggio', 'altreSpese', 'speseFattVP'].forEach(fieldId => {
+            const field = document.getElementById(fieldId);
+            if (field) {
+                field.addEventListener('input', () => this.calcolaTotaleSpese());
+                field.addEventListener('change', () => this.calcolaTotaleSpese());
+            }
+        });
+        
+        // Aggiungi event listeners per icone collapse
+        this.initCollapseIcons();
     }
     
     async handleLogin() {
@@ -607,6 +672,10 @@ class ConsuntivazioneApp {
             <div class="stat-card">
                 <div class="stat-number">€ ${this.statistiche.spese_mese || '0'}</div>
                 <div class="stat-label">Spese del mese</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">€ ${this.statistiche.spese_rimborsabili || '0'}</div>
+                <div class="stat-label">Spese Rimborsabili</div>
             </div>
             <div class="stat-card">
                 <div class="stat-number">${this.statistiche.giorni_lavorati || '0'}</div>
@@ -736,12 +805,20 @@ class ConsuntivazioneApp {
         const speseViaggio = parseFloat(document.getElementById('speseViaggio')?.value || 0);
         const vittoAlloggio = parseFloat(document.getElementById('vittoAlloggio')?.value || 0);
         const altreSpese = parseFloat(document.getElementById('altreSpese')?.value || 0);
+        const speseFattVP = parseFloat(document.getElementById('speseFattVP')?.value || 0);
         
         const totale = speseViaggio + vittoAlloggio + altreSpese;
+        const rimborsabili = totale - speseFattVP;
         
         const totaleElement = document.getElementById('totaleSpese');
+        const rimborsabiliElement = document.getElementById('speseRimborsabili');
+        
         if (totaleElement) {
-            totaleElement.textContent = `Totale Spese: € ${totale.toFixed(2)}`;
+            totaleElement.textContent = totale.toFixed(2);
+        }
+        
+        if (rimborsabiliElement) {
+            rimborsabiliElement.textContent = Math.max(0, rimborsabili).toFixed(2);
         }
     }
     
@@ -761,9 +838,12 @@ class ConsuntivazioneApp {
             giornate_lavorate: parseFloat(document.getElementById('giornatelavorate').value),
             commessa: document.getElementById('commessa').value,
             task: document.getElementById('task').value,
+            tipo: document.getElementById('tipo').value,
+            desk: document.getElementById('desk').checked ? 'Si' : 'No',
             spese_viaggio: parseFloat(document.getElementById('speseViaggio').value || 0),
             vitto_alloggio: parseFloat(document.getElementById('vittoAlloggio').value || 0),
             altre_spese: parseFloat(document.getElementById('altreSpese').value || 0),
+            spese_fatturate_vp: parseFloat(document.getElementById('speseFattVP').value || 0),
             note: document.getElementById('note').value.trim()
         };
         
@@ -874,9 +954,11 @@ class ConsuntivazioneApp {
                 ${cons.Note ? `<div class="mt-1"><small><em>"${cons.Note}"</em></small></div>` : ''}
                 <div class="consuntivazione-spese">
                     <span>Viaggi: € ${parseFloat(cons.Spese_Viaggi || 0).toFixed(2)}</span>
-                    <span>Vitto: € ${parseFloat(cons.Vitto_alloggio || 0).toFixed(2)}</span>
+                    <span>Vitto/Alloggio: € ${parseFloat(cons.Vitto_alloggio || 0).toFixed(2)}</span>
                     <span>Altre: € ${parseFloat(cons.Altri_costi || 0).toFixed(2)}</span>
+                    <span>Fatturate VP: € ${parseFloat(cons.Spese_Fatturate_VP || 0).toFixed(2)}</span>
                     <strong>Tot: € ${parseFloat(cons.Totale_Spese || 0).toFixed(2)}</strong>
+                    <strong>Rimborsabili: € ${Math.max(0, parseFloat(cons.Totale_Spese || 0) - parseFloat(cons.Spese_Fatturate_VP || 0)).toFixed(2)}</strong>
                 </div>
                 ${cons.Confermata === 'No' ? `
                     <div class="consuntivazione-actions mt-2">
@@ -899,7 +981,7 @@ class ConsuntivazioneApp {
             
             // Reimposta data di oggi
             document.getElementById('data').value = new Date().toISOString().split('T')[0];
-            document.getElementById('giornatelavorate').value = '1.0';
+            document.getElementById('giornatelavorate').value = '1';
             
             // Reset tasks select
             const taskSelect = document.getElementById('task');
@@ -933,6 +1015,32 @@ class ConsuntivazioneApp {
             year: 'numeric',
             month: '2-digit',
             day: '2-digit'
+        });
+    }
+    
+    initCollapseIcons() {
+        // Gestisci rotazione icone per collapse
+        const collapseElements = ['collapseConsuntivazione', 'collapseUltime', 'collapseConsulta'];
+        
+        collapseElements.forEach(collapseId => {
+            const collapseElement = document.getElementById(collapseId);
+            if (collapseElement) {
+                collapseElement.addEventListener('show.bs.collapse', function () {
+                    const icon = this.previousElementSibling.querySelector('.collapse-icon');
+                    if (icon) {
+                        icon.classList.remove('fa-chevron-down');
+                        icon.classList.add('fa-chevron-up');
+                    }
+                });
+                
+                collapseElement.addEventListener('hide.bs.collapse', function () {
+                    const icon = this.previousElementSibling.querySelector('.collapse-icon');
+                    if (icon) {
+                        icon.classList.remove('fa-chevron-up');
+                        icon.classList.add('fa-chevron-down');
+                    }
+                });
+            }
         });
     }
     
@@ -1085,7 +1193,7 @@ class ConsuntivazioneApp {
         let html = `
             <!-- Statistiche Generali -->
             <div class="row mb-4">
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <div class="card bg-primary text-white">
                         <div class="card-body text-center">
                             <h5>${statistiche.numero_consuntivazioni}</h5>
@@ -1093,7 +1201,7 @@ class ConsuntivazioneApp {
                         </div>
                     </div>
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <div class="card bg-success text-white">
                         <div class="card-body text-center">
                             <h5>${statistiche.totale_giornate.toFixed(1)}</h5>
@@ -1101,11 +1209,19 @@ class ConsuntivazioneApp {
                         </div>
                     </div>
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <div class="card bg-info text-white">
                         <div class="card-body text-center">
                             <h5>€ ${statistiche.totale_spese.toFixed(2)}</h5>
                             <small>Totale Spese</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-warning text-dark">
+                        <div class="card-body text-center">
+                            <h5>€ ${(statistiche.totale_spese_rimborsabili || 0).toFixed(2)}</h5>
+                            <small>Spese Rimborsabili</small>
                         </div>
                     </div>
                 </div>
@@ -1126,7 +1242,8 @@ class ConsuntivazioneApp {
                                 <th>Mese</th>
                                 <th class="text-center">Consuntivazioni</th>
                                 <th class="text-center">Giornate</th>
-                                <th class="text-end">Spese</th>
+                                <th class="text-end">Spese Totali</th>
+                                <th class="text-end">Spese Rimborsabili</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -1139,6 +1256,7 @@ class ConsuntivazioneApp {
                         <td class="text-center">${mese.count}</td>
                         <td class="text-center">${mese.giornate.toFixed(1)}</td>
                         <td class="text-end">€ ${mese.spese.toFixed(2)}</td>
+                        <td class="text-end">€ ${(mese.spese_rimborsabili || 0).toFixed(2)}</td>
                     </tr>
                 `;
             });
@@ -1163,6 +1281,8 @@ class ConsuntivazioneApp {
                             <th>Data</th>
                             <th>Progetto</th>
                             <th>Task</th>
+                            <th class="text-center">Tipo</th>
+                            <th class="text-center">Modalità</th>
                             <th class="text-center">Giorni</th>
                             <th class="text-end">Spese</th>
                             <th class="text-center">Stato</th>
@@ -1174,6 +1294,14 @@ class ConsuntivazioneApp {
         `;
         
         consuntivazioni.forEach(cons => {
+            // Determina il badge per il tipo
+            const tipoColor = {
+                'Campo': 'bg-primary',
+                'Promo': 'bg-info',
+                'Sviluppo': 'bg-warning text-dark',
+                'Formazione': 'bg-success'
+            };
+            
             html += `
                 <tr>
                     <td>${this.formatDate(cons.Data)}</td>
@@ -1182,6 +1310,15 @@ class ConsuntivazioneApp {
                         <small class="text-muted">${cons.Cliente || 'Progetto interno'}</small>
                     </td>
                     <td>${cons.Task}</td>
+                    <td class="text-center">
+                        <span class="badge ${tipoColor[cons.Tipo] || 'bg-secondary'}">${cons.Tipo || 'Campo'}</span>
+                    </td>
+                    <td class="text-center">
+                        ${cons.Desk === 'Si' ? 
+                            '<span class="badge bg-dark"><i class="fas fa-desktop"></i> Desk</span>' : 
+                            '<span class="badge bg-light text-dark"><i class="fas fa-building"></i> Campo</span>'
+                        }
+                    </td>
                     <td class="text-center">
                         <span class="badge bg-primary">${cons.gg}</span>
                     </td>
@@ -1253,11 +1390,15 @@ class ConsuntivazioneApp {
     }
     
     downloadCSV(data, filename) {
-        const headers = ['Data', 'Progetto', 'Cliente', 'Task', 'Giorni', 'Spese Viaggio', 'Vitto/Alloggio', 'Altre Spese', 'Totale Spese', 'Note'];
+        const headers = ['Data', 'Progetto', 'Cliente', 'Task', 'Giorni', 'Spese Viaggio', 'Vitto/Alloggio', 'Altre Spese', 'Spese Fatturate VP', 'Totale Spese', 'Spese Rimborsabili', 'Note'];
         
         let csvContent = headers.join(';') + '\n';
         
         data.forEach(row => {
+            const totaleSpese = parseFloat(row.Totale_Spese || 0);
+            const speseFattVP = parseFloat(row.Spese_Fatturate_VP || 0);
+            const speseRimborsabili = Math.max(0, totaleSpese - speseFattVP);
+            
             const csvRow = [
                 this.formatDate(row.Data),
                 `"${row.Commessa || ''}"`,
@@ -1267,7 +1408,9 @@ class ConsuntivazioneApp {
                 row.Spese_Viaggi || 0,
                 row.Vitto_alloggio || 0,
                 row.Altri_costi || 0,
-                row.Totale_Spese || 0,
+                speseFattVP,
+                totaleSpese,
+                speseRimborsabili,
                 `"${row.Note || ''}"`
             ].join(';');
             csvContent += csvRow + '\n';
@@ -1340,8 +1483,12 @@ class ConsuntivazioneApp {
                                     <div class="col-md-6">
                                         <div class="form-group mb-3">
                                             <label for="editGiornate" class="form-label">Giornate *</label>
-                                            <input type="number" id="editGiornate" class="form-control" 
-                                                   min="0.1" max="2" step="0.1" value="${consuntivazione.gg}" required>
+                                            <select id="editGiornate" class="form-control" required>
+                                                <option value="1" ${consuntivazione.gg == '1' ? 'selected' : ''}>1 giornata</option>
+                                                <option value="0.75" ${consuntivazione.gg == '0.75' ? 'selected' : ''}>0,75 giornate</option>
+                                                <option value="0.5" ${consuntivazione.gg == '0.5' ? 'selected' : ''}>0,5 giornate</option>
+                                                <option value="0.25" ${consuntivazione.gg == '0.25' ? 'selected' : ''}>0,25 giornate</option>
+                                            </select>
                                         </div>
                                     </div>
                                 </div>
@@ -1365,6 +1512,33 @@ class ConsuntivazioneApp {
                                     </div>
                                 </div>
                                 
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group mb-3">
+                                            <label for="editTipo" class="form-label">Tipo Attività *</label>
+                                            <select id="editTipo" class="form-control" required>
+                                                <option value="Campo" ${consuntivazione.Tipo === 'Campo' ? 'selected' : ''}>Campo</option>
+                                                <option value="Promo" ${consuntivazione.Tipo === 'Promo' ? 'selected' : ''}>Promo</option>
+                                                <option value="Sviluppo" ${consuntivazione.Tipo === 'Sviluppo' ? 'selected' : ''}>Sviluppo</option>
+                                                <option value="Formazione" ${consuntivazione.Tipo === 'Formazione' ? 'selected' : ''}>Formazione</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group mb-3">
+                                            <label for="editDesk" class="form-label">Modalità Lavoro</label>
+                                            <div class="form-check form-switch mt-2">
+                                                <input class="form-check-input" type="checkbox" id="editDesk" 
+                                                       ${consuntivazione.Desk === 'Si' ? 'checked' : ''}>
+                                                <label class="form-check-label" for="editDesk">
+                                                    <i class="fas fa-desktop me-2"></i>
+                                                    Lavoro da remoto (Desk)
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
                                 <hr class="my-4">
                                 <h6 class="mb-3">
                                     <i class="fas fa-money-bill-wave me-2"></i>
@@ -1372,25 +1546,32 @@ class ConsuntivazioneApp {
                                 </h6>
                                 
                                 <div class="row">
-                                    <div class="col-md-4">
+                                    <div class="col-md-3">
                                         <div class="form-group mb-3">
                                             <label for="editSpeseViaggio" class="form-label">Spese Viaggio (€)</label>
                                             <input type="number" id="editSpeseViaggio" class="form-control" 
                                                    min="0" step="0.01" value="${consuntivazione.Spese_Viaggi}">
                                         </div>
                                     </div>
-                                    <div class="col-md-4">
+                                    <div class="col-md-3">
                                         <div class="form-group mb-3">
                                             <label for="editVittoAlloggio" class="form-label">Vitto/Alloggio (€)</label>
                                             <input type="number" id="editVittoAlloggio" class="form-control" 
                                                    min="0" step="0.01" value="${consuntivazione.Vitto_alloggio}">
                                         </div>
                                     </div>
-                                    <div class="col-md-4">
+                                    <div class="col-md-3">
                                         <div class="form-group mb-3">
                                             <label for="editAltreSpese" class="form-label">Altre Spese (€)</label>
                                             <input type="number" id="editAltreSpese" class="form-control" 
                                                    min="0" step="0.01" value="${consuntivazione.Altri_costi}">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="form-group mb-3">
+                                            <label for="editSpeseFattVP" class="form-label">Spese Fatturate VP (€)</label>
+                                            <input type="number" id="editSpeseFattVP" class="form-control" 
+                                                   min="0" step="0.01" value="${consuntivazione.Spese_Fatturate_VP || 0}">
                                         </div>
                                     </div>
                                 </div>
@@ -1496,9 +1677,12 @@ class ConsuntivazioneApp {
             data: document.getElementById('editData').value,
             gg: document.getElementById('editGiornate').value,
             id_task: document.getElementById('editTask').value,
+            tipo: document.getElementById('editTipo').value,
+            desk: document.getElementById('editDesk').checked ? 'Si' : 'No',
             spese_viaggi: document.getElementById('editSpeseViaggio').value || 0,
             vitto_alloggio: document.getElementById('editVittoAlloggio').value || 0,
             altri_costi: document.getElementById('editAltreSpese').value || 0,
+            spese_fatturate_vp: document.getElementById('editSpeseFattVP').value || 0,
             note: document.getElementById('editNote').value
         };
         

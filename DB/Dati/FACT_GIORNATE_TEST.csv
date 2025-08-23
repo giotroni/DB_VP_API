@@ -1,0 +1,5 @@
+ID_GIORNATA;Data;ID_COLLABORATORE;ID_TASK;Tipo;Desk;gg;Spese_Viaggi;Vitto_alloggio;Altri_costi;Spese_Fatturate_VP;Confermata;Note
+GIO_TEST_001;15/08/2025;CONS001;TAS00001;Campo;No;1,0;150,50;80,00;20,25;200,75;No;Test campo con spese fatturate
+GIO_TEST_002;16/08/2025;CONS002;TAS00002;Promo;Si;0,5;0,00;0,00;0,00;125,50;No;Test promo da remoto
+GIO_TEST_003;17/08/2025;CONS003;TAS00003;Sviluppo;Si;1,0;25,30;0,00;15,45;300,25;No;Test sviluppo con decimali
+GIO_TEST_004;18/08/2025;CONS001;TAS00004;Formazione;No;1,0;200,00;120,50;0,00;450,75;Si;Test formazione confermata

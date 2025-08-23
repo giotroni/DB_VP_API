@@ -115,10 +115,13 @@ class ConsuntivazioneAPISimple {
                 'Data' => $data['data'],
                 'ID_COLLABORATORE' => $idCollaboratore,
                 'ID_TASK' => $data['task'],
+                'Tipo' => $data['tipo'] ?? 'Campo',
+                'Desk' => $data['desk'] ?? 'No',
                 'gg' => floatval($data['giornate_lavorate']),
                 'Spese_Viaggi' => floatval($data['spese_viaggio'] ?? 0),
                 'Vitto_alloggio' => floatval($data['vitto_alloggio'] ?? 0),
                 'Altri_costi' => floatval($data['altre_spese'] ?? 0),
+                'Spese_Fatturate_VP' => floatval($data['spese_fatturate_vp'] ?? 0),
                 'Confermata' => 'No', // Default a No, può essere confermata successivamente
                 'Note' => $data['note'] ?? '',
                 'Data_Creazione' => date('Y-m-d H:i:s'),
@@ -127,12 +130,12 @@ class ConsuntivazioneAPISimple {
             
             // Inserimento nel database
             $sql = "INSERT INTO FACT_GIORNATE (
-                        ID_GIORNATA, Data, ID_COLLABORATORE, ID_TASK, 
-                        gg, Spese_Viaggi, Vitto_alloggio, Altri_costi, 
+                        ID_GIORNATA, Data, ID_COLLABORATORE, ID_TASK, Tipo, Desk,
+                        gg, Spese_Viaggi, Vitto_alloggio, Altri_costi, Spese_Fatturate_VP,
                         Confermata, Note, Data_Creazione, ID_UTENTE_CREAZIONE
                     ) VALUES (
-                        :ID_GIORNATA, :Data, :ID_COLLABORATORE, :ID_TASK,
-                        :gg, :Spese_Viaggi, :Vitto_alloggio, :Altri_costi,
+                        :ID_GIORNATA, :Data, :ID_COLLABORATORE, :ID_TASK, :Tipo, :Desk,
+                        :gg, :Spese_Viaggi, :Vitto_alloggio, :Altri_costi, :Spese_Fatturate_VP,
                         :Confermata, :Note, :Data_Creazione, :ID_UTENTE_CREAZIONE
                     )";
             

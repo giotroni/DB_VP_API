@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Campi Tipo e Desk - Consuntivazione V&P</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="assets/css/vp-theme.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-4">
+        <h1 class="mb-4">
+            <i class="fas fa-test-tube me-2"></i>
+            Test Campi Tipo e Desk
+        </h1>
+        
+        <div class="alert alert-info">
+            <h5>Modifiche Implementate:</h5>
+            <ul class="mb-0">
+                <li><strong>Campo Tipo:</strong> Campo select con opzioni Campo, Promo, Sviluppo, Formazione (default: Campo)</li>
+                <li><strong>Campo Desk:</strong> Switch per indicare lavoro da remoto (default: No)</li>
+                <li><strong>Database:</strong> Campi già presenti nella tabella FACT_GIORNATE</li>
+                <li><strong>API:</strong> Aggiornate per gestire insert/update dei nuovi campi</li>
+                <li><strong>Visualizzazione:</strong> Aggiunte colonne nella tabella delle consuntivazioni</li>
+            </ul>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">
+                            <i class="fas fa-plus me-2"></i>
+                            Form di Inserimento
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="testForm">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group mb-3">
+                                        <label for="tipo" class="form-label">Tipo Attività *</label>
+                                        <select id="tipo" class="form-control" required>
+                                            <option value="Campo" selected>Campo</option>
+                                            <option value="Promo">Promo</option>
+                                            <option value="Sviluppo">Sviluppo</option>
+                                            <option value="Formazione">Formazione</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group mb-3">
+                                        <label for="desk" class="form-label">Modalità Lavoro</label>
+                                        <div class="form-check form-switch mt-2">
+                                            <input class="form-check-input" type="checkbox" id="desk" value="Si">
+                                            <label class="form-check-label" for="desk">
+                                                <i class="fas fa-desktop me-2"></i>
+                                                Lavoro da remoto (Desk)
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <button type="button" class="btn btn-primary" onclick="testValues()">
+                                <i class="fas fa-check me-2"></i>
+                                Test Valori
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0">
+                            <i class="fas fa-eye me-2"></i>
+                            Visualizzazione Tabella
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Data</th>
+                                        <th>Tipo</th>
+                                        <th>Modalità</th>
+                                        <th>Giorni</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>23/08/2025</td>
+                                        <td><span class="badge bg-primary">Campo</span></td>
+                                        <td><span class="badge bg-light text-dark"><i class="fas fa-building"></i> Campo</span></td>
+                                        <td><span class="badge bg-primary">1.0</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td>22/08/2025</td>
+                                        <td><span class="badge bg-info">Promo</span></td>
+                                        <td><span class="badge bg-dark"><i class="fas fa-desktop"></i> Desk</span></td>
+                                        <td><span class="badge bg-primary">0.5</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td>21/08/2025</td>
+                                        <td><span class="badge bg-warning text-dark">Sviluppo</span></td>
+                                        <td><span class="badge bg-dark"><i class="fas fa-desktop"></i> Desk</span></td>
+                                        <td><span class="badge bg-primary">1.0</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td>20/08/2025</td>
+                                        <td><span class="badge bg-success">Formazione</span></td>
+                                        <td><span class="badge bg-light text-dark"><i class="fas fa-building"></i> Campo</span></td>
+                                        <td><span class="badge bg-primary">1.0</span></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="mt-4">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Risultati Test
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div id="testResults" class="alert alert-light">
+                        Clicca "Test Valori" per vedere i valori selezionati
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="mt-4">
+            <div class="card">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0">
+                        <i class="fas fa-tasks me-2"></i>
+                        Prossimi Passi
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <ol>
+                        <li>Aprire l'applicazione principale: <a href="consuntivazione.html" class="btn btn-primary btn-sm">Vai a Consuntivazione</a></li>
+                        <li>Testare l'inserimento di una nuova consuntivazione con i campi Tipo e Desk</li>
+                        <li>Verificare che la tabella mostri correttamente i badge per Tipo e modalità Desk</li>
+                        <li>Testare la modifica di una consuntivazione esistente</li>
+                        <li>Verificare che l'API salvi correttamente i valori nel database</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function testValues() {
+            const tipo = document.getElementById('tipo').value;
+            const desk = document.getElementById('desk').checked;
+            
+            const resultDiv = document.getElementById('testResults');
+            resultDiv.innerHTML = `
+                <h6>Valori Selezionati:</h6>
+                <ul>
+                    <li><strong>Tipo:</strong> ${tipo}</li>
+                    <li><strong>Desk:</strong> ${desk ? 'Si' : 'No'}</li>
+                </ul>
+                <p class="mb-0">Questi valori verranno inviati all'API come:</p>
+                <pre class="bg-light p-2 mt-2 rounded">{
+    "tipo": "${tipo}",
+    "desk": "${desk ? 'Si' : 'No'}"
+}</pre>
+            `;
+            resultDiv.className = 'alert alert-success';
+        }
+    </script>
+</body>
+</html>

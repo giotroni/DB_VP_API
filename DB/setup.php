@@ -177,6 +177,7 @@ class DatabaseSetup {
             Spese_Viaggi DECIMAL(10,2) DEFAULT 0,
             Vitto_alloggio DECIMAL(10,2) DEFAULT 0,
             Altri_costi DECIMAL(10,2) DEFAULT 0,
+            Spese_Fatturate_VP DECIMAL(10,2) DEFAULT 0,
             Confermata ENUM('Si', 'No') DEFAULT 'No',
             Note TEXT,
             Data_Creazione TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -348,19 +349,19 @@ class DatabaseSetup {
     private function insertGiornate() {
         // Inserimento di alcune giornate di esempio
         $giornate = [
-            ['DAY000000001', '2025-01-09', 'CONS001', 'TAS00006', 'Campo', 'No', 1, 250, 0, 0, ''],
-            ['DAY000000002', '2025-01-10', 'CONS001', 'TAS00007', 'Campo', 'No', 1, 300, 0, 0, 'Audit primo giorno'],
-            ['DAY000000003', '2025-01-11', 'CONS003', 'TAS00005', 'Campo', 'No', 0.5, 0, 0, 0, 'Mezza giornata consulenza'],
-            ['DAY000000004', '2025-01-12', 'CONS004', 'TAS00006', 'Formazione', 'No', 1, 150, 0, 0, 'Formazione team'],
-            ['DAY000000005', '2025-01-13', 'CONS001', 'TAS00007', 'Campo', 'No', 1, 300, 80, 0, 'Continuazione audit'],
-            ['DAY000000006', '2025-01-14', 'CONS005', 'TAS00009', 'Monitoraggio', 'Si', 1, 0, 0, 0, 'Monitoraggio da remoto'],
-            ['DAY000000007', '2025-01-15', 'CONS003', 'TAS00008', 'Campo', 'No', 1, 200, 0, 0, 'Consulenza qualità'],
-            ['DAY000000008', '2025-01-16', 'CONS001', 'TAS00004', 'Campo', 'No', 1, 350, 0, 0, 'Audit sistema qualità'],
-            ['DAY000000009', '2025-01-17', 'CONS004', 'TAS00002', 'Campo', 'No', 1, 180, 0, 0, 'Consulenza Calvi'],
-            ['DAY000000010', '2025-01-18', 'CONS001', 'TAS00010', 'Sviluppo', 'Si', 1, 0, 0, 0, 'Sviluppo procedure']
+            ['DAY000000001', '2025-01-09', 'CONS001', 'TAS00006', 'Campo', 'No', 1, 250, 0, 0, 0, ''],
+            ['DAY000000002', '2025-01-10', 'CONS001', 'TAS00007', 'Campo', 'No', 1, 300, 0, 0, 0, 'Audit primo giorno'],
+            ['DAY000000003', '2025-01-11', 'CONS003', 'TAS00005', 'Campo', 'No', 0.5, 0, 0, 0, 0, 'Mezza giornata consulenza'],
+            ['DAY000000004', '2025-01-12', 'CONS004', 'TAS00006', 'Formazione', 'No', 1, 150, 0, 0, 0, 'Formazione team'],
+            ['DAY000000005', '2025-01-13', 'CONS001', 'TAS00007', 'Campo', 'No', 1, 300, 80, 0, 0, 'Continuazione audit'],
+            ['DAY000000006', '2025-01-14', 'CONS005', 'TAS00009', 'Monitoraggio', 'Si', 1, 0, 0, 0, 0, 'Monitoraggio da remoto'],
+            ['DAY000000007', '2025-01-15', 'CONS003', 'TAS00008', 'Campo', 'No', 1, 200, 0, 0, 0, 'Consulenza qualità'],
+            ['DAY000000008', '2025-01-16', 'CONS001', 'TAS00004', 'Campo', 'No', 1, 350, 0, 0, 0, 'Audit sistema qualità'],
+            ['DAY000000009', '2025-01-17', 'CONS004', 'TAS00002', 'Campo', 'No', 1, 180, 0, 0, 0, 'Consulenza Calvi'],
+            ['DAY000000010', '2025-01-18', 'CONS001', 'TAS00010', 'Sviluppo', 'Si', 1, 0, 0, 0, 0, 'Sviluppo procedure']
         ];
         
-        $sql = "INSERT INTO FACT_GIORNATE (ID_GIORNATA, Data, ID_COLLABORATORE, ID_TASK, Tipo, Desk, gg, Spese_Viaggi, Vitto_alloggio, Altri_costi, Note) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        $sql = "INSERT INTO FACT_GIORNATE (ID_GIORNATA, Data, ID_COLLABORATORE, ID_TASK, Tipo, Desk, gg, Spese_Viaggi, Vitto_alloggio, Altri_costi, Spese_Fatturate_VP, Note) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         $stmt = $this->db->prepare($sql);
         
         foreach ($giornate as $giornata) {
