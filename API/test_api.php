@@ -83,7 +83,7 @@ echo "\n";
 echo "2. TEST CLIENTI\n";
 $clienteData = [
     'Cliente' => 'TEST CLIENT SRL',
-    'Denominazione_Sociale' => 'Test Client Solutions SRL',
+    'Ragione_Sociale' => 'Test Client Solutions SRL',
     'Indirizzo' => 'Via Test 123',
     'Citta' => 'Milano',
     'CAP' => '20100',

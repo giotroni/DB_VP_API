@@ -139,7 +139,7 @@ Crea un nuovo cliente.
 - `Cliente`: Nome cliente (max 255 caratteri)
 
 **Campi opzionali:**
-- `Denominazione_Sociale`: Ragione sociale
+- `Ragione_Sociale`: Ragione sociale
 - `Indirizzo`: Indirizzo completo
 - `Citta`: Città
 - `CAP`: Codice postale (5 cifre)
@@ -151,7 +151,7 @@ Crea un nuovo cliente.
 POST /../API/index.php?resource=clienti
 {
   "Cliente": "ACME SRL",
-  "Denominazione_Sociale": "ACME Soluzioni SRL",
+  "Ragione_Sociale": "ACME Soluzioni SRL",
   "Indirizzo": "Via Roma 123",
   "Citta": "Milano",
   "CAP": "20100",

@@ -14,7 +14,7 @@ class ClientiAPI extends BaseAPI {
         $this->validationRules = [
             'ID_CLIENTE' => ['max_length' => 50],
             'Cliente' => ['required' => true, 'max_length' => 255],
-            'Denominazione_Sociale' => ['max_length' => 255],
+            'Ragione_Sociale' => ['max_length' => 255],
             'Indirizzo' => ['max_length' => 255],
             'Citta' => ['max_length' => 255],
             'CAP' => ['max_length' => 10, 'pattern' => '/^\d{5}$/'],

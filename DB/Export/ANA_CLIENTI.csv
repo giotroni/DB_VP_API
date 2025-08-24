@@ -1,4 +1,4 @@
-ID_CLIENTE;Cliente;Denominazione_Sociale;Indirizzo;Citta;CAP;Provincia;P_IVA;Data_Creazione;ID_UTENTE_CREAZIONE;Data_Modifica;ID_UTENTE_MODIFICA
+ID_CLIENTE;Cliente;Ragione_Sociale;Indirizzo;Citta;CAP;Provincia;P_IVA;Data_Creazione;ID_UTENTE_CREAZIONE;Data_Modifica;ID_UTENTE_MODIFICA
 CLI0001;ALBINI;ALBINI;;;;;;;;;
 CLI0002;AMGA;AMGA;;;;;;;;;
 CLI0003;CALVI;CALVI;;;;;;;;;

@@ -41,7 +41,7 @@ echo "================================================================\n\n";
 echo "Step 1: Creazione cliente\n";
 $clienteData = [
     'Cliente' => 'ESEMPIO SRL',
-    'Denominazione_Sociale' => 'Esempio Solutions SRL',
+    'Ragione_Sociale' => 'Esempio Solutions SRL',
     'Indirizzo' => 'Via Esempio 123',
     'Citta' => 'Milano',
     'CAP' => '20100',

@@ -19,23 +19,23 @@
 [2025-08-21 11:32:31] Inizio importazione: ANA_CLIENTI.csv → ANA_CLIENTI
 [2025-08-21 11:32:31] === INIZIO IMPORTAZIONE ANA_CLIENTI ===
 [2025-08-21 11:32:31] File: /home2/vaglioty/public_html/../DB/Dati/ANA_CLIENTI.csv
-[2025-08-21 11:32:31] Headers originali: ID_CLIENTE, Cliente, Denominazione_Sociale, Indirizzo, Citta, CAP, Provincia, P_IVA, Data_Creazione, ID_UTENTE_CREAZIONE, Data_Modifica, ID_UTENTE_MODIFICA, 
-[2025-08-21 11:32:31] Headers puliti: ID_CLIENTE, Cliente, Denominazione_Sociale, Indirizzo, Citta, CAP, Provincia, P_IVA, Data_Creazione, ID_UTENTE_CREAZIONE, Data_Modifica, ID_UTENTE_MODIFICA
+[2025-08-21 11:32:31] Headers originali: ID_CLIENTE, Cliente, Ragione_Sociale, Indirizzo, Citta, CAP, Provincia, P_IVA, Data_Creazione, ID_UTENTE_CREAZIONE, Data_Modifica, ID_UTENTE_MODIFICA, 
+[2025-08-21 11:32:31] Headers puliti: ID_CLIENTE, Cliente, Ragione_Sociale, Indirizzo, Citta, CAP, Provincia, P_IVA, Data_Creazione, ID_UTENTE_CREAZIONE, Data_Modifica, ID_UTENTE_MODIFICA
 [2025-08-21 11:32:31] Numero di colonne header: 12
-[2025-08-21 11:32:31] Query preparata: INSERT IGNORE INTO `ANA_CLIENTI` (`ID_CLIENTE`, `Cliente`, `Denominazione_Sociale`, `Indirizzo`, `Citta`, `CAP`, `Provincia`, `P_IVA`, `Data_Creazione`, `ID_UTENTE_CREAZIONE`, `Data_Modifica`, `ID_UTENTE_MODIFICA`) VALUES (:ID_CLIENTE, :Cliente, :Denominazione_Sociale, :Indirizzo, :Citta, :CAP, :Provincia, :P_IVA, :Data_Creazione, :ID_UTENTE_CREAZIONE, :Data_Modifica, :ID_UTENTE_MODIFICA)
+[2025-08-21 11:32:31] Query preparata: INSERT IGNORE INTO `ANA_CLIENTI` (`ID_CLIENTE`, `Cliente`, `Ragione_Sociale`, `Indirizzo`, `Citta`, `CAP`, `Provincia`, `P_IVA`, `Data_Creazione`, `ID_UTENTE_CREAZIONE`, `Data_Modifica`, `ID_UTENTE_MODIFICA`) VALUES (:ID_CLIENTE, :Cliente, :Ragione_Sociale, :Indirizzo, :Citta, :CAP, :Provincia, :P_IVA, :Data_Creazione, :ID_UTENTE_CREAZIONE, :Data_Modifica, :ID_UTENTE_MODIFICA)
 [2025-08-21 11:32:31] Numero totale di righe dati da processare: 18
 [2025-08-21 11:32:31] Riga 2 dati grezzi: CLI0001 | ALBINI | ALBINI |  |  |  |  |  |  |  |  |  | 
 [2025-08-21 11:32:31] Numero di campi riga 2: 13
 [2025-08-21 11:32:31] Riga 2: regolato numero campi da 13 a 12
-[2025-08-21 11:32:31] Record 1 parametri: {"ID_CLIENTE":"CLI0001","Cliente":"ALBINI","Denominazione_Sociale":"ALBINI","Indirizzo":null,"Citta":null,"CAP":null,"Provincia":null,"P_IVA":null,"Data_Creazione":null,"ID_UTENTE_CREAZIONE":null,"Data_Modifica":null,"ID_UTENTE_MODIFICA":null}
+[2025-08-21 11:32:31] Record 1 parametri: {"ID_CLIENTE":"CLI0001","Cliente":"ALBINI","Ragione_Sociale":"ALBINI","Indirizzo":null,"Citta":null,"CAP":null,"Provincia":null,"P_IVA":null,"Data_Creazione":null,"ID_UTENTE_CREAZIONE":null,"Data_Modifica":null,"ID_UTENTE_MODIFICA":null}
 [2025-08-21 11:32:31] Riga 3 dati grezzi: CLI0002 | AMGA | AMGA |  |  |  |  |  |  |  |  |  | 
 [2025-08-21 11:32:31] Numero di campi riga 3: 13
 [2025-08-21 11:32:31] Riga 3: regolato numero campi da 13 a 12
-[2025-08-21 11:32:31] Record 2 parametri: {"ID_CLIENTE":"CLI0002","Cliente":"AMGA","Denominazione_Sociale":"AMGA","Indirizzo":null,"Citta":null,"CAP":null,"Provincia":null,"P_IVA":null,"Data_Creazione":null,"ID_UTENTE_CREAZIONE":null,"Data_Modifica":null,"ID_UTENTE_MODIFICA":null}
+[2025-08-21 11:32:31] Record 2 parametri: {"ID_CLIENTE":"CLI0002","Cliente":"AMGA","Ragione_Sociale":"AMGA","Indirizzo":null,"Citta":null,"CAP":null,"Provincia":null,"P_IVA":null,"Data_Creazione":null,"ID_UTENTE_CREAZIONE":null,"Data_Modifica":null,"ID_UTENTE_MODIFICA":null}
 [2025-08-21 11:32:31] Riga 4 dati grezzi: CLI0003 | CALVI | CALVI |  |  |  |  |  |  |  |  |  | 
 [2025-08-21 11:32:31] Numero di campi riga 4: 13
 [2025-08-21 11:32:31] Riga 4: regolato numero campi da 13 a 12
-[2025-08-21 11:32:31] Record 3 parametri: {"ID_CLIENTE":"CLI0003","Cliente":"CALVI","Denominazione_Sociale":"CALVI","Indirizzo":null,"Citta":null,"CAP":null,"Provincia":null,"P_IVA":null,"Data_Creazione":null,"ID_UTENTE_CREAZIONE":null,"Data_Modifica":null,"ID_UTENTE_MODIFICA":null}
+[2025-08-21 11:32:31] Record 3 parametri: {"ID_CLIENTE":"CLI0003","Cliente":"CALVI","Ragione_Sociale":"CALVI","Indirizzo":null,"Citta":null,"CAP":null,"Provincia":null,"P_IVA":null,"Data_Creazione":null,"ID_UTENTE_CREAZIONE":null,"Data_Modifica":null,"ID_UTENTE_MODIFICA":null}
 [2025-08-21 11:32:31] Riga 5: regolato numero campi da 13 a 12
 [2025-08-21 11:32:31] Riga 6: regolato numero campi da 13 a 12
 [2025-08-21 11:32:31] Riga 7: regolato numero campi da 13 a 12

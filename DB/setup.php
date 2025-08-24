@@ -59,7 +59,7 @@ class DatabaseSetup {
         $sql = "CREATE TABLE IF NOT EXISTS ANA_CLIENTI (
             ID_CLIENTE VARCHAR(50) PRIMARY KEY,
             Cliente VARCHAR(255),
-            Denominazione_Sociale VARCHAR(255),
+            Ragione_Sociale VARCHAR(255),
             Indirizzo VARCHAR(255),
             Citta VARCHAR(255),
             CAP VARCHAR(10),
@@ -233,7 +233,7 @@ class DatabaseSetup {
     // Tutte le funzioni di inserimento dati sono state spostate in import.php
     
     private function insertClients($clients) {
-        $sql = "INSERT INTO ANA_CLIENTI (ID_CLIENTE, Cliente, Denominazione_Sociale, Indirizzo, Citta, CAP, Provincia, P_IVA) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+        $sql = "INSERT INTO ANA_CLIENTI (ID_CLIENTE, Cliente, Ragione_Sociale, Indirizzo, Citta, CAP, Provincia, P_IVA) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
         $stmt = $this->db->prepare($sql);
         
         foreach ($clients as $client) {

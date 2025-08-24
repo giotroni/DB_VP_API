@@ -419,7 +419,7 @@ class FattureAPI extends BaseAPI {
         try {
             // Aggiungi informazioni cliente
             if (!empty($record['ID_CLIENTE'])) {
-                $clienteInfo = $this->getRelatedData('ANA_CLIENTI', 'ID_CLIENTE', $record['ID_CLIENTE'], ['Cliente', 'Denominazione_Sociale']);
+                $clienteInfo = $this->getRelatedData('ANA_CLIENTI', 'ID_CLIENTE', $record['ID_CLIENTE'], ['Cliente', 'Ragione_Sociale']);
                 $record['cliente_info'] = $clienteInfo;
             }
             
