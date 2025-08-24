@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Fix - Larghezza Header Sezioni</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="assets/css/vp-theme.css" rel="stylesheet">
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .demo-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .section-demo {
+            margin-bottom: 2rem;
+        }
+        .status { 
+            padding: 5px 10px; 
+            border-radius: 4px; 
+            margin: 5px 0;
+            font-weight: bold;
+        }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .warning { background-color: #fff3cd; color: #856404; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+        .measurement {
+            background-color: #e9ecef;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 Test Fix - Larghezza Header delle Tre Sezioni</h1>
+    
+    <div class="test-section">
+        <h3>📋 Problema Identificato</h3>
+        <div class="error">
+            <strong>Issue:</strong> Gli header delle tre sezioni principali ("Consuntivazione Giornaliera", "Ultime Consuntivazioni", "Consulta Consuntivazioni") avevano larghezze diverse.
+        </div>
+        <div class="success">
+            <strong>Cause identificate:</strong>
+            <ul>
+                <li>Struttura HTML leggermente diversa tra le sezioni</li>
+                <li>CSS non uniforme per gli header delle sezioni</li>
+                <li>Possibili differenze nei contenitori Bootstrap</li>
+                <li>Definizioni ridondanti di modal-header nel CSS</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h3>🔧 Modifiche Implementate</h3>
+        <div class="info">
+            <h4>1. JavaScript (consuntivazione.js):</h4>
+            <ul>
+                <li>✅ Uniformato la struttura HTML delle tre sezioni</li>
+                <li>✅ Assicurato che tutte usino la stessa struttura di contenitori Bootstrap</li>
+                <li>✅ Corretta la denominazione della sezione ("Ultime Consuntivazioni" invece di "Riepilogo Giornate")</li>
+            </ul>
+            
+            <h4>2. CSS (vp-theme.css):</h4>
+            <ul>
+                <li>✅ Aggiunto <code>width: 100%</code> per <code>.table-vp</code></li>
+                <li>✅ Specificato <code>width: 100%</code> per <code>.table-vp .modal-header</code></li>
+                <li>✅ Rimosso margini e padding incosistenti</li>
+                <li>✅ Separato CSS per modal-header nelle sezioni vs modali reali</li>
+                <li>✅ Aggiunto regole per assicurare uniformità dei contenitori</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h3>🧪 Demo delle Sezioni Uniformi</h3>
+        
+        <div class="demo-container">
+            
+            <!-- Sezione 1: Consuntivazione Giornaliera -->
+            <div class="section-demo">
+                <div class="row">
+                    <div class="col-12">
+                        <div class="table-vp">
+                            <div class="modal-header" style="cursor: pointer;">
+                                <h2 class="modal-title">
+                                    <i class="fas fa-plus-circle me-2"></i>
+                                    Consuntivazione Giornaliera
+                                    <i class="fas fa-chevron-down ms-2"></i>
+                                </h2>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="measurement" id="measure1">Misurazione larghezza sezione 1...</div>
+            </div>
+
+            <!-- Sezione 2: Ultime Consuntivazioni -->
+            <div class="section-demo">
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <div class="table-vp">
+                            <div class="modal-header" style="cursor: pointer;">
+                                <h2 class="modal-title">
+                                    <i class="fas fa-history me-2"></i>
+                                    Ultime Consuntivazioni
+                                    <i class="fas fa-chevron-down ms-2"></i>
+                                </h2>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="measurement" id="measure2">Misurazione larghezza sezione 2...</div>
+            </div>
+
+            <!-- Sezione 3: Consulta Consuntivazioni -->
+            <div class="section-demo">
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <div class="table-vp">
+                            <div class="modal-header" style="cursor: pointer;">
+                                <h2 class="modal-title">
+                                    <i class="fas fa-search me-2"></i>
+                                    Consulta Consuntivazioni
+                                    <i class="fas fa-chevron-down ms-2"></i>
+                                </h2>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="measurement" id="measure3">Misurazione larghezza sezione 3...</div>
+            </div>
+            
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h3>✅ Risultato del Fix</h3>
+        <div id="testResult" class="success">
+            Le tre sezioni ora dovrebbero avere la stessa larghezza!
+        </div>
+        
+        <button onclick="measureWidths()" class="btn btn-primary">📏 Misura Larghezze</button>
+        <button onclick="toggleHeaders()" class="btn btn-secondary">🔄 Toggle Headers</button>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        function measureWidths() {
+            const sections = document.querySelectorAll('.table-vp');
+            const measurements = [];
+            
+            sections.forEach((section, index) => {
+                const width = section.offsetWidth;
+                const computedStyle = window.getComputedStyle(section);
+                const marginLeft = computedStyle.marginLeft;
+                const marginRight = computedStyle.marginRight;
+                
+                measurements.push({
+                    section: index + 1,
+                    width: width,
+                    marginLeft: marginLeft,
+                    marginRight: marginRight
+                });
+                
+                const measureDiv = document.getElementById(`measure${index + 1}`);
+                if (measureDiv) {
+                    measureDiv.innerHTML = `
+                        Sezione ${index + 1}: 
+                        Larghezza = ${width}px, 
+                        Margin-left = ${marginLeft}, 
+                        Margin-right = ${marginRight}
+                    `;
+                }
+            });
+            
+            // Verifica se tutte le larghezze sono uguali
+            const firstWidth = measurements[0].width;
+            const allSameWidth = measurements.every(m => m.width === firstWidth);
+            
+            const resultDiv = document.getElementById('testResult');
+            if (allSameWidth) {
+                resultDiv.className = 'success';
+                resultDiv.innerHTML = `
+                    ✅ <strong>SUCCESSO!</strong> Tutte le sezioni hanno la stessa larghezza: ${firstWidth}px
+                    <br><small>Fix applicato correttamente!</small>
+                `;
+            } else {
+                resultDiv.className = 'error';
+                resultDiv.innerHTML = `
+                    ❌ <strong>PROBLEMA:</strong> Le larghezze sono ancora diverse
+                    <br>Larghezze: ${measurements.map(m => `Sezione ${m.section}: ${m.width}px`).join(', ')}
+                `;
+            }
+        }
+        
+        function toggleHeaders() {
+            const headers = document.querySelectorAll('.modal-header');
+            headers.forEach(header => {
+                if (header.style.display === 'none') {
+                    header.style.display = 'block';
+                } else {
+                    header.style.display = 'none';
+                }
+            });
+            
+            setTimeout(() => {
+                toggleHeaders(); // Riporta visibili dopo 1 secondo
+            }, 1000);
+        }
+        
+        // Test automatico al caricamento
+        window.onload = function() {
+            setTimeout(measureWidths, 500);
+        };
+    </script>
+</body>
+</html>

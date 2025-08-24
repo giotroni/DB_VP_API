@@ -223,6 +223,39 @@ class AuthAPI {
     }
     
     /**
+     * Ottieni la lista di tutti i collaboratori (solo per Admin/Manager)
+     */
+    public function getCollaboratoriList() {
+        try {
+            // Verifica che l'utente corrente sia Admin o Manager
+            $currentUser = $this->getCurrentUser();
+            if (!$currentUser || !in_array($currentUser['role'], ['Admin', 'Manager'])) {
+                return [];
+            }
+            
+            $sql = "SELECT 
+                        ID_COLLABORATORE,
+                        Collaboratore,
+                        Email,
+                        User,
+                        Ruolo,
+                        PIVA,
+                        Data_Creazione
+                    FROM ANA_COLLABORATORI 
+                    ORDER BY Collaboratore";
+            
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute();
+            
+            return $stmt->fetchAll();
+            
+        } catch (Exception $e) {
+            error_log('Errore nel recupero della lista collaboratori: ' . $e->getMessage());
+            return [];
+        }
+    }
+    
+    /**
      * Cambia la password dell'utente autenticato
      */
     public function changePassword($currentPassword, $newPassword) {

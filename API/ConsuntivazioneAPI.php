@@ -29,7 +29,7 @@ class ConsuntivazioneAPI {
     /**
      * Ottieni statistiche delle consuntivazioni per il dashboard
      */
-    public function getStatistiche() {
+    public function getStatistiche($collaboratoreId = null) {
         try {
             if (!$this->authAPI->isAuthenticated()) {
                 return [
@@ -40,6 +40,19 @@ class ConsuntivazioneAPI {
             
             $user = $this->authAPI->getCurrentUser();
             
+            // Determina quale collaboratore utilizzare
+            $targetCollaboratoreId = $collaboratoreId ?: $user['id'];
+            
+            // Se è richiesto un collaboratore diverso, verifica i permessi
+            if ($targetCollaboratoreId !== $user['id']) {
+                if (!in_array($user['role'], ['Admin', 'Manager'])) {
+                    return [
+                        'success' => false,
+                        'message' => 'Accesso negato. Solo Admin e Manager possono visualizzare le statistiche di altri collaboratori.'
+                    ];
+                }
+            }
+            
             // Ore questo mese
             $sql1 = "SELECT COALESCE(SUM(gg), 0) as ore_mese
                      FROM FACT_GIORNATE 
@@ -48,7 +61,7 @@ class ConsuntivazioneAPI {
                      AND YEAR(Data) = YEAR(CURDATE())";
             
             $stmt1 = $this->db->prepare($sql1);
-            $stmt1->execute([$user['id']]);
+            $stmt1->execute([$targetCollaboratoreId]);
             $oreMese = $stmt1->fetch()['ore_mese'];
             
             // Spese del mese
@@ -61,7 +74,7 @@ class ConsuntivazioneAPI {
                      AND YEAR(Data) = YEAR(CURDATE())";
             
             $stmt3 = $this->db->prepare($sql3);
-            $stmt3->execute([$user['id']]);
+            $stmt3->execute([$targetCollaboratoreId]);
             $speseResult = $stmt3->fetch();
             $speseMese = $speseResult['spese_mese'];
             $speseFattVP = $speseResult['spese_fatturate_vp'];
@@ -75,7 +88,7 @@ class ConsuntivazioneAPI {
                      AND YEAR(Data) = YEAR(CURDATE())";
             
             $stmt4 = $this->db->prepare($sql4);
-            $stmt4->execute([$user['id']]);
+            $stmt4->execute([$targetCollaboratoreId]);
             $giorniLavorati = $stmt4->fetch()['giorni_lavorati'];
             
             // Calcolo del Costo giornaliero - SOLO per giornate di tipo "Campo"
@@ -110,7 +123,7 @@ class ConsuntivazioneAPI {
                      AND YEAR(g.Data) = YEAR(CURDATE())";
             
             $stmt5 = $this->db->prepare($sql5);
-            $stmt5->execute([$user['id']]);
+            $stmt5->execute([$targetCollaboratoreId]);
             $costoGg = $stmt5->fetch()['costo_gg'] ?? 0;
             
             return [
@@ -135,7 +148,7 @@ class ConsuntivazioneAPI {
     /**
      * Ottieni le ultime consuntivazioni dell'utente
      */
-    public function getUltimeConsuntivazioni($limit = 10) {
+    public function getUltimeConsuntivazioni($limit = 10, $collaboratoreId = null) {
         try {
             if (!$this->authAPI->isAuthenticated()) {
                 return [
@@ -145,6 +158,19 @@ class ConsuntivazioneAPI {
             }
             
             $user = $this->authAPI->getCurrentUser();
+            
+            // Determina quale collaboratore utilizzare
+            $targetCollaboratoreId = $collaboratoreId ?: $user['id'];
+            
+            // Se è richiesto un collaboratore diverso, verifica i permessi
+            if ($targetCollaboratoreId !== $user['id']) {
+                if (!in_array($user['role'], ['Admin', 'Manager'])) {
+                    return [
+                        'success' => false,
+                        'message' => 'Accesso negato. Solo Admin e Manager possono visualizzare le consuntivazioni di altri collaboratori.'
+                    ];
+                }
+            }
             
             $sql = "SELECT 
                         g.ID_GIORNATA,
@@ -170,7 +196,7 @@ class ConsuntivazioneAPI {
                     LIMIT ?";
                     
             $stmt = $this->db->prepare($sql);
-            $stmt->execute([$user['id'], $limit]);
+            $stmt->execute([$targetCollaboratoreId, $limit]);
             
             $consuntivazioni = $stmt->fetchAll();
             
@@ -190,7 +216,7 @@ class ConsuntivazioneAPI {
     /**
      * Cerca consuntivazioni con filtri per anno, mese e commessa
      */
-    public function cercaConsuntivazioni($anno = null, $mese = null, $commessaId = null) {
+    public function cercaConsuntivazioni($anno = null, $mese = null, $commessaId = null, $collaboratoreId = null) {
         try {
             if (!$this->authAPI->isAuthenticated()) {
                 return [
@@ -200,6 +226,19 @@ class ConsuntivazioneAPI {
             }
             
             $user = $this->authAPI->getCurrentUser();
+            
+            // Determina quale collaboratore utilizzare
+            $targetCollaboratoreId = $collaboratoreId ?: $user['id'];
+            
+            // Se è richiesto un collaboratore diverso, verifica i permessi
+            if ($targetCollaboratoreId !== $user['id']) {
+                if (!in_array($user['role'], ['Admin', 'Manager'])) {
+                    return [
+                        'success' => false,
+                        'message' => 'Accesso negato. Solo Admin e Manager possono visualizzare le consuntivazioni di altri collaboratori.'
+                    ];
+                }
+            }
             
             $sql = "SELECT 
                         g.ID_GIORNATA,
@@ -226,7 +265,7 @@ class ConsuntivazioneAPI {
                     LEFT JOIN ANA_CLIENTI cl ON c.ID_CLIENTE = cl.ID_CLIENTE
                     WHERE g.ID_COLLABORATORE = ?";
             
-            $params = [$user['id']];
+            $params = [$targetCollaboratoreId];
             
             // Aggiungi filtro anno
             if ($anno) {
@@ -266,7 +305,7 @@ class ConsuntivazioneAPI {
                 $totaleFattVP += $cons['Spese_Fatturate_VP'];
                 
                 // Calcola il costo gg per questa consuntivazione
-                $costoGgConsuntivazione = $this->calcolaCostoGgConsuntivazione($user['id'], $cons);
+                $costoGgConsuntivazione = $this->calcolaCostoGgConsuntivazione($targetCollaboratoreId, $cons);
                 $totaleCostoGg += $costoGgConsuntivazione;
                 
                 // Aggiungi il costo_gg ai dati della consuntivazione per l'esportazione CSV
@@ -731,13 +770,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     switch ($action) {
         case 'get_statistiche':
-            $result = $consuntivazioneAPI->getStatistiche();
+            $collaboratoreId = $input['collaboratore_id'] ?? null;
+            $result = $consuntivazioneAPI->getStatistiche($collaboratoreId);
             echo json_encode($result);
             break;
             
         case 'get_ultime_consuntivazioni':
             $limit = $input['limit'] ?? 10;
-            $result = $consuntivazioneAPI->getUltimeConsuntivazioni($limit);
+            $collaboratoreId = $input['collaboratore_id'] ?? null;
+            $result = $consuntivazioneAPI->getUltimeConsuntivazioni($limit, $collaboratoreId);
             echo json_encode($result);
             break;
             
@@ -745,7 +786,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $anno = $input['anno'] ?? null;
             $mese = $input['mese'] ?? null;
             $commessaId = $input['commessa_id'] ?? null;
-            $result = $consuntivazioneAPI->cercaConsuntivazioni($anno, $mese, $commessaId);
+            $collaboratoreId = $input['collaboratore_id'] ?? null;
+            $result = $consuntivazioneAPI->cercaConsuntivazioni($anno, $mese, $commessaId, $collaboratoreId);
             echo json_encode($result);
             break;
             

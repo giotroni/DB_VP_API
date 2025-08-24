@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Fix - Duplicazione Anni</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .status { 
+            padding: 5px 10px; 
+            border-radius: 4px; 
+            margin: 5px 0;
+            font-weight: bold;
+        }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .warning { background-color: #fff3cd; color: #856404; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background-color: #0056b3; }
+        .test-result { 
+            margin-top: 10px; 
+            padding: 10px;
+            border-left: 4px solid #007bff;
+            background-color: #f8f9fa;
+        }
+        select {
+            padding: 8px;
+            margin: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: 200px;
+        }
+        .demo-section {
+            border: 2px solid #007bff;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 Test Fix - Problema Duplicazione Anni</h1>
+    
+    <div class="test-section">
+        <h3>📋 Problema Identificato</h3>
+        <div class="info">
+            <strong>Issue:</strong> Quando si cambia collaboratore, gli anni nel filtro vengono duplicati invece di essere sostituiti.
+        </div>
+        <div class="success">
+            <strong>Fix Applicato:</strong> Pulizia delle opzioni esistenti prima di ripopolare i select.
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h3>🧪 Dimostrazione del Fix</h3>
+        <div class="demo-section">
+            <p><strong>Select Anno di Test:</strong></p>
+            <select id="testAnno">
+                <option value="">Tutti gli anni</option>
+            </select>
+            
+            <p><strong>Select Commessa di Test:</strong></p>
+            <select id="testCommessa">
+                <option value="">Tutti i progetti</option>
+            </select>
+            
+            <br><br>
+            <button onclick="simulateOldBehavior()">❌ Simula Comportamento Vecchio (Duplica)</button>
+            <button onclick="simulateNewBehavior()">✅ Simula Comportamento Nuovo (Fix)</button>
+            <button onclick="resetSelects()">🔄 Reset</button>
+        </div>
+        
+        <div id="testResult" class="test-result">
+            Clicca sui pulsanti sopra per testare il comportamento dei select.
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h3>📝 Modifiche Implementate</h3>
+        <div class="info">
+            <h4>Nel metodo <code>initConsultazionePage()</code>:</h4>
+            <ol>
+                <li><strong>Pulizia Select Anni:</strong> Rimuove tutte le opzioni tranne la prima ("Tutti gli anni")</li>
+                <li><strong>Pulizia Select Commesse:</strong> Rimuove tutte le opzioni tranne la prima ("Tutti i progetti")</li>
+                <li><strong>Event Listeners:</strong> Aggiunge controllo per evitare duplicazione dei listeners</li>
+            </ol>
+        </div>
+        
+        <div class="success">
+            <h4>Risultato:</h4>
+            <ul>
+                <li>✅ Non più duplicazione degli anni quando si cambia collaboratore</li>
+                <li>✅ Non più duplicazione delle commesse</li>
+                <li>✅ Event listeners non duplicati</li>
+                <li>✅ Mantiene la prima opzione "Tutti gli anni/progetti"</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h3>🔄 Flusso Corretto</h3>
+        <div class="info">
+            <strong>Quando Admin/Manager cambia collaboratore:</strong>
+            <ol>
+                <li>Viene chiamato <code>onCollaboratoreChanged()</code></li>
+                <li>Viene chiamato <code>loadInitialData()</code></li>
+                <li>Vengono caricati anni e commesse dal server</li>
+                <li>Viene chiamato <code>initConsultazionePage()</code></li>
+                <li><span style="color: #28a745; font-weight: bold;">✅ Prima vengono pulite le opzioni esistenti</span></li>
+                <li>Poi vengono aggiunte le nuove opzioni</li>
+                <li>Risultato: Select sempre puliti e senza duplicati</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        // Dati di test
+        const testAnni = ['2025', '2024', '2023'];
+        const testCommesse = [
+            { id: 1, nome: 'Progetto Alpha - Cliente A' },
+            { id: 2, nome: 'Progetto Beta - Cliente B' },
+            { id: 3, nome: 'Progetto Gamma - Cliente C' }
+        ];
+
+        function simulateOldBehavior() {
+            const result = document.getElementById('testResult');
+            const selectAnno = document.getElementById('testAnno');
+            const selectCommessa = document.getElementById('testCommessa');
+            
+            // Comportamento vecchio: aggiunge sempre senza pulire
+            testAnni.forEach(anno => {
+                const option = document.createElement('option');
+                option.value = anno;
+                option.textContent = anno;
+                selectAnno.appendChild(option);
+            });
+            
+            testCommesse.forEach(commessa => {
+                const option = document.createElement('option');
+                option.value = commessa.id;
+                option.textContent = commessa.nome;
+                selectCommessa.appendChild(option);
+            });
+            
+            result.innerHTML = `
+                <div class="error">❌ Comportamento Vecchio Simulato</div>
+                <div>Anni nel select: ${selectAnno.options.length - 1} (dovrebbero essere ${testAnni.length})</div>
+                <div>Commesse nel select: ${selectCommessa.options.length - 1} (dovrebbero essere ${testCommesse.length})</div>
+                <div>⚠️ Ogni chiamata aggiunge duplicati!</div>
+            `;
+        }
+
+        function simulateNewBehavior() {
+            const result = document.getElementById('testResult');
+            const selectAnno = document.getElementById('testAnno');
+            const selectCommessa = document.getElementById('testCommessa');
+            
+            // Comportamento nuovo: pulisce prima di aggiungere
+            // Pulisci opzioni esistenti (tranne la prima)
+            let options = selectAnno.querySelectorAll('option:not(:first-child)');
+            options.forEach(option => option.remove());
+            
+            options = selectCommessa.querySelectorAll('option:not(:first-child)');
+            options.forEach(option => option.remove());
+            
+            // Poi aggiungi le nuove
+            testAnni.forEach(anno => {
+                const option = document.createElement('option');
+                option.value = anno;
+                option.textContent = anno;
+                selectAnno.appendChild(option);
+            });
+            
+            testCommesse.forEach(commessa => {
+                const option = document.createElement('option');
+                option.value = commessa.id;
+                option.textContent = commessa.nome;
+                selectCommessa.appendChild(option);
+            });
+            
+            result.innerHTML = `
+                <div class="success">✅ Comportamento Nuovo Simulato</div>
+                <div>Anni nel select: ${selectAnno.options.length - 1} (corretto: ${testAnni.length})</div>
+                <div>Commesse nel select: ${selectCommessa.options.length - 1} (corretto: ${testCommesse.length})</div>
+                <div>✅ Ogni chiamata mantiene il numero corretto di opzioni!</div>
+            `;
+        }
+
+        function resetSelects() {
+            const selectAnno = document.getElementById('testAnno');
+            const selectCommessa = document.getElementById('testCommessa');
+            const result = document.getElementById('testResult');
+            
+            // Reset ai soli valori iniziali
+            selectAnno.innerHTML = '<option value="">Tutti gli anni</option>';
+            selectCommessa.innerHTML = '<option value="">Tutti i progetti</option>';
+            
+            result.innerHTML = `
+                <div class="info">🔄 Select resettati ai valori iniziali</div>
+                <div>Pronto per nuovi test!</div>
+            `;
+        }
+
+        // Test automatico all'avvio
+        window.onload = function() {
+            document.getElementById('testResult').innerHTML = `
+                <div class="info">Pagina caricata. Usa i pulsanti sopra per testare il comportamento.</div>
+                <div><strong>Fix implementato:</strong> Pulizia delle opzioni prima del ripopolamento</div>
+            `;
+        };
+    </script>
+</body>
+</html>

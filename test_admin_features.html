@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Funzionalità Admin/Manager</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-4">
+        <h1>Test Funzionalità Admin/Manager</h1>
+        
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Test Autenticazione</h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="loginForm">
+                            <div class="mb-3">
+                                <label for="email" class="form-label">Email/Username</label>
+                                <input type="text" class="form-control" id="email" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="password" class="form-label">Password</label>
+                                <input type="password" class="form-control" id="password" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Login</button>
+                        </form>
+                        <div id="loginResult" class="mt-3"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Test Lista Collaboratori</h5>
+                    </div>
+                    <div class="card-body">
+                        <button id="testCollaboratori" class="btn btn-info">Carica Collaboratori</button>
+                        <div id="collaboratoriResult" class="mt-3"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Test Consuntivazioni con Collaboratore Specifico</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <select id="collaboratoreSelect" class="form-select">
+                                    <option value="">Seleziona collaboratore...</option>
+                                </select>
+                            </div>
+                            <div class="col-md-8">
+                                <button id="testStatistiche" class="btn btn-success me-2">Test Statistiche</button>
+                                <button id="testUltime" class="btn btn-warning me-2">Test Ultime Consuntivazioni</button>
+                                <button id="testCerca" class="btn btn-danger">Test Cerca Consuntivazioni</button>
+                            </div>
+                        </div>
+                        <div id="testResult" class="mt-3"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        let currentUser = null;
+        let collaboratori = [];
+        
+        // Login form handler
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            try {
+                const response = await fetch('API/auth.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        action: 'login',
+                        email: email,
+                        password: password
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    currentUser = result.user;
+                    document.getElementById('loginResult').innerHTML = `
+                        <div class="alert alert-success">
+                            <strong>Login effettuato!</strong><br>
+                            Nome: ${result.user.name}<br>
+                            Ruolo: ${result.user.role}<br>
+                            Email: ${result.user.email}
+                        </div>
+                    `;
+                } else {
+                    document.getElementById('loginResult').innerHTML = `
+                        <div class="alert alert-danger">
+                            <strong>Errore:</strong> ${result.message}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Errore login:', error);
+                document.getElementById('loginResult').innerHTML = `
+                    <div class="alert alert-danger">
+                        <strong>Errore di connessione:</strong> ${error.message}
+                    </div>
+                `;
+            }
+        });
+        
+        // Test collaboratori
+        document.getElementById('testCollaboratori').addEventListener('click', async () => {
+            try {
+                const response = await fetch('API/auth.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        action: 'get_collaboratori'
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    collaboratori = result.data;
+                    
+                    // Popola il select
+                    const select = document.getElementById('collaboratoreSelect');
+                    select.innerHTML = '<option value="">Seleziona collaboratore...</option>';
+                    
+                    collaboratori.forEach(collab => {
+                        const option = document.createElement('option');
+                        option.value = collab.ID_COLLABORATORE;
+                        option.textContent = `${collab.Collaboratore} (${collab.Ruolo})`;
+                        select.appendChild(option);
+                    });
+                    
+                    document.getElementById('collaboratoriResult').innerHTML = `
+                        <div class="alert alert-success">
+                            <strong>Collaboratori caricati:</strong> ${result.data.length}<br>
+                            <small>${JSON.stringify(result.data, null, 2)}</small>
+                        </div>
+                    `;
+                } else {
+                    document.getElementById('collaboratoriResult').innerHTML = `
+                        <div class="alert alert-danger">
+                            <strong>Errore:</strong> ${result.message}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Errore collaboratori:', error);
+                document.getElementById('collaboratoriResult').innerHTML = `
+                    <div class="alert alert-danger">
+                        <strong>Errore di connessione:</strong> ${error.message}
+                    </div>
+                `;
+            }
+        });
+        
+        // Test statistiche
+        document.getElementById('testStatistiche').addEventListener('click', async () => {
+            const collaboratoreId = document.getElementById('collaboratoreSelect').value;
+            
+            try {
+                const response = await fetch('API/ConsuntivazioneAPI.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        action: 'get_statistiche',
+                        collaboratore_id: collaboratoreId || null
+                    })
+                });
+                
+                const result = await response.json();
+                
+                document.getElementById('testResult').innerHTML = `
+                    <div class="alert ${result.success ? 'alert-success' : 'alert-danger'}">
+                        <strong>Risultato Statistiche:</strong><br>
+                        <pre>${JSON.stringify(result, null, 2)}</pre>
+                    </div>
+                `;
+            } catch (error) {
+                console.error('Errore statistiche:', error);
+                document.getElementById('testResult').innerHTML = `
+                    <div class="alert alert-danger">
+                        <strong>Errore:</strong> ${error.message}
+                    </div>
+                `;
+            }
+        });
+        
+        // Test ultime consuntivazioni
+        document.getElementById('testUltime').addEventListener('click', async () => {
+            const collaboratoreId = document.getElementById('collaboratoreSelect').value;
+            
+            try {
+                const response = await fetch('API/ConsuntivazioneAPI.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        action: 'get_ultime_consuntivazioni',
+                        collaboratore_id: collaboratoreId || null,
+                        limit: 5
+                    })
+                });
+                
+                const result = await response.json();
+                
+                document.getElementById('testResult').innerHTML = `
+                    <div class="alert ${result.success ? 'alert-success' : 'alert-danger'}">
+                        <strong>Risultato Ultime Consuntivazioni:</strong><br>
+                        <pre>${JSON.stringify(result, null, 2)}</pre>
+                    </div>
+                `;
+            } catch (error) {
+                console.error('Errore ultime consuntivazioni:', error);
+                document.getElementById('testResult').innerHTML = `
+                    <div class="alert alert-danger">
+                        <strong>Errore:</strong> ${error.message}
+                    </div>
+                `;
+            }
+        });
+        
+        // Test cerca consuntivazioni
+        document.getElementById('testCerca').addEventListener('click', async () => {
+            const collaboratoreId = document.getElementById('collaboratoreSelect').value;
+            
+            try {
+                const response = await fetch('API/ConsuntivazioneAPI.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        action: 'cerca_consuntivazioni',
+                        collaboratore_id: collaboratoreId || null,
+                        anno: new Date().getFullYear(),
+                        mese: null,
+                        commessa_id: null
+                    })
+                });
+                
+                const result = await response.json();
+                
+                document.getElementById('testResult').innerHTML = `
+                    <div class="alert ${result.success ? 'alert-success' : 'alert-danger'}">
+                        <strong>Risultato Cerca Consuntivazioni:</strong><br>
+                        <pre>${JSON.stringify(result, null, 2)}</pre>
+                    </div>
+                `;
+            } catch (error) {
+                console.error('Errore cerca consuntivazioni:', error);
+                document.getElementById('testResult').innerHTML = `
+                    <div class="alert alert-danger">
+                        <strong>Errore:</strong> ${error.message}
+                    </div>
+                `;
+            }
+        });
+    </script>
+</body>
+</html>

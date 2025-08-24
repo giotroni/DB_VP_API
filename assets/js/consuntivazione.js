@@ -5,6 +5,8 @@
 class ConsuntivazioneApp {
     constructor() {
         this.currentUser = null;
+        this.selectedCollaboratore = null; // Per Admin/Manager: collaboratore selezionato
+        this.collaboratori = []; // Lista collaboratori (solo per Admin/Manager)
         this.commesse = [];
         this.tasks = [];
         this.statistiche = {};
@@ -94,6 +96,8 @@ class ConsuntivazioneApp {
             
             if (result.success && result.authenticated) {
                 this.currentUser = result.user;
+                // Inizializza selectedCollaboratore con l'utente corrente
+                this.selectedCollaboratore = result.user.id;
                 return true;
             }
             
@@ -270,6 +274,13 @@ class ConsuntivazioneApp {
                         <div class="col-md-4 text-end">
                             <div class="vp-user-info">
                                 <p class="vp-user-welcome">Benvenuto, <span class="vp-user-name">${this.currentUser.name}</span></p>
+                                ${this.isAdminOrManager() ? `
+                                    <div class="mb-2">
+                                        <select id="collaboratoreSelector" class="form-select form-select-sm">
+                                            <option value="">Caricamento collaboratori...</option>
+                                        </select>
+                                    </div>
+                                ` : ''}
                                 <button id="changePwdBtn" class="btn btn-vp-secondary btn-sm me-2">
                                     <i class="fas fa-key me-1"></i>Cambia Pwd
                                 </button>
@@ -286,8 +297,10 @@ class ConsuntivazioneApp {
                     <!-- Statistiche caricate dinamicamente -->
                 </div>
                 
+                
                 <div class="row">
                     <div class="col-12">
+                        ${this.shouldShowConsuntivazioneForm() ? `
                         <div class="table-vp">
                             <div class="modal-header" data-bs-toggle="collapse" data-bs-target="#collapseConsuntivazione" 
                                  aria-expanded="false" aria-controls="collapseConsuntivazione" style="cursor: pointer;">
@@ -430,10 +443,18 @@ class ConsuntivazioneApp {
                                 </form>
                             </div>
                         </div>
+                        ` : `
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <strong>Modalità Visualizzazione:</strong> 
+                            Stai visualizzando le consuntivazioni di un altro collaboratore. 
+                            Per inserire nuove consuntivazioni, seleziona il tuo profilo.
+                        </div>
+                        `}
                     </div>
                 </div>
                 
-                <!-- Sezione Riepilogo Giornate -->
+                <!-- Sezione Ultime Consuntivazioni -->
                 <div class="row mt-4">
                     <div class="col-12">
                         <div class="table-vp">
@@ -549,8 +570,174 @@ class ConsuntivazioneApp {
             }
         });
         
+        // Imposta il form solo se dovrebbe essere mostrato
+        if (this.shouldShowConsuntivazioneForm()) {
+            // Imposta data di oggi come default
+            const dataField = document.getElementById('data');
+            if (dataField) {
+                dataField.value = new Date().toISOString().split('T')[0];
+            }
+            
+            // Calcola totale spese iniziale
+            this.calcolaTotaleSpese();
+            
+            // Aggiungi event listeners per ricalcolo automatico delle spese
+            ['speseViaggio', 'vittoAlloggio', 'altreSpese', 'speseFattVP'].forEach(fieldId => {
+                const field = document.getElementById(fieldId);
+                if (field) {
+                    field.addEventListener('input', () => this.calcolaTotaleSpese());
+                    field.addEventListener('change', () => this.calcolaTotaleSpese());
+                }
+            });
+        }
+        
         // Aggiungi event listeners per icone collapse
         this.initCollapseIcons();
+        
+        // Carica collaboratori se Admin/Manager e aggiungi event listener
+        if (this.isAdminOrManager()) {
+            this.loadCollaboratori();
+            
+            // Event listener per cambio collaboratore
+            const collaboratoreSelector = document.getElementById('collaboratoreSelector');
+            if (collaboratoreSelector) {
+                collaboratoreSelector.addEventListener('change', (e) => {
+                    this.selectedCollaboratore = e.target.value;
+                    this.onCollaboratoreChanged();
+                });
+            }
+        }
+    }
+    
+    /**
+     * Determina se mostrare il form di consuntivazione
+     */
+    shouldShowConsuntivazioneForm() {
+        // Mostra il form solo se l'utente sta visualizzando le proprie consuntivazioni
+        return !this.selectedCollaboratore || this.selectedCollaboratore === this.currentUser.id;
+    }
+    
+    /**
+     * Verifica se l'utente corrente è Admin o Manager
+     */
+    isAdminOrManager() {
+        return this.currentUser && ['Admin', 'Manager'].includes(this.currentUser.role);
+    }
+    
+    /**
+     * Carica la lista dei collaboratori per Admin/Manager
+     */
+    async loadCollaboratori() {
+        try {
+            const response = await fetch('API/auth.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    action: 'get_collaboratori'
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                this.collaboratori = result.data;
+                this.updateCollaboratoreSelector();
+            } else {
+                console.error('Errore caricamento collaboratori:', result.message);
+            }
+        } catch (error) {
+            console.error('Errore caricamento collaboratori:', error);
+        }
+    }
+    
+    /**
+     * Aggiorna il selettore dei collaboratori
+     */
+    updateCollaboratoreSelector() {
+        const selector = document.getElementById('collaboratoreSelector');
+        if (!selector) return;
+        
+        selector.innerHTML = `
+            <option value="${this.currentUser.id}" selected>
+                ${this.currentUser.name} (Le mie consuntivazioni)
+            </option>
+        `;
+        
+        this.collaboratori.forEach(collaboratore => {
+            if (collaboratore.ID_COLLABORATORE !== this.currentUser.id) {
+                const option = document.createElement('option');
+                option.value = collaboratore.ID_COLLABORATORE;
+                option.textContent = `${collaboratore.Collaboratore} (${collaboratore.Ruolo})`;
+                selector.appendChild(option);
+            }
+        });
+        
+        // Imposta il collaboratore corrente come default
+        this.selectedCollaboratore = this.currentUser.id;
+    }
+    
+    /**
+     * Gestisce il cambio di collaboratore selezionato
+     */
+    async onCollaboratoreChanged() {
+        if (!this.selectedCollaboratore) {
+            this.selectedCollaboratore = this.currentUser.id;
+        }
+        
+        // Aggiorna il titolo per indicare di chi sono le consuntivazioni
+        this.updatePageTitle();
+        
+        // Ricarica tutti i dati per il collaboratore selezionato
+        await this.loadInitialData();
+        
+        // Resetta anche la sezione di consultazione consuntivazioni
+        this.resetConsultazioneSection();
+    }
+    
+    /**
+     * Aggiorna il titolo della pagina in base al collaboratore selezionato
+     */
+    updatePageTitle() {
+        const isOwnData = this.selectedCollaboratore === this.currentUser.id;
+        const selectedCollab = this.collaboratori.find(c => c.ID_COLLABORATORE === this.selectedCollaboratore);
+        
+        const welcomeText = document.querySelector('.vp-user-welcome');
+        if (welcomeText) {
+            if (isOwnData) {
+                welcomeText.innerHTML = `Benvenuto, <span class="vp-user-name">${this.currentUser.name}</span>`;
+            } else {
+                welcomeText.innerHTML = `Visualizzando: <span class="vp-user-name">${selectedCollab?.Collaboratore || 'Collaboratore'}</span>`;
+            }
+        }
+    }
+    
+    /**
+     * Resetta la sezione di consultazione consuntivazioni quando cambia collaboratore
+     */
+    resetConsultazioneSection() {
+        // Reset risultati
+        const risultatiDiv = document.getElementById('consuntivazioni-risultati');
+        if (risultatiDiv) {
+            risultatiDiv.innerHTML = `
+                <div class="text-center text-muted py-4">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Seleziona i filtri e clicca "Cerca" per visualizzare le consuntivazioni
+                </div>
+            `;
+        }
+        
+        // Reset filtri ai valori predefiniti
+        const filterAnno = document.getElementById('filterAnno');
+        const filterMese = document.getElementById('filterMese');
+        const filterCommessa = document.getElementById('filterCommessa');
+        
+        if (filterAnno) filterAnno.value = '';
+        if (filterMese) filterMese.value = '';
+        if (filterCommessa) filterCommessa.value = '';
+        
+        console.log('Sezione consultazioni resettata per nuovo collaboratore');
     }
     
     async handleLogin() {
@@ -629,12 +816,17 @@ class ConsuntivazioneApp {
     
     async loadStatistiche() {
         try {
+            const collaboratoreId = this.selectedCollaboratore || this.currentUser.id;
+            
             const response = await fetch('API/ConsuntivazioneAPI.php', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ action: 'get_statistiche' })
+                body: JSON.stringify({ 
+                    action: 'get_statistiche',
+                    collaboratore_id: collaboratoreId
+                })
             });
             
             const result = await response.json();
@@ -896,6 +1088,8 @@ class ConsuntivazioneApp {
     
     async loadUltimeConsuntivazioni() {
         try {
+            const collaboratoreId = this.selectedCollaboratore || this.currentUser.id;
+            
             const response = await fetch('API/ConsuntivazioneAPI.php', {
                 method: 'POST',
                 headers: {
@@ -903,6 +1097,7 @@ class ConsuntivazioneApp {
                 },
                 body: JSON.stringify({
                     action: 'get_ultime_consuntivazioni',
+                    collaboratore_id: collaboratoreId,
                     limit: 10
                 })
             });
@@ -953,7 +1148,7 @@ class ConsuntivazioneApp {
                     <strong>Tot: € ${this.formatItalianNumber(cons.Totale_Spese || 0)}</strong>
                     <strong>Rimborsabili: € ${this.formatItalianNumber(Math.max(0, parseFloat(cons.Totale_Spese || 0) - parseFloat(cons.Spese_Fatturate_VP || 0)))}</strong>
                 </div>
-                ${cons.Confermata === 'No' ? `
+                ${(cons.Confermata === 'No' && this.shouldShowConsuntivazioneForm()) ? `
                     <div class="consuntivazione-actions mt-2">
                         <button class="btn btn-sm btn-outline-primary me-1" onclick="app.editConsuntivazione('${cons.ID_GIORNATA}')">
                             <i class="fas fa-edit me-1"></i>Modifica
@@ -1087,6 +1282,10 @@ class ConsuntivazioneApp {
         // Popola select degli anni
         const selectAnno = document.getElementById('filterAnno');
         if (selectAnno && this.anniDisponibili) {
+            // Pulisci opzioni esistenti (tranne la prima "Tutti gli anni")
+            const options = selectAnno.querySelectorAll('option:not(:first-child)');
+            options.forEach(option => option.remove());
+            
             this.anniDisponibili.forEach(item => {
                 const option = document.createElement('option');
                 option.value = item.anno;
@@ -1098,6 +1297,10 @@ class ConsuntivazioneApp {
         // Popola select delle commesse
         const selectCommessa = document.getElementById('filterCommessa');
         if (selectCommessa && this.commessePerFiltri) {
+            // Pulisci opzioni esistenti (tranne la prima "Tutti i progetti")
+            const options = selectCommessa.querySelectorAll('option:not(:first-child)');
+            options.forEach(option => option.remove());
+            
             this.commessePerFiltri.forEach(commessa => {
                 const option = document.createElement('option');
                 option.value = commessa.ID_COMMESSA;
@@ -1106,15 +1309,17 @@ class ConsuntivazioneApp {
             });
         }
         
-        // Aggiungi event listeners
+        // Aggiungi event listeners (solo se non già presenti)
         const btnRicerca = document.getElementById('btnRicerca');
-        if (btnRicerca) {
+        if (btnRicerca && !btnRicerca.hasAttribute('data-listener-added')) {
             btnRicerca.addEventListener('click', () => this.cercaConsuntivazioni());
+            btnRicerca.setAttribute('data-listener-added', 'true');
         }
         
         const btnEsporta = document.getElementById('btnEsporta');
-        if (btnEsporta) {
+        if (btnEsporta && !btnEsporta.hasAttribute('data-listener-added')) {
             btnEsporta.addEventListener('click', () => this.esportaConsuntivazioni());
+            btnEsporta.setAttribute('data-listener-added', 'true');
         }
     }
     
@@ -1122,6 +1327,7 @@ class ConsuntivazioneApp {
         const anno = document.getElementById('filterAnno').value;
         const mese = document.getElementById('filterMese').value;
         const commessaId = document.getElementById('filterCommessa').value;
+        const collaboratoreId = this.selectedCollaboratore || this.currentUser.id;
         const risultatiDiv = document.getElementById('consuntivazioni-risultati');
         
         // Mostra loading
@@ -1140,6 +1346,7 @@ class ConsuntivazioneApp {
                 },
                 body: JSON.stringify({
                     action: 'cerca_consuntivazioni',
+                    collaboratore_id: collaboratoreId,
                     anno: anno || null,
                     mese: mese || null,
                     commessa_id: commessaId || null
@@ -1338,7 +1545,7 @@ class ConsuntivazioneApp {
                         ${cons.Note ? `<small>${cons.Note}</small>` : '<span class="text-muted">-</span>'}
                     </td>
                     <td class="text-center">
-                        ${cons.Confermata === 'No' ? `
+                        ${(cons.Confermata === 'No' && this.shouldShowConsuntivazioneForm()) ? `
                             <button class="btn btn-sm btn-outline-primary me-1" onclick="app.editConsuntivazione('${cons.ID_GIORNATA}')">
                                 <i class="fas fa-edit"></i>
                             </button>
@@ -1364,6 +1571,7 @@ class ConsuntivazioneApp {
         const anno = document.getElementById('filterAnno').value;
         const mese = document.getElementById('filterMese').value;
         const commessaId = document.getElementById('filterCommessa').value;
+        const collaboratoreId = this.selectedCollaboratore || this.currentUser.id;
         
         try {
             const response = await fetch('API/ConsuntivazioneAPI.php', {
@@ -1373,6 +1581,7 @@ class ConsuntivazioneApp {
                 },
                 body: JSON.stringify({
                     action: 'cerca_consuntivazioni',
+                    collaboratore_id: collaboratoreId,
                     anno: anno || null,
                     mese: mese || null,
                     commessa_id: commessaId || null
@@ -1382,7 +1591,12 @@ class ConsuntivazioneApp {
             const result = await response.json();
             
             if (result.success && result.data.consuntivazioni.length > 0) {
-                this.downloadCSV(result.data.consuntivazioni, 'consuntivazioni_export.csv');
+                // Genera nome file con collaboratore
+                const selectedCollab = this.collaboratori.find(c => c.ID_COLLABORATORE === collaboratoreId);
+                const nomeCollaboratore = selectedCollab ? selectedCollab.Collaboratore.replace(/\s+/g, '_') : 'collaboratore';
+                const filename = `consuntivazioni_${nomeCollaboratore}_export.csv`;
+                
+                this.downloadCSV(result.data.consuntivazioni, filename);
             } else {
                 alert('Nessun dato da esportare con i filtri selezionati');
             }

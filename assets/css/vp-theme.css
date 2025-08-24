@@ -316,6 +316,25 @@ body {
     overflow: hidden;
     box-shadow: 0 4px 20px var(--vp-shadow);
     border: 1px solid var(--vp-border);
+    width: 100%; /* Assicura larghezza uniforme */
+    margin-bottom: 0; /* Remove default margins */
+}
+
+.table-vp .modal-header {
+    background: linear-gradient(135deg, var(--vp-primary) 0%, var(--vp-secondary) 100%);
+    color: var(--vp-text-light);
+    border-radius: 12px 12px 0 0;
+    padding: 1.5rem;
+    width: 100%; /* Larghezza completa */
+    margin: 0; /* Remove margins */
+    border: none; /* Remove default border */
+}
+
+.table-vp .modal-header .modal-title {
+    font-weight: 600;
+    font-size: 1.25rem;
+    margin: 0; /* Remove default margin */
+    width: 100%; /* Full width */
 }
 
 .table-vp thead th {
@@ -339,21 +358,21 @@ body {
     background: rgba(82, 196, 26, 0.05);
 }
 
-/* Modal Styling */
+/* Modal Styling for standalone modals */
 .modal-content {
     border: none;
     border-radius: 16px;
     box-shadow: 0 20px 60px rgba(44, 62, 80, 0.3);
 }
 
-.modal-header {
+.modal-content .modal-header {
     background: linear-gradient(135deg, var(--vp-primary) 0%, var(--vp-secondary) 100%);
     color: var(--vp-text-light);
     border-radius: 16px 16px 0 0;
     padding: 1.5rem;
 }
 
-.modal-title {
+.modal-content .modal-title {
     font-weight: 600;
     font-size: 1.25rem;
 }
@@ -416,6 +435,36 @@ body {
     .stat-number {
         font-size: 2rem;
     }
+    
+    .table-vp .modal-header {
+        padding: 1rem;
+    }
+    
+    .table-vp .modal-header .modal-title {
+        font-size: 1.1rem;
+    }
+}
+
+/* Fix per sezioni collapsibili uniformi */
+.row .col-12 {
+    width: 100%;
+    max-width: 100%;
+}
+
+.row .col-12 .table-vp {
+    box-sizing: border-box;
+    display: block;
+    width: 100%;
+}
+
+/* Assicura che tutte le sezioni abbiano la stessa struttura */
+.table-vp .collapse {
+    width: 100%;
+}
+
+.table-vp .modal-body {
+    padding: 2rem;
+    width: 100%;
 }
 
 /* V&P Logo Images */

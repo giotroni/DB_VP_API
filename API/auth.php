@@ -88,6 +88,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             echo json_encode($result);
             break;
             
+        case 'check':
+            // Alias per check_auth per compatibilità
+            $result = $authAPI->checkAuthentication();
+            echo json_encode($result);
+            break;
+            
+        case 'get_collaboratori':
+            if (!$authAPI->isAuthenticated()) {
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Non autenticato'
+                ]);
+                exit;
+            }
+            
+            $user = $authAPI->getCurrentUser();
+            // Solo Admin e Manager possono vedere la lista dei collaboratori
+            if (!in_array($user['role'], ['Admin', 'Manager'])) {
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Accesso negato. Solo Admin e Manager possono visualizzare la lista dei collaboratori.'
+                ]);
+                exit;
+            }
+            
+            $collaboratori = $authAPI->getCollaboratoriList();
+            echo json_encode([
+                'success' => true,
+                'data' => $collaboratori
+            ]);
+            break;
+            
         case 'get_user_tasks':
             if (!$authAPI->isAuthenticated()) {
                 echo json_encode([
