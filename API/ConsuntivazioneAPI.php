@@ -129,11 +129,11 @@ class ConsuntivazioneAPI {
             return [
                 'success' => true,
                 'data' => [
-                    'ore_mese' => number_format($oreMese, 1),
-                    'spese_mese' => number_format($speseMese, 2),
-                    'spese_rimborsabili' => number_format(max(0, $speseRimborsabili), 2),
-                    'giorni_lavorati' => $giorniLavorati,
-                    'costo_gg' => number_format($costoGg, 2)
+                    'ore_mese' => floatval($oreMese),
+                    'spese_mese' => floatval($speseMese),
+                    'spese_rimborsabili' => floatval(max(0, $speseRimborsabili)),
+                    'giorni_lavorati' => intval($giorniLavorati),
+                    'costo_gg' => floatval($costoGg) // Restituisce il valore numerico grezzo per evitare problemi di parsing
                 ]
             ];
             
