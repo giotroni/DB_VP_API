@@ -105,7 +105,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
             $user = $authAPI->getCurrentUser();
             // Solo Admin e Manager possono vedere la lista dei collaboratori
-            if (!in_array($user['role'], ['Admin', 'Manager'])) {
+            if (!in_array($user['ruolo'], ['Admin', 'Manager'])) {
                 echo json_encode([
                     'success' => false,
                     'message' => 'Accesso negato. Solo Admin e Manager possono visualizzare la lista dei collaboratori.'

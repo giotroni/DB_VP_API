@@ -34,8 +34,19 @@ class AuthAPI {
                 ];
             }
             
-            // Verifica la password usando password_verify() per password hashate con password_hash()
-            if (!password_verify($password, $user['PWD'])) {
+            // Verifica la password - supporta sia password in chiaro che hashate
+            $passwordMatch = false;
+            
+            // Prima prova con password in chiaro (per compatibilità con CSV esistente)
+            if ($password === $user['PWD']) {
+                $passwordMatch = true;
+            }
+            // Altrimenti prova con password hashate
+            elseif (password_verify($password, $user['PWD'])) {
+                $passwordMatch = true;
+            }
+            
+            if (!$passwordMatch) {
                 return [
                     'success' => false,
                     'message' => 'Password non corretta'
@@ -51,6 +62,7 @@ class AuthAPI {
             $_SESSION['user_name'] = $user['Collaboratore'];
             $_SESSION['user_email'] = $user['Email'];
             $_SESSION['user_role'] = $user['Ruolo'];
+            $_SESSION['user_username'] = $user['User'];
             $_SESSION['logged_in'] = true;
             
             return [
@@ -58,9 +70,11 @@ class AuthAPI {
                 'message' => 'Login effettuato con successo',
                 'user' => [
                     'id' => $user['ID_COLLABORATORE'],
-                    'name' => $user['Collaboratore'],
+                    'nome' => explode(' ', $user['Collaboratore'])[0] ?? $user['Collaboratore'],
+                    'cognome' => explode(' ', $user['Collaboratore'], 2)[1] ?? '',
                     'email' => $user['Email'],
-                    'role' => $user['Ruolo']
+                    'ruolo' => $user['Ruolo'],
+                    'username' => $user['User']
                 ]
             ];
             
@@ -160,9 +174,11 @@ class AuthAPI {
         
         return [
             'id' => $_SESSION['user_id'],
-            'name' => $_SESSION['user_name'],
+            'nome' => explode(' ', $_SESSION['user_name'])[0] ?? $_SESSION['user_name'],
+            'cognome' => explode(' ', $_SESSION['user_name'], 2)[1] ?? '',
             'email' => $_SESSION['user_email'],
-            'role' => $_SESSION['user_role']
+            'ruolo' => $_SESSION['user_role'],
+            'username' => $_SESSION['user_username'] ?? ''
         ];
     }
     
@@ -229,7 +245,7 @@ class AuthAPI {
         try {
             // Verifica che l'utente corrente sia Admin o Manager
             $currentUser = $this->getCurrentUser();
-            if (!$currentUser || !in_array($currentUser['role'], ['Admin', 'Manager'])) {
+            if (!$currentUser || !in_array($currentUser['ruolo'], ['Admin', 'Manager'])) {
                 return [];
             }
             

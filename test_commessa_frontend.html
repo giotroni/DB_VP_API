@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <title>Test Creazione Commessa</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+<div class="container py-5">
+    <h2 class="mb-4">Test Creazione Commessa (API JS)</h2>
+    <form id="commessaTestForm" class="card p-4 shadow-sm">
+        <div class="mb-3">
+            <label for="nome" class="form-label">Nome Commessa *</label>
+            <input type="text" class="form-control" id="nome" required value="Test Frontend">
+        </div>
+        <div class="mb-3">
+            <label for="descrizione" class="form-label">Descrizione</label>
+            <input type="text" class="form-control" id="descrizione" value="Test creazione da browser">
+        </div>
+        <div class="mb-3">
+            <label for="tipo" class="form-label">Tipo Commessa *</label>
+            <select class="form-select" id="tipo" required>
+                <option value="Cliente">Cliente</option>
+                <option value="Interna">Interna</option>
+            </select>
+        </div>
+        <div class="mb-3" id="clienteContainer">
+            <label for="cliente" class="form-label">Cliente</label>
+            <input type="text" class="form-control" id="cliente" placeholder="ID Cliente (opzionale)">
+        </div>
+        <div class="mb-3" id="commissioneContainer" style="display:none;">
+            <label for="commissione" class="form-label">Commissione (0-1)</label>
+            <input type="number" class="form-control" id="commissione" min="0" max="1" step="0.01">
+        </div>
+        <div class="mb-3">
+            <label for="responsabile" class="form-label">Responsabile</label>
+            <input type="text" class="form-control" id="responsabile" placeholder="ID Collaboratore (opzionale)">
+        </div>
+        <div class="mb-3">
+            <label for="dataInizio" class="form-label">Data Inizio</label>
+            <input type="date" class="form-control" id="dataInizio" value="2025-08-24">
+        </div>
+        <button type="submit" class="btn btn-primary">Crea Commessa</button>
+    </form>
+    <div id="result" class="mt-4"></div>
+</div>
+<script>
+// Mostra/nasconde i campi cliente/commissione
+const tipoSelect = document.getElementById('tipo');
+tipoSelect.addEventListener('change', function() {
+    const isCliente = tipoSelect.value === 'Cliente';
+    document.getElementById('clienteContainer').style.display = isCliente ? 'block' : 'none';
+    document.getElementById('commissioneContainer').style.display = isCliente ? 'block' : 'none';
+});
+
+document.getElementById('commessaTestForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const commessaData = {
+        Commessa: document.getElementById('nome').value,
+        Desc_Commessa: document.getElementById('descrizione').value,
+        Tipo_Commessa: document.getElementById('tipo').value,
+        ID_CLIENTE: document.getElementById('cliente').value || null,
+        Commissione: document.getElementById('commissione').value || 0,
+        ID_COLLABORATORE: document.getElementById('responsabile').value || null,
+        Data_Apertura_Commessa: document.getElementById('dataInizio').value,
+        Stato_Commessa: 'In corso',
+        ID_COMMESSA: 'FRONTEND' + Math.floor(Math.random()*10000)
+    };
+    document.getElementById('result').innerHTML = '<div class="alert alert-info">Invio dati...</div>';
+    try {
+        const response = await fetch('API/index.php?resource=commesse&action=create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(commessaData)
+        });
+        const result = await response.json();
+        if(result.success) {
+            document.getElementById('result').innerHTML = '<div class="alert alert-success">Commessa creata!<br>ID: '+result.data.ID_COMMESSA+'</div>';
+        } else {
+            document.getElementById('result').innerHTML = '<div class="alert alert-danger">Errore: '+result.message+'</div>';
+        }
+    } catch(err) {
+        document.getElementById('result').innerHTML = '<div class="alert alert-danger">Errore di rete/API: '+err+'</div>';
+    }
+});
+</script>
+</body>
+</html>

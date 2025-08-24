@@ -1,0 +1,896 @@
+/* Management App CSS - Estensione del tema V&P per l'applicazione di gestione */
+
+/* Sidebar Navigation */
+.management-sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    height: 100vh;
+    width: 280px;
+    background: linear-gradient(180deg, var(--vp-gradient-start) 0%, var(--vp-gradient-end) 100%);
+    transition: transform 0.3s ease;
+    z-index: 1050;
+    box-shadow: 2px 0 20px rgba(44, 62, 80, 0.15);
+    overflow-y: auto;
+}
+
+.management-sidebar.collapsed {
+    transform: translateX(-280px);
+}
+
+.sidebar-header {
+    padding: 1.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    text-align: center;
+}
+
+.sidebar-header .vp-logo-text {
+    font-size: 1.8rem;
+    margin-bottom: 0.5rem;
+}
+
+.sidebar-subtitle {
+    color: rgba(236, 240, 241, 0.8);
+    font-size: 0.85rem;
+    font-weight: 300;
+    margin: 0;
+}
+
+.sidebar-nav {
+    padding: 1rem 0;
+}
+
+.nav-item {
+    margin-bottom: 0.25rem;
+}
+
+.nav-link {
+    display: flex;
+    align-items: center;
+    padding: 0.875rem 1.5rem;
+    color: rgba(236, 240, 241, 0.8);
+    text-decoration: none;
+    transition: all 0.3s ease;
+    border: none;
+    background: none;
+    width: 100%;
+    text-align: left;
+    position: relative;
+}
+
+.nav-link:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--vp-text-light);
+    transform: translateX(5px);
+}
+
+.nav-link.active {
+    background: linear-gradient(90deg, rgba(82, 196, 26, 0.2) 0%, rgba(115, 209, 61, 0.1) 100%);
+    color: var(--vp-text-light);
+    border-right: 3px solid var(--vp-accent);
+}
+
+.nav-link.active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: var(--vp-accent);
+}
+
+.nav-link i {
+    width: 20px;
+    margin-right: 1rem;
+    text-align: center;
+    font-size: 1.1rem;
+}
+
+.nav-link .badge {
+    background: var(--vp-accent);
+    color: white;
+    font-size: 0.7rem;
+    margin-left: auto;
+    padding: 0.25rem 0.5rem;
+    border-radius: 12px;
+}
+
+/* User Info in Sidebar */
+.sidebar-user {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 1rem 1.5rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(0, 0, 0, 0.1);
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    color: var(--vp-text-light);
+    margin-bottom: 0.75rem;
+}
+
+.user-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--vp-accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 600;
+    margin-right: 0.75rem;
+    font-size: 0.9rem;
+}
+
+.user-details {
+    flex: 1;
+    min-width: 0;
+}
+
+.user-name {
+    font-weight: 600;
+    font-size: 0.9rem;
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.user-role {
+    font-size: 0.75rem;
+    color: rgba(236, 240, 241, 0.7);
+    margin: 0;
+}
+
+.user-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.user-actions .btn {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.8rem;
+    border-radius: 6px;
+}
+
+/* Main Content Area */
+.management-content {
+    margin-left: 280px;
+    min-height: 100vh;
+    background: var(--vp-background);
+    transition: margin-left 0.3s ease;
+}
+
+.management-content.expanded {
+    margin-left: 0;
+}
+
+/* Top Bar */
+.management-topbar {
+    background: var(--vp-card-bg);
+    border-bottom: 1px solid var(--vp-border);
+    padding: 1rem 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 1040;
+    box-shadow: 0 2px 10px rgba(44, 62, 80, 0.05);
+}
+
+.topbar-left {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.sidebar-toggle {
+    background: none;
+    border: none;
+    color: var(--vp-text-dark);
+    font-size: 1.2rem;
+    padding: 0.5rem;
+    border-radius: 6px;
+    transition: all 0.3s ease;
+}
+
+.sidebar-toggle:hover {
+    background: var(--vp-border);
+    color: var(--vp-primary);
+}
+
+.page-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--vp-text-dark);
+    margin: 0;
+}
+
+.page-subtitle {
+    font-size: 0.9rem;
+    color: #6c757d;
+    margin: 0;
+}
+
+.topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.topbar-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.topbar-actions .btn {
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+}
+
+/* Content Sections */
+.management-section {
+    padding: 2rem;
+}
+
+.section-header {
+    margin-bottom: 2rem;
+}
+
+.section-title {
+    font-size: 1.75rem;
+    font-weight: 600;
+    color: var(--vp-text-dark);
+    margin-bottom: 0.5rem;
+}
+
+.section-description {
+    color: #6c757d;
+    font-size: 1rem;
+    margin: 0;
+}
+
+/* Cards e contenuti */
+.management-card {
+    background: var(--vp-card-bg);
+    border-radius: 12px;
+    box-shadow: 0 4px 20px var(--vp-shadow);
+    border: 1px solid var(--vp-border);
+    margin-bottom: 1.5rem;
+    overflow: hidden;
+}
+
+.management-card-header {
+    background: linear-gradient(135deg, var(--vp-primary) 0%, var(--vp-secondary) 100%);
+    color: var(--vp-text-light);
+    padding: 1.25rem 1.5rem;
+    border-bottom: none;
+}
+
+.management-card-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.management-card-body {
+    padding: 1.5rem;
+}
+
+/* Status Badges */
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.375rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.status-badge i {
+    margin-right: 0.375rem;
+    font-size: 0.75rem;
+}
+
+.status-badge.active {
+    background: rgba(82, 196, 26, 0.1);
+    color: var(--vp-accent);
+    border: 1px solid rgba(82, 196, 26, 0.2);
+}
+
+.status-badge.inactive {
+    background: rgba(108, 117, 125, 0.1);
+    color: #6c757d;
+    border: 1px solid rgba(108, 117, 125, 0.2);
+}
+
+.status-badge.in-progress {
+    background: rgba(250, 173, 20, 0.1);
+    color: var(--vp-warning);
+    border: 1px solid rgba(250, 173, 20, 0.2);
+}
+
+.status-badge.completed {
+    background: rgba(82, 196, 26, 0.1);
+    color: var(--vp-success);
+    border: 1px solid rgba(82, 196, 26, 0.2);
+}
+
+/* Data Tables */
+.management-table {
+    width: 100%;
+    margin-bottom: 0;
+}
+
+.management-table th {
+    background: #f8f9fa;
+    border: none;
+    padding: 1rem;
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--vp-text-dark);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid var(--vp-border);
+}
+
+.management-table td {
+    padding: 1rem;
+    border-bottom: 1px solid var(--vp-border);
+    vertical-align: middle;
+}
+
+.management-table tbody tr:hover {
+    background: rgba(82, 196, 26, 0.03);
+}
+
+/* Action Buttons */
+.action-buttons {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: flex-end;
+}
+
+.btn-action {
+    padding: 0.375rem 0.75rem;
+    border-radius: 6px;
+    border: none;
+    font-size: 0.8rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.btn-action.edit {
+    background: rgba(250, 173, 20, 0.1);
+    color: var(--vp-warning);
+    border: 1px solid rgba(250, 173, 20, 0.2);
+}
+
+.btn-action.edit:hover {
+    background: var(--vp-warning);
+    color: white;
+}
+
+.btn-action.delete {
+    background: rgba(255, 77, 79, 0.1);
+    color: var(--vp-danger);
+    border: 1px solid rgba(255, 77, 79, 0.2);
+}
+
+.btn-action.delete:hover {
+    background: var(--vp-danger);
+    color: white;
+}
+
+.btn-action.view {
+    background: rgba(44, 62, 80, 0.1);
+    color: var(--vp-primary);
+    border: 1px solid rgba(44, 62, 80, 0.2);
+}
+
+.btn-action.view:hover {
+    background: var(--vp-primary);
+    color: white;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .management-sidebar {
+        transform: translateX(-280px);
+    }
+    
+    .management-sidebar.show {
+        transform: translateX(0);
+    }
+    
+    .management-content {
+        margin-left: 0;
+    }
+    
+    .management-content.sidebar-open {
+        margin-left: 0;
+    }
+    
+    .topbar-left .page-subtitle {
+        display: none;
+    }
+    
+    .topbar-actions {
+        display: none;
+    }
+    
+    .management-section {
+        padding: 1rem;
+    }
+    
+    .section-title {
+        font-size: 1.5rem;
+    }
+    
+    .management-card-body {
+        padding: 1rem;
+    }
+    
+    .action-buttons {
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+    
+    .btn-action {
+        width: 100%;
+        text-align: center;
+    }
+    
+    /* Mobile table styling */
+    .management-table {
+        font-size: 0.85rem;
+    }
+    
+    .management-table th,
+    .management-table td {
+        padding: 0.75rem 0.5rem;
+    }
+}
+
+/* Overlay per mobile quando sidebar è aperta */
+.sidebar-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1040;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+}
+
+.sidebar-overlay.show {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* Statistiche Dashboard */
+.stats-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.stat-card-management {
+    background: var(--vp-card-bg);
+    border-radius: 12px;
+    padding: 1.5rem;
+    text-align: center;
+    box-shadow: 0 4px 20px var(--vp-shadow);
+    border: 1px solid var(--vp-border);
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.stat-card-management::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--vp-accent) 0%, var(--vp-light-green) 100%);
+}
+
+.stat-card-management:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 30px var(--vp-shadow);
+}
+
+.stat-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--vp-accent) 0%, var(--vp-light-green) 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1rem;
+    font-size: 1.5rem;
+    color: white;
+}
+
+.stat-number {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--vp-primary);
+    margin-bottom: 0.5rem;
+}
+
+.stat-label {
+    color: #6c757d;
+    font-size: 0.9rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin: 0;
+}
+
+/* Empty State */
+.empty-state {
+    text-align: center;
+    padding: 3rem 2rem;
+    color: #6c757d;
+}
+
+.empty-state i {
+    font-size: 3rem;
+    color: var(--vp-border);
+    margin-bottom: 1rem;
+}
+
+.empty-state h5 {
+    color: var(--vp-text-dark);
+    margin-bottom: 0.5rem;
+}
+
+.empty-state p {
+    margin-bottom: 1.5rem;
+}
+
+/* Loading States */
+.loading-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    border-radius: 12px;
+}
+
+.loading-text {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: var(--vp-text-dark);
+    font-weight: 500;
+}
+
+/* Forms */
+.form-management {
+    background: var(--vp-card-bg);
+    border-radius: 12px;
+    padding: 2rem;
+    border: 1px solid var(--vp-border);
+    box-shadow: 0 4px 20px var(--vp-shadow);
+}
+
+.form-management .form-label {
+    font-weight: 600;
+    color: var(--vp-text-dark);
+    margin-bottom: 0.5rem;
+}
+
+.form-management .form-control,
+.form-management .form-select {
+    border: 2px solid var(--vp-border);
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    transition: all 0.3s ease;
+}
+
+.form-management .form-control:focus,
+.form-management .form-select:focus {
+    border-color: var(--vp-accent);
+    box-shadow: 0 0 0 3px rgba(82, 196, 26, 0.1);
+}
+
+/* Tabs personalizzati */
+.nav-tabs-management {
+    border-bottom: 2px solid var(--vp-border);
+    margin-bottom: 2rem;
+}
+
+.nav-tabs-management .nav-link {
+    border: none;
+    border-bottom: 3px solid transparent;
+    color: #6c757d;
+    font-weight: 500;
+    padding: 1rem 1.5rem;
+    margin-bottom: -2px;
+}
+
+.nav-tabs-management .nav-link:hover {
+    border-bottom-color: var(--vp-light-green);
+    color: var(--vp-text-dark);
+}
+
+.nav-tabs-management .nav-link.active {
+    color: var(--vp-accent);
+    border-bottom-color: var(--vp-accent);
+    background: none;
+}
+
+/* Search e Filters */
+.search-filters {
+    background: var(--vp-card-bg);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    border: 1px solid var(--vp-border);
+    box-shadow: 0 2px 10px var(--vp-shadow);
+}
+
+.search-filters .row {
+    align-items: end;
+}
+
+.search-filters .form-control,
+.search-filters .form-select {
+    border: 1px solid var(--vp-border);
+    border-radius: 6px;
+}
+
+/* Pagination */
+.pagination-management {
+    justify-content: center;
+    margin-top: 2rem;
+}
+
+.pagination-management .page-link {
+    border: 1px solid var(--vp-border);
+    color: var(--vp-text-dark);
+    padding: 0.75rem 1rem;
+    margin: 0 2px;
+    border-radius: 6px;
+}
+
+.pagination-management .page-link:hover {
+    background: var(--vp-accent);
+    border-color: var(--vp-accent);
+    color: white;
+}
+
+.pagination-management .page-item.active .page-link {
+    background: var(--vp-accent);
+    border-color: var(--vp-accent);
+}
+
+/* Task Cards Styling */
+.task-card {
+    border: 1px solid var(--vp-border);
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    background: var(--vp-card-bg);
+}
+
+.task-card:hover {
+    box-shadow: 0 4px 20px var(--vp-shadow);
+    transform: translateY(-2px);
+}
+
+.task-card .card-header {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-bottom: 1px solid var(--vp-border);
+    padding: 1rem;
+}
+
+.task-card .card-body {
+    padding: 1rem;
+}
+
+.task-card .card-footer {
+    padding: 0.75rem 1rem;
+    background: transparent;
+}
+
+/* Commessa Card Toggle */
+.commessa-toggle {
+    transition: transform 0.3s ease;
+}
+
+.commessa-toggle.expanded {
+    transform: rotate(180deg);
+}
+
+/* Giornate Stats */
+.giornate-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.giornate-stat {
+    text-align: center;
+    padding: 0.75rem;
+    border: 1px solid var(--vp-border);
+    border-radius: 6px;
+    background: var(--vp-card-bg);
+}
+
+.giornate-stat .stat-value {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+}
+
+.giornate-stat .stat-label {
+    font-size: 0.75rem;
+    color: #6c757d;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.giornate-stat.primary .stat-value {
+    color: var(--vp-primary);
+}
+
+.giornate-stat.success .stat-value {
+    color: var(--vp-success);
+}
+
+.giornate-stat.warning .stat-value {
+    color: var(--vp-warning);
+}
+
+/* Giornate Table */
+.giornate-table {
+    font-size: 0.85rem;
+}
+
+.giornate-table th {
+    background: #f8f9fa;
+    font-weight: 600;
+    padding: 0.5rem;
+    border-bottom: 1px solid var(--vp-border);
+}
+
+.giornate-table td {
+    padding: 0.5rem;
+    border-bottom: 1px solid #dee2e6;
+    vertical-align: middle;
+}
+
+.giornate-table tbody tr:hover {
+    background: rgba(82, 196, 26, 0.05);
+}
+
+/* Toggle Buttons */
+.toggle-giornate-btn {
+    background: none;
+    border: 1px solid var(--vp-border);
+    color: var(--vp-text-dark);
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    transition: all 0.3s ease;
+    width: 100%;
+    text-align: center;
+}
+
+.toggle-giornate-btn:hover {
+    background: var(--vp-accent);
+    border-color: var(--vp-accent);
+    color: white;
+}
+
+.toggle-giornate-btn i {
+    transition: transform 0.3s ease;
+}
+
+/* Collapse animations */
+.collapsing {
+    transition: height 0.3s ease;
+}
+
+/* Task Type Badges */
+.task-type-badge {
+    font-size: 0.7rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 12px;
+    text-transform: uppercase;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+}
+
+.task-type-campo {
+    background: rgba(82, 196, 26, 0.1);
+    color: var(--vp-success);
+    border: 1px solid rgba(82, 196, 26, 0.2);
+}
+
+.task-type-ufficio {
+    background: rgba(44, 62, 80, 0.1);
+    color: var(--vp-primary);
+    border: 1px solid rgba(44, 62, 80, 0.2);
+}
+
+.task-type-monitoraggio {
+    background: rgba(250, 173, 20, 0.1);
+    color: var(--vp-warning);
+    border: 1px solid rgba(250, 173, 20, 0.2);
+}
+
+/* Empty states for cards */
+.task-empty-state {
+    text-align: center;
+    padding: 2rem 1rem;
+    color: #6c757d;
+}
+
+.task-empty-state i {
+    font-size: 2rem;
+    margin-bottom: 1rem;
+    color: var(--vp-border);
+}
+
+/* Responsive card layout */
+@media (max-width: 768px) {
+    .giornate-stats {
+        grid-template-columns: 1fr;
+        gap: 0.25rem;
+    }
+    
+    .task-card .card-body {
+        padding: 0.75rem;
+    }
+    
+    .task-card .card-header {
+        padding: 0.75rem;
+    }
+    
+    .giornate-table {
+        font-size: 0.75rem;
+    }
+    
+    .giornate-table th,
+    .giornate-table td {
+        padding: 0.375rem 0.25rem;
+    }
+    
+    .management-card-header {
+        padding: 1rem;
+    }
+    
+    .stats-row {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+    }
+}
