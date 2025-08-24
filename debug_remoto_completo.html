@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔍 Debug Task e Commesse - Server Remoto</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f8f9fa; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .section { margin: 20px 0; padding: 20px; background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .success { border-left: 4px solid #28a745; }
+        .error { border-left: 4px solid #dc3545; background: #f8d7da; }
+        .warning { border-left: 4px solid #ffc107; background: #fff3cd; }
+        button { background: #007bff; color: white; border: none; padding: 12px 20px; border-radius: 5px; cursor: pointer; margin: 5px; font-size: 14px; }
+        button:hover { background: #0056b3; }
+        button.debug { background: #6f42c1; }
+        button.debug:hover { background: #5a379a; }
+        pre { background: #f8f9fa; padding: 15px; border-radius: 5px; overflow-x: auto; font-size: 12px; border: 1px solid #e9ecef; }
+        table { border-collapse: collapse; width: 100%; margin: 15px 0; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+        th { background-color: #e9ecef; font-weight: bold; }
+        .highlight { background-color: #fff3cd; }
+        .task-count { display: inline-block; background: #007bff; color: white; padding: 2px 8px; border-radius: 12px; font-size: 12px; margin-left: 10px; }
+        .task-count.zero { background: #dc3545; }
+        .task-count.good { background: #28a745; }
+        .loading { text-align: center; padding: 20px; color: #6c757d; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        @media (max-width: 768px) { .grid { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Debug Task e Commesse - Server Remoto</h1>
+        <p style="color: #6c757d;">Analisi dettagliata della struttura database per risolvere i problemi di integrazione.</p>
+        
+        <div class="section">
+            <h3>🚀 Test di Base</h3>
+            <button onclick="testConnection()">Test Connessione DB</button>
+            <button onclick="testCommesse()" class="debug">Analizza Commesse</button>
+            <button onclick="debugTaskStructure()" class="debug">Debug Struttura Task</button>
+            <div id="baseResult"></div>
+        </div>
+        
+        <div class="grid">
+            <div class="section">
+                <h3>📋 Commesse Disponibili</h3>
+                <div id="commesseList">
+                    <div class="loading">Carica i dati prima...</div>
+                </div>
+            </div>
+            
+            <div class="section">
+                <h3>📊 Statistiche Task</h3>
+                <div id="taskStats">
+                    <div class="loading">Carica i dati prima...</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h3>🔬 Analisi Dettagliata Task</h3>
+            <div id="taskAnalysis">
+                <div class="loading">Esegui "Debug Struttura Task" per vedere l'analisi completa...</div>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h3>🧪 Test con Dati Reali</h3>
+            <p>Usa questi dati reali per testare il salvataggio:</p>
+            <div id="realDataTest">
+                <div class="loading">Prima esegui l'analisi per ottenere i dati reali...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let debugData = null;
+        
+        async function testConnection() {
+            const resultDiv = document.getElementById('baseResult');
+            resultDiv.innerHTML = '<p class="loading">⏳ Testando connessione...</p>';
+            
+            try {
+                const response = await fetch('API/ConsuntivazioneAPI.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'test_db' })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    resultDiv.className = 'section success';
+                    resultDiv.innerHTML = `
+                        <h4>✅ Connessione Database OK</h4>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                } else {
+                    resultDiv.className = 'section error';
+                    resultDiv.innerHTML = `
+                        <h4>❌ Errore Connessione</h4>
+                        <p>${data.message}</p>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.className = 'section error';
+                resultDiv.innerHTML = `<h4>💥 Errore di Rete</h4><p>${error.message}</p>`;
+            }
+        }
+        
+        async function testCommesse() {
+            const commesseDiv = document.getElementById('commesseList');
+            commesseDiv.innerHTML = '<p class="loading">⏳ Caricando commesse...</p>';
+            
+            try {
+                const response = await fetch('API/ConsuntivazioneAPI.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'get_commesse' })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success && data.data) {
+                    let html = `<h4>📋 ${data.count} Commesse Trovate</h4><table><tr><th>ID</th><th>Nome</th><th>Cliente</th><th>Test Task</th></tr>`;
+                    
+                    for (const commessa of data.data.slice(0, 5)) { // Prime 5 per test
+                        html += `
+                            <tr>
+                                <td><strong>${commessa.ID_COMMESSA}</strong></td>
+                                <td>${commessa.Commessa}</td>
+                                <td>${commessa.Cliente || 'N/A'}</td>
+                                <td><button onclick="testTasksForCommessa('${commessa.ID_COMMESSA}')">Test Task</button></td>
+                            </tr>
+                        `;
+                    }
+                    html += '</table>';
+                    commesseDiv.innerHTML = html;
+                } else {
+                    commesseDiv.innerHTML = `<p style="color: #dc3545;">❌ ${data.message}</p>`;
+                }
+            } catch (error) {
+                commesseDiv.innerHTML = `<p style="color: #dc3545;">💥 ${error.message}</p>`;
+            }
+        }
+        
+        async function testTasksForCommessa(commessaId) {
+            const result = await fetch('API/ConsuntivazioneAPI.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'get_tasks', commessa_id: commessaId })
+            });
+            
+            const data = await result.json();
+            alert(`Commessa ${commessaId}: ${data.count || 0} task trovati\\n\\n${JSON.stringify(data, null, 2)}`);
+        }
+        
+        async function debugTaskStructure() {
+            const analysisDiv = document.getElementById('taskAnalysis');
+            const statsDiv = document.getElementById('taskStats');
+            const realDataDiv = document.getElementById('realDataTest');
+            
+            analysisDiv.innerHTML = '<p class="loading">⏳ Analizzando struttura task...</p>';
+            
+            try {
+                const response = await fetch('API/ConsuntivazioneAPI.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'debug_task_structure' })
+                });
+                
+                const data = await response.json();
+                debugData = data; // Salva per altri usi
+                
+                if (data.success) {
+                    // Statistiche generali
+                    let statsHtml = '<h4>📊 Statistiche Globali</h4>';
+                    statsHtml += '<h5>Stati Task:</h5><ul>';
+                    data.stati_task_globali.forEach(stato => {
+                        statsHtml += `<li><strong>${stato.Stato_Task}:</strong> ${stato.count} task</li>`;
+                    });
+                    statsHtml += '</ul><h5>Tipi Task:</h5><ul>';
+                    data.tipi_task_globali.forEach(tipo => {
+                        statsHtml += `<li><strong>${tipo.Tipo}:</strong> ${tipo.count} task</li>`;
+                    });
+                    statsHtml += '</ul>';
+                    statsDiv.innerHTML = statsHtml;
+                    
+                    // Analisi dettagliata
+                    let analysisHtml = '<h4>🔬 Analisi per Commessa</h4>';
+                    
+                    for (const [commessaId, analysis] of Object.entries(data.task_analysis)) {
+                        const countClass = analysis.count_filtrati > 0 ? 'good' : 'zero';
+                        analysisHtml += `
+                            <div style="margin: 15px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px;">
+                                <h5>${commessaId}: ${analysis.commessa_nome} 
+                                    <span class="task-count ${countClass}">${analysis.count_filtrati} task utilizzabili</span>
+                                </h5>
+                                
+                                <strong>Tutti i task (${analysis.count_tutti}):</strong>
+                                <table style="margin: 10px 0;">
+                                    <tr><th>ID</th><th>Nome</th><th>Tipo</th><th>Stato</th></tr>`;
+                        
+                        analysis.tutti_task.forEach(task => {
+                            const highlight = task.Stato_Task === 'In corso' && task.Tipo !== 'Monitoraggio' ? 'class="highlight"' : '';
+                            analysisHtml += `
+                                <tr ${highlight}>
+                                    <td>${task.ID_TASK}</td>
+                                    <td>${task.Task}</td>
+                                    <td>${task.Tipo}</td>
+                                    <td>${task.Stato_Task}</td>
+                                </tr>
+                            `;
+                        });
+                        
+                        analysisHtml += '</table>';
+                        
+                        if (analysis.count_filtrati > 0) {
+                            analysisHtml += `<strong style="color: #28a745;">✅ Task utilizzabili (${analysis.count_filtrati}):</strong><ul>`;
+                            analysis.task_filtrati.forEach(task => {
+                                analysisHtml += `<li><strong>${task.ID_TASK}</strong>: ${task.Task}</li>`;
+                            });
+                            analysisHtml += '</ul>';
+                        } else {
+                            analysisHtml += '<p style="color: #dc3545;">❌ Nessun task utilizzabile per questa commessa</p>';
+                        }
+                        
+                        analysisHtml += '</div>';
+                    }
+                    
+                    analysisDiv.innerHTML = analysisHtml;
+                    
+                    // Genera test con dati reali
+                    generateRealDataTest(data, realDataDiv);
+                    
+                } else {
+                    analysisDiv.className = 'section error';
+                    analysisDiv.innerHTML = `<h4>❌ Errore</h4><p>${data.message}</p>`;
+                }
+            } catch (error) {
+                analysisDiv.className = 'section error';
+                analysisDiv.innerHTML = `<h4>💥 Errore</h4><p>${error.message}</p>`;
+            }
+        }
+        
+        function generateRealDataTest(data, container) {
+            let html = '<h4>🧪 Test con Dati Reali</h4>';
+            
+            // Trova la prima commessa con task validi
+            let commessaValida = null;
+            let taskValido = null;
+            
+            for (const [commessaId, analysis] of Object.entries(data.task_analysis)) {
+                if (analysis.count_filtrati > 0) {
+                    commessaValida = commessaId;
+                    taskValido = analysis.task_filtrati[0].ID_TASK;
+                    break;
+                }
+            }
+            
+            if (commessaValida && taskValido) {
+                html += `
+                    <div style="background: #d4edda; padding: 15px; border-radius: 5px; margin: 10px 0;">
+                        <p><strong>✅ Dati validi trovati:</strong></p>
+                        <ul>
+                            <li><strong>Commessa:</strong> ${commessaValida}</li>
+                            <li><strong>Task:</strong> ${taskValido}</li>
+                        </ul>
+                        <button onclick="testRealSave('${taskValido}')">🧪 Test Salvataggio Reale</button>
+                    </div>
+                `;
+            } else {
+                html += `
+                    <div style="background: #f8d7da; padding: 15px; border-radius: 5px; margin: 10px 0;">
+                        <p><strong>❌ Problema:</strong> Nessuna commessa ha task validi per il salvataggio!</p>
+                        <p><strong>Possibili cause:</strong></p>
+                        <ul>
+                            <li>Tutti i task hanno Stato_Task ≠ 'In corso'</li>
+                            <li>Tutti i task hanno Tipo = 'Monitoraggio'</li>
+                            <li>Non ci sono task collegati alle commesse</li>
+                        </ul>
+                    </div>
+                `;
+            }
+            
+            container.innerHTML = html;
+        }
+        
+        async function testRealSave(taskId) {
+            const testData = {
+                action: 'salva_consuntivazione',
+                data: '2025-08-24',
+                task: taskId,
+                giornate_lavorate: 1.0,
+                tipo: 'Campo',
+                desk: 'No',
+                spese_viaggio: 25.50,
+                vitto_alloggio: 45.00,
+                altre_spese: 10.00,
+                spese_fatturate_vp: 0,
+                note: 'Test integrazione con dati reali'
+            };
+            
+            try {
+                const response = await fetch('API/ConsuntivazioneAPI.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(testData)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert(`✅ SUCCESSO!\\n\\nConsuntivazione salvata con task reale: ${taskId}\\n\\n${JSON.stringify(result, null, 2)}`);
+                } else {
+                    alert(`❌ ERRORE nel salvataggio:\\n\\n${result.message}\\n\\nTask usato: ${taskId}`);
+                }
+            } catch (error) {
+                alert(`💥 ERRORE di rete:\\n\\n${error.message}`);
+            }
+        }
+        
+        // Auto-start
+        window.onload = function() {
+            console.log('🔍 Debug page loaded');
+            testConnection();
+        };
+    </script>
+</body>
+</html>

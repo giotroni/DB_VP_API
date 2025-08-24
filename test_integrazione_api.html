@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Integrazione ConsuntivazioneAPI</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; border-radius: 5px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        button { background: #007bff; color: white; border: none; padding: 10px 15px; border-radius: 3px; cursor: pointer; margin: 5px; }
+        button:hover { background: #0056b3; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 3px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Test Integrazione ConsuntivazioneAPI</h1>
+    
+    <div class="test-section">
+        <h3>📋 Test get_commesse</h3>
+        <button onclick="testGetCommesse()">Test Caricamento Commesse</button>
+        <div id="commesseResult"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>📝 Test get_tasks</h3>
+        <input type="text" id="commessaIdInput" placeholder="ID Commessa (es: COM0001)" value="COM0001" style="margin-right: 10px;">
+        <button onclick="testGetTasks()">Test Caricamento Task</button>
+        <div id="tasksResult"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>💾 Test salva_consuntivazione</h3>
+        <button onclick="testSalvaConsuntivazione()">Test Salvataggio (dummy data)</button>
+        <div id="salvaResult"></div>
+    </div>
+
+    <script>
+        async function testGetCommesse() {
+            const resultDiv = document.getElementById('commesseResult');
+            resultDiv.innerHTML = '<p>⏳ Caricamento...</p>';
+            
+            try {
+                const response = await fetch('API/ConsuntivazioneAPI.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ action: 'get_commesse' })
+                });
+                
+                const data = await response.json();
+                console.log('Commesse response:', data);
+                
+                if (data.success) {
+                    resultDiv.className = 'test-section success';
+                    resultDiv.innerHTML = `
+                        <h4>✅ Successo!</h4>
+                        <p><strong>Commesse trovate:</strong> ${data.count || 0}</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                } else {
+                    resultDiv.className = 'test-section error';
+                    resultDiv.innerHTML = `
+                        <h4>❌ Errore</h4>
+                        <p><strong>Messaggio:</strong> ${data.message}</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.className = 'test-section error';
+                resultDiv.innerHTML = `
+                    <h4>💥 Errore di Rete</h4>
+                    <p><strong>Messaggio:</strong> ${error.message}</p>
+                `;
+            }
+        }
+        
+        async function testGetTasks() {
+            const commessaId = document.getElementById('commessaIdInput').value;
+            const resultDiv = document.getElementById('tasksResult');
+            
+            if (!commessaId) {
+                resultDiv.innerHTML = '<p style="color: orange;">⚠️ Inserisci un ID Commessa</p>';
+                return;
+            }
+            
+            resultDiv.innerHTML = '<p>⏳ Caricamento...</p>';
+            
+            try {
+                const response = await fetch('API/ConsuntivazioneAPI.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ 
+                        action: 'get_tasks',
+                        commessa_id: commessaId 
+                    })
+                });
+                
+                const data = await response.json();
+                console.log('Tasks response:', data);
+                
+                if (data.success) {
+                    resultDiv.className = 'test-section success';
+                    resultDiv.innerHTML = `
+                        <h4>✅ Successo!</h4>
+                        <p><strong>Task trovati:</strong> ${data.count || 0}</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                } else {
+                    resultDiv.className = 'test-section error';
+                    resultDiv.innerHTML = `
+                        <h4>❌ Errore</h4>
+                        <p><strong>Messaggio:</strong> ${data.message}</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.className = 'test-section error';
+                resultDiv.innerHTML = `
+                    <h4>💥 Errore di Rete</h4>
+                    <p><strong>Messaggio:</strong> ${error.message}</p>
+                `;
+            }
+        }
+        
+        async function testSalvaConsuntivazione() {
+            const resultDiv = document.getElementById('salvaResult');
+            resultDiv.innerHTML = '<p>⏳ Test salvataggio...</p>';
+            
+            const testData = {
+                action: 'salva_consuntivazione',
+                data: '2025-08-24',
+                task: 'TAS001',
+                giornate_lavorate: 1.0,
+                tipo: 'Campo',
+                desk: 'No',
+                spese_viaggio: 25.50,
+                vitto_alloggio: 45.00,
+                altre_spese: 10.00,
+                spese_fatturate_vp: 0,
+                note: 'Test integrazione API'
+            };
+            
+            try {
+                const response = await fetch('API/ConsuntivazioneAPI.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(testData)
+                });
+                
+                const data = await response.json();
+                console.log('Salva response:', data);
+                
+                if (data.success) {
+                    resultDiv.className = 'test-section success';
+                    resultDiv.innerHTML = `
+                        <h4>✅ Successo!</h4>
+                        <p><strong>Messaggio:</strong> ${data.message}</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                } else {
+                    resultDiv.className = 'test-section error';
+                    resultDiv.innerHTML = `
+                        <h4>❌ Errore</h4>
+                        <p><strong>Messaggio:</strong> ${data.message}</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.className = 'test-section error';
+                resultDiv.innerHTML = `
+                    <h4>💥 Errore di Rete</h4>
+                    <p><strong>Messaggio:</strong> ${error.message}</p>
+                `;
+            }
+        }
+        
+        // Test automatico all'avvio
+        window.onload = function() {
+            console.log('🧪 Pagina di test caricata. Prova i test manualmente.');
+        };
+    </script>
+</body>
+</html>

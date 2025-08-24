@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Database - Task e Commesse</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; border-radius: 5px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        button { background: #007bff; color: white; border: none; padding: 10px 15px; border-radius: 3px; cursor: pointer; margin: 5px; }
+        button:hover { background: #0056b3; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 3px; overflow-x: auto; font-size: 12px; }
+        table { border-collapse: collapse; width: 100%; margin: 10px 0; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        .highlight { background-color: #fff3cd; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Debug Database - Task e Commesse</h1>
+    
+    <div class="section">
+        <h3>📋 Database Query Diretta</h3>
+        <button onclick="checkTasks()">Controlla Task per Commesse</button>
+        <button onclick="checkTaskStructure()">Struttura Tabella Task</button>
+        <div id="dbResult"></div>
+    </div>
+
+    <script>
+        async function checkTasks() {
+            const resultDiv = document.getElementById('dbResult');
+            resultDiv.innerHTML = '<p>⏳ Analizzando database...</p>';
+            
+            try {
+                // Test con le prime 3 commesse che abbiamo visto
+                const commesseTest = ['COM0001', 'COM0004', 'COM0016'];
+                let html = '<h4>📊 Analisi Task per Commesse</h4>';
+                
+                for (const commessaId of commesseTest) {
+                    const response = await fetch('API/ConsuntivazioneAPI.php', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ 
+                            action: 'get_tasks',
+                            commessa_id: commessaId 
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    html += `
+                        <div style="margin: 10px 0; padding: 10px; border-left: 3px solid ${data.success ? '#28a745' : '#dc3545'};">
+                            <strong>${commessaId}</strong>: ${data.count || 0} task trovati
+                            ${data.data && data.data.length > 0 ? 
+                                `<ul>${data.data.map(task => `<li><strong>${task.ID_TASK}</strong> - ${task.Task} (${task.Tipo})</li>`).join('')}</ul>` : 
+                                '<p style="color: #6c757d; font-style: italic;">Nessun task trovato</p>'
+                            }
+                        </div>
+                    `;
+                }
+                
+                resultDiv.className = 'section success';
+                resultDiv.innerHTML = html;
+                
+            } catch (error) {
+                resultDiv.className = 'section error';
+                resultDiv.innerHTML = `
+                    <h4>💥 Errore</h4>
+                    <p>${error.message}</p>
+                `;
+            }
+        }
+        
+        async function checkTaskStructure() {
+            const resultDiv = document.getElementById('dbResult');
+            resultDiv.innerHTML = '<p>⏳ Controllando struttura task...</p>';
+            
+            try {
+                // Query per controllare la struttura e i dati
+                const response = await fetch('API/ConsuntivazioneAPI.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'test_db' })
+                });
+                
+                const data = await response.json();
+                
+                resultDiv.className = 'section success';
+                resultDiv.innerHTML = `
+                    <h4>🗄️ Test Database</h4>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                    
+                    <h4>💡 Suggerimenti per il debug:</h4>
+                    <ul>
+                        <li>Controlla che i task abbiano <code>Stato_Task = 'In corso'</code></li>
+                        <li>Verifica che <code>Tipo != 'Monitoraggio'</code></li>
+                        <li>Controlla la foreign key tra ANA_TASK e ANA_COMMESSE</li>
+                    </ul>
+                `;
+                
+            } catch (error) {
+                resultDiv.className = 'section error';
+                resultDiv.innerHTML = `
+                    <h4>💥 Errore nel test database</h4>
+                    <p>${error.message}</p>
+                `;
+            }
+        }
+        
+        // Auto-start
+        window.onload = function() {
+            console.log('🔍 Debug page loaded');
+            checkTasks();
+        };
+    </script>
+</body>
+</html>

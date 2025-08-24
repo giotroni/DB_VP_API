@@ -472,7 +472,8 @@ class ConsuntivazioneAPI {
             
             return [
                 'success' => true,
-                'data' => $commesse
+                'data' => $commesse,
+                'count' => count($commesse)
             ];
             
         } catch (Exception $e) {
@@ -513,7 +514,8 @@ class ConsuntivazioneAPI {
             
             return [
                 'success' => true,
-                'data' => $tasks
+                'data' => $tasks,
+                'count' => count($tasks)
             ];
             
         } catch (Exception $e) {
@@ -753,6 +755,94 @@ class ConsuntivazioneAPI {
             ];
         }
     }
+
+    /**
+     * Salva una nuova consuntivazione
+     */
+    public function salvaConsuntivazione($data) {
+        try {
+            if (!$this->authAPI->isAuthenticated()) {
+                return [
+                    'success' => false,
+                    'message' => 'Utente non autenticato'
+                ];
+            }
+
+            $user = $this->authAPI->getCurrentUser();
+            if (!$user) {
+                return [
+                    'success' => false,
+                    'message' => 'Errore nel recupero dati utente'
+                ];
+            }
+
+            // Validazione dati base
+            if (!isset($data['data']) || !isset($data['task']) || !isset($data['giornate_lavorate'])) {
+                return [
+                    'success' => false,
+                    'message' => 'Dati obbligatori mancanti (data, task, giornate_lavorate)'
+                ];
+            }
+
+            // Genera ID univoco per la giornata
+            $idGiornata = 'GIO' . date('YmdHis') . mt_rand(100, 999);
+
+            // Prepara i dati per l'inserimento
+            $insertData = [
+                'ID_GIORNATA' => $idGiornata,
+                'Data' => $data['data'],
+                'ID_COLLABORATORE' => $user['id'],
+                'ID_TASK' => $data['task'],
+                'Tipo' => $data['tipo'] ?? 'Campo',
+                'Desk' => $data['desk'] ?? 'No',
+                'gg' => floatval($data['giornate_lavorate']),
+                'Spese_Viaggi' => floatval($data['spese_viaggio'] ?? 0),
+                'Vitto_alloggio' => floatval($data['vitto_alloggio'] ?? 0),
+                'Altri_costi' => floatval($data['altre_spese'] ?? 0),
+                'Spese_Fatturate_VP' => floatval($data['spese_fatturate_vp'] ?? 0),
+                'Confermata' => 'No', // Default a No, può essere confermata successivamente
+                'Note' => $data['note'] ?? '',
+                'Data_Creazione' => date('Y-m-d H:i:s'),
+                'ID_UTENTE_CREAZIONE' => $user['id']
+            ];
+
+            // Inserimento nel database
+            $sql = "INSERT INTO FACT_GIORNATE (
+                        ID_GIORNATA, Data, ID_COLLABORATORE, ID_TASK, Tipo, Desk,
+                        gg, Spese_Viaggi, Vitto_alloggio, Altri_costi, Spese_Fatturate_VP,
+                        Confermata, Note, Data_Creazione, ID_UTENTE_CREAZIONE
+                    ) VALUES (
+                        :ID_GIORNATA, :Data, :ID_COLLABORATORE, :ID_TASK, :Tipo, :Desk,
+                        :gg, :Spese_Viaggi, :Vitto_alloggio, :Altri_costi, :Spese_Fatturate_VP,
+                        :Confermata, :Note, :Data_Creazione, :ID_UTENTE_CREAZIONE
+                    )";
+
+            $stmt = $this->db->prepare($sql);
+            $success = $stmt->execute($insertData);
+
+            if ($success) {
+                return [
+                    'success' => true,
+                    'message' => 'Consuntivazione salvata con successo',
+                    'data' => [
+                        'id_giornata' => $idGiornata,
+                        'data_inserimento' => date('Y-m-d H:i:s')
+                    ]
+                ];
+            } else {
+                return [
+                    'success' => false,
+                    'message' => 'Errore nel salvataggio della consuntivazione'
+                ];
+            }
+
+        } catch (Exception $e) {
+            return [
+                'success' => false,
+                'message' => 'Errore durante il salvataggio: ' . $e->getMessage()
+            ];
+        }
+    }
 }
 
 // Gestione delle richieste API
@@ -824,6 +914,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             echo json_encode($result);
             break;
             
+        case 'salva_consuntivazione':
+            $result = $consuntivazioneAPI->salvaConsuntivazione($input);
+            echo json_encode($result);
+            break;
+            
         case 'test_db':
             try {
                 $db = getDatabase();
@@ -840,6 +935,65 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 echo json_encode([
                     'success' => false,
                     'message' => 'Errore database: ' . $e->getMessage()
+                ]);
+            }
+            break;
+
+        case 'debug_task_structure':
+            try {
+                $db = getDatabase();
+                
+                // 1. Controllo commesse
+                $sqlCommesse = "SELECT ID_COMMESSA, Commessa, Stato_Commessa FROM ANA_COMMESSE WHERE Stato_Commessa = 'In corso' ORDER BY ID_COMMESSA LIMIT 3";
+                $stmtCommesse = $db->query($sqlCommesse);
+                $commesse = $stmtCommesse->fetchAll(PDO::FETCH_ASSOC);
+                
+                $debug = [
+                    'success' => true,
+                    'commesse_in_corso' => $commesse,
+                    'task_analysis' => []
+                ];
+                
+                // 2. Per ogni commessa, analizza i task
+                foreach ($commesse as $commessa) {
+                    $commessaId = $commessa['ID_COMMESSA'];
+                    
+                    // Tutti i task
+                    $sqlAllTasks = "SELECT ID_TASK, Task, Desc_Task, Tipo, Stato_Task FROM ANA_TASK WHERE ID_COMMESSA = ? ORDER BY ID_TASK";
+                    $stmtAllTasks = $db->prepare($sqlAllTasks);
+                    $stmtAllTasks->execute([$commessaId]);
+                    $allTasks = $stmtAllTasks->fetchAll(PDO::FETCH_ASSOC);
+                    
+                    // Task filtrati (come nell'API)
+                    $sqlFilteredTasks = "SELECT ID_TASK, Task, Desc_Task, Tipo, Stato_Task FROM ANA_TASK WHERE ID_COMMESSA = ? AND Stato_Task = 'In corso' AND Tipo != 'Monitoraggio' ORDER BY Task";
+                    $stmtFilteredTasks = $db->prepare($sqlFilteredTasks);
+                    $stmtFilteredTasks->execute([$commessaId]);
+                    $filteredTasks = $stmtFilteredTasks->fetchAll(PDO::FETCH_ASSOC);
+                    
+                    $debug['task_analysis'][$commessaId] = [
+                        'commessa_nome' => $commessa['Commessa'],
+                        'tutti_task' => $allTasks,
+                        'task_filtrati' => $filteredTasks,
+                        'count_tutti' => count($allTasks),
+                        'count_filtrati' => count($filteredTasks)
+                    ];
+                }
+                
+                // 3. Stati e tipi globali
+                $sqlStati = "SELECT DISTINCT Stato_Task, COUNT(*) as count FROM ANA_TASK GROUP BY Stato_Task";
+                $stmtStati = $db->query($sqlStati);
+                $debug['stati_task_globali'] = $stmtStati->fetchAll(PDO::FETCH_ASSOC);
+                
+                $sqlTipi = "SELECT DISTINCT Tipo, COUNT(*) as count FROM ANA_TASK GROUP BY Tipo";
+                $stmtTipi = $db->query($sqlTipi);
+                $debug['tipi_task_globali'] = $stmtTipi->fetchAll(PDO::FETCH_ASSOC);
+                
+                echo json_encode($debug);
+                
+            } catch (Exception $e) {
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Errore debug: ' . $e->getMessage()
                 ]);
             }
             break;

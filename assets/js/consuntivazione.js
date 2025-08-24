@@ -871,7 +871,7 @@ class ConsuntivazioneApp {
     async loadCommesse() {
         try {
             console.log('Loading commesse...');
-            const response = await fetch('API/ConsuntivazioneAPISimple.php', {
+            const response = await fetch('API/ConsuntivazioneAPI.php', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -942,7 +942,7 @@ class ConsuntivazioneApp {
         
         try {
             console.log('Loading tasks for commessa:', commessaId);
-            const response = await fetch('API/ConsuntivazioneAPISimple.php', {
+            const response = await fetch('API/ConsuntivazioneAPI.php', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -1034,7 +1034,7 @@ class ConsuntivazioneApp {
         console.log('Saving consuntivazione:', formData);
         
         try {
-            const response = await fetch('API/ConsuntivazioneAPISimple.php', {
+            const response = await fetch('API/ConsuntivazioneAPI.php', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
