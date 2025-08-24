@@ -932,6 +932,7 @@ class ConsuntivazioneApp {
                 <div class="consuntivazione-header">
                     <div class="consuntivazione-data">${this.formatDate(cons.Data)}</div>
                     <div class="consuntivazione-ore">${cons.gg} gg</div>
+                    <div class="consuntivazione-tipo">${this.getTipoTag(cons.Tipo)}</div>
                     <div class="consuntivazione-status">
                         ${cons.Confermata === 'Si' ? 
                             '<span class="badge bg-success">Confermata</span>' : 
@@ -1391,6 +1392,24 @@ class ConsuntivazioneApp {
         }
     }
     
+    /**
+     * Genera un tag colorato per il tipo di giornata
+     */
+    getTipoTag(tipo) {
+        const tipoClasses = {
+            'Campo': 'bg-success',
+            'Ufficio': 'bg-primary', 
+            'Trasferta': 'bg-warning text-dark',
+            'Formazione': 'bg-info',
+            'Malattia': 'bg-danger',
+            'Ferie': 'bg-secondary',
+            'Permesso': 'bg-dark'
+        };
+        
+        const className = tipoClasses[tipo] || 'bg-light text-dark';
+        return `<span class="badge ${className}">${tipo || 'N/D'}</span>`;
+    }
+
     /**
      * Formatta un numero in formato italiano (virgola per decimali, punto per migliaia)
      */
