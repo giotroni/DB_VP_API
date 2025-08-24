@@ -188,12 +188,16 @@ Apri `consuntivazione.html` nel browser per l'app di consuntivazione delle ore.
 
 **Funzionalità:**
 - 🔐 **Login sicuro** con credenziali database
-- 📊 **Dashboard statistiche** personali
-- ⏱️ **Registrazione ore** per commessa/task
+- 📊 **Dashboard statistiche** personali con calcolo "Costo gg"
+- ⏱️ **Registrazione ore** per commessa/task con tipo giornata
 - 💰 **Gestione spese** complete (viaggio, vitto, altro)
-- 📱 **Interface responsive** mobile-friendly
-- 📋 **Storico consuntivazioni** ultime attività
-- ✅ **Validazione completa** dati
+- � **Calcolo automatico Costo gg** per giornate di tipo "Campo"
+- 🔍 **Consultazione consuntivazioni** con filtri avanzati
+- 📊 **Statistiche aggregate** per periodo con costo giornaliero
+- 📤 **Esportazione CSV** completa con tutti i campi
+- �📱 **Interface responsive** mobile-friendly
+- 📋 **Storico consuntivazioni** con tag tipo giornata
+- ✅ **Validazione completa** dati e formattazione italiana
 
 ### **Stati Task**
 - **🟢 In corso**: Task attualmente in lavorazione
@@ -240,6 +244,18 @@ User VARCHAR(100)  -- Username per autenticazione
 ```sql
 -- Nuovo campo Confermata per stato di approvazione
 Confermata ENUM('Si', 'No') DEFAULT 'No'  -- Stato conferma giornata
+
+-- Campi esistenti per calcolo Costo gg
+Tipo ENUM('Campo', 'Ufficio', 'Trasferta', 'Formazione', 'Malattia', 'Ferie', 'Permesso') DEFAULT 'Campo'
+gg DECIMAL(3,1)  -- Giornate lavorate (0.1 - 1.0)
+```
+
+#### **ANA_TARIFFE_COLLABORATORI**
+```sql
+-- Tabella per calcolo Costo gg automatico
+Tariffa_gg DECIMAL(10,2)  -- Tariffa giornaliera
+ID_COMMESSA INT  -- NULL per tariffa standard, valore per tariffa specifica progetto
+Dal DATE  -- Data inizio validità tariffa
 ```
 
 ### **Relazioni Chiave**
@@ -255,6 +271,7 @@ Confermata ENUM('Si', 'No') DEFAULT 'No'  -- Stato conferma giornata
 - `debug_api.html` - Interfaccia web per test API
 - `API/test_api.php` - Test automatici API
 - `test_giornate_quick.php` - Test rapidi giornate
+- `test_costo_gg_stefano_marzo2025.php` - Test dettagliato calcolo "Costo gg"
 
 ### **Log Sistema**
 - `DB/logs/php_errors.log` - Errori PHP
@@ -266,8 +283,10 @@ Confermata ENUM('Si', 'No') DEFAULT 'No'  -- Stato conferma giornata
 ### **Calcoli Automatici**
 - **Giornate Effettuate**: Somma automatica per task
 - **Valori Maturati**: Calcolo basato su tariffe
+- **Costo gg Automatico**: Calcolo del costo giornaliero per giornate di tipo "Campo" basato su tariffe specifiche del progetto o standard
+- **Formattazione Italiana**: Visualizzazione con virgola per decimali e punto per migliaia
 - **Progressi Task**: Percentuali completamento
-- **Statistiche Dashboard**: Aggiornamento in tempo reale
+- **Statistiche Dashboard**: Aggiornamento in tempo reale con metriche di costo
 
 ### **Validazioni**
 - **Integrità referenziale**: Controllo relazioni
@@ -280,6 +299,7 @@ Confermata ENUM('Si', 'No') DEFAULT 'No'  -- Stato conferma giornata
 - **[API Documentation](API/README.md)** - Documentazione completa delle API
 - **[Task Interface Guide](TASK_INTERFACE_DOCS.md)** - Guida interfaccia web task
 - **[Consuntivazione App Guide](CONSUNTIVAZIONE_DOCS.md)** - Guida app consuntivazione
+- **[Costo gg Testing Guide](COSTO_GG_TESTING.md)** - Documentazione test calcolo costo giornaliero
 
 ## 🔄 Versioning
 
