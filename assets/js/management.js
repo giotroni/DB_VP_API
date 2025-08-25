@@ -4,6 +4,183 @@
  */
 
 class ManagementApp {
+    async showEditCommessaModal(idCommessa) {
+        const commessa = this.commesse.find(c => c.ID_COMMESSA === idCommessa);
+        if (!commessa) {
+            this.showToast('Commessa non trovata', 'error');
+            return;
+        }
+        const today = new Date().toISOString().split('T')[0];
+        const modalHtml = `
+            <div class="modal fade" id="editCommessaModal" tabindex="-1">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">
+                                <i class="fas fa-edit me-2"></i>
+                                Modifica Commessa
+                            </h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <form id="editCommessaForm">
+                            <div class="modal-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="editCommessaName" class="form-label">Nome Commessa *</label>
+                                            <input type="text" class="form-control" id="editCommessaName" value="${commessa.Commessa || ''}" required>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="editCommessaTipo" class="form-label">Tipo Commessa *</label>
+                                            <select class="form-select" id="editCommessaTipo" required>
+                                                <option value="">Seleziona tipo</option>
+                                                <option value="Cliente" ${commessa.Tipo_Commessa === 'Cliente' ? 'selected' : ''}>Cliente</option>
+                                                <option value="Interna" ${commessa.Tipo_Commessa === 'Interna' ? 'selected' : ''}>Interna</option>
+                                            </select>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="editCommessaStato" class="form-label">Stato Commessa *</label>
+                                            <select class="form-select" id="editCommessaStato" required>
+                                                <option value="In corso" ${commessa.Stato_Commessa === 'In corso' ? 'selected' : ''}>In corso</option>
+                                                <option value="Sospesa" ${commessa.Stato_Commessa === 'Sospesa' ? 'selected' : ''}>Sospesa</option>
+                                                <option value="Chiusa" ${commessa.Stato_Commessa === 'Chiusa' ? 'selected' : ''}>Chiusa</option>
+                                                <option value="Archiviata" ${commessa.Stato_Commessa === 'Archiviata' ? 'selected' : ''}>Archiviata</option>
+                                            </select>
+                                        </div>
+                                        <div class="mb-3" id="editCommessaClienteContainer" style="${commessa.Tipo_Commessa === 'Cliente' ? '' : 'display: none;'}">
+                                            <label for="editCommessaCliente" class="form-label">Cliente *</label>
+                                            <select class="form-select" id="editCommessaCliente">
+                                                <option value="">Seleziona Cliente</option>
+                                                ${this.clienti.map(c => 
+                                                    `<option value="${c.ID_CLIENTE}" ${commessa.ID_CLIENTE == c.ID_CLIENTE ? 'selected' : ''}>${c.Cliente}</option>`
+                                                ).join('')}
+                                            </select>
+                                        </div>
+                                        <div class="mb-3" id="editCommessaCommissioneContainer" style="${commessa.Tipo_Commessa === 'Cliente' ? '' : 'display: none;'}">
+                                            <label for="editCommessaCommissione" class="form-label">Commissione (da 0 a 1, es. 0.25 per 25%)</label>
+                                            <input type="number" class="form-control" id="editCommessaCommissione" min="0" max="1" step="0.01" placeholder="0.25" value="${commessa.Commissione || ''}">
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="editCommessaResponsabile" class="form-label">Responsabile *</label>
+                                            <select class="form-select" id="editCommessaResponsabile" required>
+                                                <option value="">Seleziona responsabile</option>
+                                                ${this.collaboratori.map(c => 
+                                                    `<option value="${c.ID_COLLABORATORE}" ${commessa.ID_COLLABORATORE == c.ID_COLLABORATORE ? 'selected' : ''}>${c.Collaboratore}</option>`
+                                                ).join('')}
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="editCommessaDescrizione" class="form-label">Descrizione Commessa</label>
+                                            <textarea class="form-control" id="editCommessaDescrizione" rows="3">${commessa.Desc_Commessa || ''}</textarea>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="editCommessaDataInizio" class="form-label">Data Inizio</label>
+                                            <input type="date" class="form-control" id="editCommessaDataInizio" value="${commessa.Data_Apertura_Commessa || today}">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                    <i class="fas fa-times me-1"></i>Annulla
+                                </button>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save me-1"></i>Salva Modifiche
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.getElementById('editCommessaModal')?.remove();
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        document.getElementById('editCommessaForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const submitBtn = document.querySelector('#editCommessaForm button[type="submit"]');
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Salvataggio...';
+            submitBtn.disabled = true;
+            // Raccogli dati
+            const tipoCommessa = document.getElementById('editCommessaTipo').value;
+            let idCliente = document.getElementById('editCommessaCliente').value || null;
+            if (tipoCommessa === 'Interna') {
+                idCliente = null;
+            }
+            const updatedCommessa = {
+                ID_COMMESSA: commessa.ID_COMMESSA,
+                Commessa: document.getElementById('editCommessaName').value,
+                Desc_Commessa: document.getElementById('editCommessaDescrizione').value || null,
+                Tipo_Commessa: tipoCommessa,
+                Stato_Commessa: document.getElementById('editCommessaStato').value,
+                ID_CLIENTE: idCliente,
+                Commissione: document.getElementById('editCommessaCommissione').value || 0,
+                ID_COLLABORATORE: document.getElementById('editCommessaResponsabile').value || null,
+                Data_Apertura_Commessa: document.getElementById('editCommessaDataInizio').value || null
+            };
+            // Validazioni
+            if (!updatedCommessa.Commessa.trim()) {
+                this.showToast('Inserisci il nome della commessa', 'error');
+                submitBtn.innerHTML = '<i class="fas fa-save me-1"></i>Salva Modifiche';
+                submitBtn.disabled = false;
+                return;
+            }
+            if (!updatedCommessa.Tipo_Commessa) {
+                this.showToast('Seleziona il tipo di commessa', 'error');
+                submitBtn.innerHTML = '<i class="fas fa-save me-1"></i>Salva Modifiche';
+                submitBtn.disabled = false;
+                return;
+            }
+            if (updatedCommessa.Tipo_Commessa === 'Cliente' && !updatedCommessa.ID_CLIENTE) {
+                this.showToast('Seleziona un cliente per le commesse di tipo Cliente', 'error');
+                submitBtn.innerHTML = '<i class="fas fa-save me-1"></i>Salva Modifiche';
+                submitBtn.disabled = false;
+                return;
+            }
+            if (!updatedCommessa.ID_COLLABORATORE) {
+                this.showToast('Seleziona il responsabile della commessa', 'error');
+                submitBtn.innerHTML = '<i class="fas fa-save me-1"></i>Salva Modifiche';
+                submitBtn.disabled = false;
+                return;
+            }
+            // Chiamata API per aggiornare la commessa (PUT, ID in URL)
+            try {
+                const response = await fetch(`API/index.php?resource=commesse&action=update&id=${encodeURIComponent(commessa.ID_COMMESSA)}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(updatedCommessa)
+                });
+                const result = await response.json();
+                if (result.success) {
+                    this.showToast('Commessa aggiornata con successo!', 'success');
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('editCommessaModal'));
+                    modal.hide();
+                    await this.loadCommesse();
+                    if (typeof this.renderCommesseTask === 'function') {
+                        this.renderCommesseTask();
+                    } else if (typeof this.renderCommesse === 'function') {
+                        this.renderCommesse();
+                    }
+                } else {
+                    console.error('Errore API:', result);
+                    this.showToast(result.message || result.error || 'Errore durante l\'aggiornamento della commessa', 'error');
+                }
+            } catch (error) {
+                this.showToast('Errore di rete: ' + error.message, 'error');
+            } finally {
+                submitBtn.innerHTML = '<i class="fas fa-save me-1"></i>Salva Modifiche';
+                submitBtn.disabled = false;
+            }
+        });
+        document.getElementById('editCommessaTipo').addEventListener('change', () => {
+            const tipo = document.getElementById('editCommessaTipo').value;
+            document.getElementById('editCommessaClienteContainer').style.display = tipo === 'Cliente' ? '' : 'none';
+            document.getElementById('editCommessaCommissioneContainer').style.display = tipo === 'Cliente' ? '' : 'none';
+        });
+        const modal = new bootstrap.Modal(document.getElementById('editCommessaModal'));
+        modal.show();
+    }
     constructor() {
         this.currentUser = null;
         this.currentSection = 'commesse-task';
@@ -1075,10 +1252,15 @@ class ManagementApp {
             <div class="management-card mb-4">
                 <div class="management-card-header">
                     <div class="d-flex justify-content-between align-items-center">
-                        <h5 class="management-card-title mb-0">
-                            <i class="fas fa-briefcase me-2"></i>
-                            ${commessa.Commessa || commessa.ID_COMMESSA || 'Commessa'}
-                        </h5>
+                        <div class="d-flex align-items-center">
+                            <h5 class="management-card-title mb-0 me-2">
+                                <i class="fas fa-briefcase me-2"></i>
+                                ${commessa.Commessa || commessa.ID_COMMESSA || 'Commessa'}
+                            </h5>
+                            <button class="btn btn-warning btn-sm ms-2" onclick="app.showEditCommessaModal('${commessa.ID_COMMESSA}')" title="Modifica questa commessa">
+                                <i class="fas fa-edit me-1"></i>Modifica
+                            </button>
+                        </div>
                         <div class="d-flex align-items-center gap-3">
                             <span class="badge bg-primary">${totaleTasks} Task</span>
                             <span class="badge bg-success">${totaleGiornate.toFixed(1)} Giorni</span>
@@ -1092,7 +1274,8 @@ class ManagementApp {
                     </div>
                     <div class="mt-2">
                         <small class="text-light">
-                            <i class="fas fa-building me-1"></i>Cliente: ${commessa.cliente_nome} | 
+                            <i class="fas fa-building me-1"></i>
+                            ${commessa.Tipo_Commessa === 'Interna' ? 'Interna' : `Cliente: ${commessa.cliente_nome}`} |
                             <i class="fas fa-user me-1"></i>Responsabile: ${commessa.responsabile_nome} |
                             <i class="fas fa-tasks me-1"></i>Task attivi: ${tasksAttivi}
                         </small>
@@ -2410,9 +2593,9 @@ class ManagementApp {
                                         </div>
                                         
                                         <div class="mb-3">
-                                            <label for="newCommessaResponsabile" class="form-label">Responsabile</label>
-                                            <select class="form-select" id="newCommessaResponsabile">
-                                                <option value="">Nessun responsabile</option>
+                                            <label for="newCommessaResponsabile" class="form-label">Responsabile *</label>
+                                            <select class="form-select" id="newCommessaResponsabile" required>
+                                                <option value="">Seleziona responsabile</option>
                                                 ${this.collaboratori.map(c => 
                                                     `<option value="${c.ID_COLLABORATORE}">${c.Collaboratore}</option>`
                                                 ).join('')}
@@ -2500,6 +2683,9 @@ class ManagementApp {
             if (commessaData.Tipo_Commessa === 'Cliente' && !commessaData.ID_CLIENTE) {
                 throw new Error('Seleziona un cliente per le commesse di tipo Cliente');
             }
+            if (!commessaData.ID_COLLABORATORE) {
+                throw new Error('Seleziona il responsabile della commessa');
+            }
 
             console.log('Dati commessa da creare:', commessaData);
 
@@ -2513,6 +2699,7 @@ class ManagementApp {
             });
 
             const result = await response.json();
+            // ...removed accidental HTML injection...
             console.log('Risposta creazione commessa:', result);
 
             if (result.success) {
@@ -2622,19 +2809,12 @@ class ManagementApp {
         // Filtra commesse per il dropdown (se non è specificata una commessa)
         let commesseDropdown = '';
         if (!commessaId) {
-            const commesseOptions = this.commesse.map(c => 
-                `<option value="${c.id_commessa}">${c.nome_commessa} (${c.codice_commessa})</option>`
-            ).join('');
-            
-            commesseDropdown = `
-                <div class="mb-3">
-                    <label for="newTaskCommessa" class="form-label">Commessa *</label>
-                    <select class="form-select" id="newTaskCommessa" required>
-                        <option value="">Seleziona una commessa</option>
-                        ${commesseOptions}
-                    </select>
-                </div>
-            `;
+            commesseDropdown = `<div class="mb-3">
+                <label for="newTaskCommessa" class="form-label">Commessa *</label>
+                <select class="form-select" id="newTaskCommessa" required>
+                    ${this.commesse.map(c => `<option value="${c.id_commessa}">${c.nome_commessa}</option>`).join('')}
+                </select>
+            </div>`;
         }
 
         const modalHtml = `
@@ -2649,81 +2829,68 @@ class ManagementApp {
                         </div>
                         <form id="newTaskForm">
                             <div class="modal-body">
-                                ${commesseDropdown}
-                                
-                                <div class="mb-3">
-                                    <label for="newTaskNome" class="form-label">Nome Task *</label>
-                                    <input type="text" class="form-control" id="newTaskNome" required>
-                                </div>
-                                
-                                <div class="mb-3">
-                                    <label for="newTaskDescrizione" class="form-label">Descrizione</label>
-                                    <textarea class="form-control" id="newTaskDescrizione" rows="3"></textarea>
-                                </div>
-                                
                                 <div class="row">
                                     <div class="col-md-6">
+                                        ${commesseDropdown}
                                         <div class="mb-3">
-                                            <label for="newTaskDataInizio" class="form-label">Data Inizio</label>
-                                            <input type="date" class="form-control" id="newTaskDataInizio">
+                                            <label for="newTaskNome" class="form-label">Nome Task *</label>
+                                            <input type="text" class="form-control" id="newTaskNome" required />
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="newTaskDescrizione" class="form-label">Descrizione</label>
+                                            <textarea class="form-control" id="newTaskDescrizione" rows="3"></textarea>
                                         </div>
                                     </div>
                                     <div class="col-md-6">
                                         <div class="mb-3">
-                                            <label for="newTaskDataFine" class="form-label">Data Fine</label>
-                                            <input type="date" class="form-control" id="newTaskDataFine">
+                                            <label for="newTaskTipo" class="form-label">Tipo *</label>
+                                            <select class="form-select" id="newTaskTipo" required>
+                                                <option value="Campo">Campo</option>
+                                                <option value="Monitoraggio">Monitoraggio</option>
+                                                <option value="Promo">Promo</option>
+                                                <option value="Sviluppo">Sviluppo</option>
+                                                <option value="Formazione">Formazione</option>
+                                            </select>
+                                        </div>
+                                        <div class="mb-3" id="newTaskCollaboratoreContainer" style="display:none;">
+                                            <label for="newTaskCollaboratore" class="form-label">Collaboratore</label>
+                                            <select class="form-select" id="newTaskCollaboratore">
+                                                <option value="">Seleziona...</option>
+                                                ${this.collaboratori.map(c => `<option value="${c.ID_COLLABORATORE}">${c.Collaboratore}</option>`).join('')}
+                                            </select>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="newTaskDataApertura" class="form-label">Data Apertura</label>
+                                            <input type="date" class="form-control" id="newTaskDataApertura" />
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="newTaskGgPreviste" class="form-label">Giorni Previsti</label>
+                                            <input type="number" step="0.5" class="form-control" id="newTaskGgPreviste" />
                                         </div>
                                     </div>
                                 </div>
-                                
+                                <hr />
+                                <h6><i class="fas fa-euro-sign me-1"></i>Informazioni Economiche</h6>
                                 <div class="row">
-                                    <div class="col-md-6">
+                                    <div class="col-md-4">
                                         <div class="mb-3">
-                                            <label for="newTaskOreStimate" class="form-label">Ore Stimate</label>
-                                            <input type="number" class="form-control" id="newTaskOreStimate" min="0" step="0.5">
+                                            <label for="newTaskValoreGg" class="form-label">Valore per Giorno (€)</label>
+                                            <input type="number" step="0.01" class="form-control" id="newTaskValoreGg" />
                                         </div>
                                     </div>
-                                    <div class="col-md-6">
+                                    <div class="col-md-4">
                                         <div class="mb-3">
-                                            <label for="newTaskTariffa" class="form-label">Tariffa Oraria (€)</label>
-                                            <input type="number" class="form-control" id="newTaskTariffa" min="0" step="0.01">
+                                            <label for="newTaskSpeseComprese" class="form-label">Spese Comprese</label>
+                                            <select class="form-select" id="newTaskSpeseComprese" onchange="app.toggleValoreSpeseForNewTask()">
+                                                <option value="No">No</option>
+                                                <option value="Si">Si</option>
+                                            </select>
                                         </div>
                                     </div>
-                                </div>
-                                
-                                <div class="mb-3">
-                                    <label class="form-label">Collaboratori Assegnati</label>
-                                    <div class="border rounded p-3 max-height-200 overflow-auto">
-                                        ${this.collaboratori.map(collab => `
-                                            <div class="form-check">
-                                                <input class="form-check-input" type="checkbox" 
-                                                       id="newTaskCollab_${collab.id_collaboratore}" 
-                                                       value="${collab.id_collaboratore}"
-                                                       onchange="managementApp.toggleCollaboratoreForNewTask(${collab.id_collaboratore})">
-                                                <label class="form-check-label" for="newTaskCollab_${collab.id_collaboratore}">
-                                                    ${collab.nome} ${collab.cognome}
-                                                </label>
-                                            </div>
-                                        `).join('')}
-                                    </div>
-                                </div>
-                                
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <div class="mb-3">
-                                            <div class="form-check">
-                                                <input class="form-check-input" type="checkbox" id="newTaskConSpese" 
-                                                       onchange="managementApp.toggleValoreSpeseForNewTask()">
-                                                <label class="form-check-label" for="newTaskConSpese">
-                                                    Include spese
-                                                </label>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-6">
+                                    <div class="col-md-4">
                                         <div class="mb-3" id="newTaskValoreSpeseContainer" style="display: none;">
-                                            <label for="newTaskValoreSpese" class="form-label">Valore Spese (€)</label>
-                                            <input type="number" class="form-control" id="newTaskValoreSpese" min="0" step="0.01">
+                                            <label for="newTaskValoreSpese" class="form-label">Valore Spese Standard (€)</label>
+                                            <input type="number" step="0.01" class="form-control" id="newTaskValoreSpese" />
                                         </div>
                                     </div>
                                 </div>
@@ -2757,6 +2924,21 @@ class ManagementApp {
             hiddenInput.value = commessaId;
             document.getElementById('newTaskForm').appendChild(hiddenInput);
         }
+
+        // Imposta la data di apertura di default a oggi
+        const today = new Date().toISOString().slice(0, 10);
+        document.getElementById('newTaskDataApertura').value = today;
+
+        // Mostra/nascondi collaboratore in base al tipo
+        document.getElementById('newTaskTipo').addEventListener('change', function() {
+            const collabContainer = document.getElementById('newTaskCollaboratoreContainer');
+            if (this.value === 'Monitoraggio') {
+                collabContainer.style.display = 'block';
+            } else {
+                collabContainer.style.display = 'none';
+                document.getElementById('newTaskCollaboratore').value = '';
+            }
+        });
 
         // Gestione submit del form
         document.getElementById('newTaskForm').addEventListener('submit', (e) => {
@@ -2794,128 +2976,60 @@ class ManagementApp {
             submitBtn.disabled = true;
 
             // Raccogli i dati dal form
-            const formData = {
-                id_commessa: commessaId || document.getElementById('newTaskCommessa').value,
-                nome_task: document.getElementById('newTaskNome').value,
-                descrizione_task: document.getElementById('newTaskDescrizione').value || null,
-                data_inizio: document.getElementById('newTaskDataInizio').value || null,
-                data_fine: document.getElementById('newTaskDataFine').value || null,
-                ore_stimate: document.getElementById('newTaskOreStimate').value || null,
-                tariffa_oraria: document.getElementById('newTaskTariffa').value || null,
-                con_spese: document.getElementById('newTaskConSpese').checked ? 1 : 0,
-                valore_spese: document.getElementById('newTaskConSpese').checked ? 
-                             (document.getElementById('newTaskValoreSpese').value || 0) : 0
-            };
+                const formData = {
+                    ID_COMMESSA: commessaId || document.getElementById('newTaskCommessa').value,
+                    Task: document.getElementById('newTaskNome').value,
+                    Desc_Task: document.getElementById('newTaskDescrizione').value || null,
+                    Tipo: document.getElementById('newTaskTipo').value,
+                    Stato_Task: 'In corso',
+                    Data_Apertura_Task: document.getElementById('newTaskDataApertura').value || null,
+                    gg_previste: document.getElementById('newTaskGgPreviste').value || null,
+                    Valore_gg: document.getElementById('newTaskValoreGg').value || 0,
+                    Spese_Comprese: document.getElementById('newTaskSpeseComprese').value,
+                    Valore_Spese_std: document.getElementById('newTaskValoreSpese').value || null
+                };
 
-            // Raccogli collaboratori selezionati
-            const collaboratoriSelezionati = [];
-            this.collaboratori.forEach(collab => {
-                const checkbox = document.getElementById(`newTaskCollab_${collab.id_collaboratore}`);
-                if (checkbox && checkbox.checked) {
-                    collaboratoriSelezionati.push(collab.id_collaboratore);
+                // Aggiungi ID_COLLABORATORE solo se il tipo è Monitoraggio
+                if (document.getElementById('newTaskTipo').value === 'Monitoraggio') {
+                    formData.ID_COLLABORATORE = document.getElementById('newTaskCollaboratore').value || null;
                 }
-            });
 
-            // Validazioni
-            if (!formData.id_commessa) {
-                throw new Error('Seleziona una commessa');
-            }
-            if (!formData.nome_task.trim()) {
-                throw new Error('Inserisci il nome del task');
-            }
-
-            console.log('Dati nuovo task:', formData);
-            console.log('Collaboratori selezionati:', collaboratoriSelezionati);
-
-            // Chiamata API per creare il task
-            const response = await fetch('API/TaskAPI.php', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    action: 'create',
-                    ...formData,
-                    collaboratori: collaboratoriSelezionati
-                })
-            });
-
-            const result = await response.json();
-            console.log('Risposta creazione task:', result);
-
-            if (result.success) {
-                this.showToast('Task creato con successo!', 'success');
-                
-                // Chiudi il modal
-                const modal = bootstrap.Modal.getInstance(document.getElementById('newTaskModal'));
-                modal.hide();
-                
-                // Ricarica i dati
-                await this.loadTasks();
-                this.renderTasks();
-                
-            } else {
-                throw new Error(result.message || 'Errore durante la creazione del task');
-            }
-
-        } catch (error) {
-            console.error('Errore creazione task:', error);
-            this.showToast(error.message, 'error');
-        } finally {
-            // Ripristina pulsante
-            const submitBtn = document.querySelector('#newTaskForm button[type="submit"]');
-            if (submitBtn) {
-                submitBtn.innerHTML = '<i class="fas fa-plus me-1"></i>Crea Task';
-                submitBtn.disabled = false;
-            }
-        }
-    }
-    
-    filterTasks() {
-        console.log('Filtro tasks');
-        this.showToast('Filtro tasks - Funzione in sviluppo', 'info');
-    }
-    
-    showChangePasswordModal() {
-        const modal = new bootstrap.Modal(document.getElementById('changePasswordModal'));
-        modal.show();
-    }
-    
-    async handleChangePassword() {
-        const currentPassword = document.getElementById('currentPassword').value;
-        const newPassword = document.getElementById('newPassword').value;
-        const confirmPassword = document.getElementById('confirmPassword').value;
-        
-        if (newPassword !== confirmPassword) {
-            this.showToast('Le password non coincidono', 'error');
-            return;
-        }
-        
-        try {
-            const response = await fetch('API/auth.php', {
+            const apiUrl = 'API/index.php?resource=task&action=create';
+            const payload = { ...formData };
+            console.log('[Nuovo Task] Chiamata API:', apiUrl);
+            console.log('[Nuovo Task] Payload inviato:', payload);
+            const response = await fetch(apiUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({
-                    action: 'change_password',
-                    current_password: currentPassword,
-                    new_password: newPassword
-                })
+                body: JSON.stringify(payload)
             });
-            
-            const result = await response.json();
-            
-            if (result.success) {
-                this.showToast('Password cambiata con successo', 'success');
-                bootstrap.Modal.getInstance(document.getElementById('changePasswordModal')).hide();
-                document.getElementById('changePasswordForm').reset();
-            } else {
-                throw new Error(result.message || 'Errore cambio password');
+            const responseText = await response.text();
+            console.log('[Nuovo Task] Risposta grezza:', responseText);
+            let result = null;
+            try {
+                result = JSON.parse(responseText);
+            } catch (err) {
+                console.error('Risposta API non valida o vuota:', responseText);
+                this.showToast('Errore API: risposta non valida o vuota', 'error');
+                throw new Error('API response not valid JSON');
             }
-            
+
+            if (result && result.success) {
+                this.showToast('Task creato con successo', 'success');
+                bootstrap.Modal.getInstance(document.getElementById('newTaskModal')).hide();
+                document.getElementById('newTaskForm').reset();
+                // Aggiorna la UI, ad esempio ricarica i task della commessa
+                if (typeof this.loadTasksForCommessa === 'function') {
+                    this.loadTasksForCommessa(formData.ID_COMMESSA);
+                }
+            } else {
+                console.error('Errore creazione task:', result);
+                throw new Error((result && result.message) || 'Errore creazione task');
+            }
         } catch (error) {
-            console.error('Errore cambio password:', error);
+            console.error('Errore creazione task:', error);
             this.showToast(error.message, 'error');
         }
     }
