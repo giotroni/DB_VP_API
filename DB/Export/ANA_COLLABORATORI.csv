@@ -1,6 +1,7 @@
 ID_COLLABORATORE;Collaboratore;Email;User;PWD;Ruolo;PIVA;Data_Creazione;ID_UTENTE_CREAZIONE;Data_Modifica;ID_UTENTE_MODIFICA
-CONS001;"Alessandro Vaglio";avaglio@vaglioandpartners.com;avaglio;Boss01;Manager;;;;;
+CONS001;"Alessandro Vaglio";avaglio@vaglioandpartners.com;avaglio;$2y$10$YokCDNG.En2sHzPRYXQKJ./c6vgvwO.nlpKJtsN0xuVvGDZLNia6a;Manager;;;;"2025-08-24 17:08:40";
 CONS002;"Giorgio Bevilacqua";gbevilacqua@vaglioandpartners.com;gbevilacqua;CeoCeo02;User;;;;;
-CONS003;"Giorgio Troni";gtroni@vaglioandpartners.com;gtroni;$2y$10$SjWqSFO5L9rJJpd132O3LeP6TdMrTuZD9A8gIHv.lV0rNL2mRxrC6;Admin;;;;"2025-08-23 13:15:40";
+CONS003;"Giorgio Troni";gtroni@vaglioandpartners.com;gtroni;$2y$10$2uHBf.iVhxqb61S2e5LgPOUJZZ4gmvWiwSHqu9Nd.bXwun/rpH3z2;Admin;;;;"2025-08-24 07:14:27";
 CONS004;"Stefano Colombo";scolombo@vaglioandpartners.com;scolombo;Gattina1963;User;;;;;
-CONS005;"Francesco Silvestri";fsilverstri@vaglioandpartners.com;fsilvestri;Analista00;User;;;;;
+CONS005;"Francesco Silvestri";fsilverstri@vaglioandpartners.com;fsilverstri;Analista00;User;;;;;
+CONS006;Amministrazione;amministrazione@vaglioandpartners.com;amministrazione;amministrazione;Admin;;;;;

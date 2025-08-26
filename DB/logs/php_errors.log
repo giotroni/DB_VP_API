@@ -95,3 +95,33 @@ Stack trace:
 [22-Aug-2025 08:24:37 Europe/Rome] CollaboratoriAPI::create() - Input ricevuto: {"Collaboratore":"gigio gigio","User":"gigio","Email":"giorgio@troni.it","Ruolo":"User","PWD":"gigio","PIVA":null}
 [22-Aug-2025 08:24:37 Europe/Rome] CollaboratoriAPI::create() - Validazione: {"valid":false,"errors":["Campo 'PWD' troppo corto (min 6 caratteri)"]}
 [22-Aug-2025 08:24:37 Europe/Rome] CollaboratoriAPI::create() - Errori validazione: Campo 'PWD' troppo corto (min 6 caratteri)
+[25-Aug-2025 15:14:43 Europe/Rome] PHP Warning:  require_once(functions.php): Failed to open stream: No such file or directory in /home2/vaglioty/public_html/test/DB/api_fact_fatture.php on line 6
+[25-Aug-2025 15:14:43 Europe/Rome] PHP Fatal error:  Uncaught Error: Failed opening required 'functions.php' (include_path='.::/opt/cpanel/ea-php82/root/usr/share/pear') in /home2/vaglioty/public_html/test/DB/api_fact_fatture.php:6
+Stack trace:
+#0 {main}
+  thrown in /home2/vaglioty/public_html/test/DB/api_fact_fatture.php on line 6
+[25-Aug-2025 15:14:43 Europe/Rome] PHP Warning:  require_once(functions.php): Failed to open stream: No such file or directory in /home2/vaglioty/public_html/test/DB/api_fact_fatture.php on line 6
+[25-Aug-2025 15:14:43 Europe/Rome] PHP Fatal error:  Uncaught Error: Failed opening required 'functions.php' (include_path='.::/opt/cpanel/ea-php82/root/usr/share/pear') in /home2/vaglioty/public_html/test/DB/api_fact_fatture.php:6
+Stack trace:
+#0 {main}
+  thrown in /home2/vaglioty/public_html/test/DB/api_fact_fatture.php on line 6
+[25-Aug-2025 15:15:12 Europe/Rome] PHP Warning:  require_once(functions.php): Failed to open stream: No such file or directory in /home2/vaglioty/public_html/test/DB/api_fact_fatture.php on line 6
+[25-Aug-2025 15:15:12 Europe/Rome] PHP Fatal error:  Uncaught Error: Failed opening required 'functions.php' (include_path='.::/opt/cpanel/ea-php82/root/usr/share/pear') in /home2/vaglioty/public_html/test/DB/api_fact_fatture.php:6
+Stack trace:
+#0 {main}
+  thrown in /home2/vaglioty/public_html/test/DB/api_fact_fatture.php on line 6
+[25-Aug-2025 15:39:29 Europe/Rome] PHP Warning:  require_once(functions.php): Failed to open stream: No such file or directory in /home2/vaglioty/public_html/test/DB/api_fact_giornate.php on line 6
+[25-Aug-2025 15:39:29 Europe/Rome] PHP Fatal error:  Uncaught Error: Failed opening required 'functions.php' (include_path='.::/opt/cpanel/ea-php82/root/usr/share/pear') in /home2/vaglioty/public_html/test/DB/api_fact_giornate.php:6
+Stack trace:
+#0 {main}
+  thrown in /home2/vaglioty/public_html/test/DB/api_fact_giornate.php on line 6
+[25-Aug-2025 15:40:02 Europe/Rome] PHP Warning:  require_once(functions.php): Failed to open stream: No such file or directory in /home2/vaglioty/public_html/test/DB/api_fact_giornate.php on line 6
+[25-Aug-2025 15:40:02 Europe/Rome] PHP Fatal error:  Uncaught Error: Failed opening required 'functions.php' (include_path='.::/opt/cpanel/ea-php82/root/usr/share/pear') in /home2/vaglioty/public_html/test/DB/api_fact_giornate.php:6
+Stack trace:
+#0 {main}
+  thrown in /home2/vaglioty/public_html/test/DB/api_fact_giornate.php on line 6
+[25-Aug-2025 15:40:07 Europe/Rome] PHP Warning:  require_once(functions.php): Failed to open stream: No such file or directory in /home2/vaglioty/public_html/test/DB/api_fact_giornate.php on line 6
+[25-Aug-2025 15:40:07 Europe/Rome] PHP Fatal error:  Uncaught Error: Failed opening required 'functions.php' (include_path='.::/opt/cpanel/ea-php82/root/usr/share/pear') in /home2/vaglioty/public_html/test/DB/api_fact_giornate.php:6
+Stack trace:
+#0 {main}
+  thrown in /home2/vaglioty/public_html/test/DB/api_fact_giornate.php on line 6

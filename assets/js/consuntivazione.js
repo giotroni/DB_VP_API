@@ -306,7 +306,7 @@ class ConsuntivazioneApp {
                                  aria-expanded="false" aria-controls="collapseConsuntivazione" style="cursor: pointer;">
                                 <h2 class="modal-title">
                                     <i class="fas fa-plus-circle me-2"></i>
-                                    Consuntivazione Giornaliera
+                                    Consuntivazione Giornate
                                     <i class="fas fa-chevron-down ms-2 collapse-icon"></i>
                                 </h2>
                             </div>
@@ -336,7 +336,7 @@ class ConsuntivazioneApp {
                                     <div class="row">
                                         <div class="col-md-6">
                                             <div class="form-group mb-3">
-                                                <label for="commessa" class="form-label">Progetto *</label>
+                                                <label for="commessa" class="form-label">Commessa *</label>
                                                 <select id="commessa" class="form-control" required>
                                                     <option value="">Seleziona progetto...</option>
                                                 </select>
@@ -924,7 +924,7 @@ class ConsuntivazioneApp {
         this.commesse.forEach(commessa => {
             const option = document.createElement('option');
             option.value = commessa.ID_COMMESSA;
-            option.textContent = `${commessa.Commessa} - ${commessa.Cliente || 'Interno'}`;
+            option.textContent = `${commessa.Commessa}`;
             commessaSelect.appendChild(option);
         });
     }
@@ -1304,7 +1304,7 @@ class ConsuntivazioneApp {
             this.commessePerFiltri.forEach(commessa => {
                 const option = document.createElement('option');
                 option.value = commessa.ID_COMMESSA;
-                option.textContent = `${commessa.Commessa} - ${commessa.Cliente}`;
+                option.textContent = `${commessa.Commessa}`;
                 selectCommessa.appendChild(option);
             });
         }
@@ -1753,7 +1753,7 @@ class ConsuntivazioneApp {
                                 <div class="row">
                                     <div class="col-md-6">
                                         <div class="form-group mb-3">
-                                            <label for="editCommessa" class="form-label">Progetto *</label>
+                                            <label for="editCommessa" class="form-label">Comemssa *</label>
                                             <select id="editCommessa" class="form-control" required>
                                                 <option value="">Seleziona progetto...</option>
                                             </select>
@@ -1873,7 +1873,7 @@ class ConsuntivazioneApp {
             this.commesse.forEach(commessa => {
                 const option = document.createElement('option');
                 option.value = commessa.ID_COMMESSA;
-                option.textContent = `${commessa.Commessa} - ${commessa.Cliente}`;
+                option.textContent = `${commessa.Commessa}`;
                 if (commessa.ID_COMMESSA == consuntivazione.ID_COMMESSA) {
                     option.selected = true;
                 }

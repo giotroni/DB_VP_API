@@ -4,11 +4,256 @@
  */
 
 class ManagementApp {
-    
+    async showEditCommessaModal(idCommessa) {
+        const commessa = this.commesse.find(c => c.ID_COMMESSA === idCommessa);
+        if (!commessa) {
+            this.showToast('Commessa non trovata', 'error');
+            return;
+        }
+        const today = new Date().toISOString().split('T')[0];
+        // Verifica se la commessa ha task associati
+        const hasTasks = this.tasks.some(t => t.ID_COMMESSA === commessa.ID_COMMESSA);
+        const deleteButtonHtml = !hasTasks ? `
+            <button type="button" class="btn btn-danger" id="deleteCommessaBtn">
+                <i class="fas fa-trash me-1"></i>Elimina Commessa
+            </button>
+        ` : '';
+        const modalHtml = `
+            <div class="modal fade" id="editCommessaModal" tabindex="-1">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">
+                                <i class="fas fa-edit me-2"></i>
+                                Modifica Commessa
+                            </h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <form id="editCommessaForm">
+                            <div class="modal-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="editCommessaName" class="form-label">Nome Commessa *</label>
+                                            <input type="text" class="form-control" id="editCommessaName" value="${commessa.Commessa || ''}" required>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="editCommessaTipo" class="form-label">Tipo Commessa *</label>
+                                            <select class="form-select" id="editCommessaTipo" required>
+                                                <option value="">Seleziona tipo</option>
+                                                <option value="Cliente" ${commessa.Tipo_Commessa === 'Cliente' ? 'selected' : ''}>Cliente</option>
+                                                <option value="Interna" ${commessa.Tipo_Commessa === 'Interna' ? 'selected' : ''}>Interna</option>
+                                            </select>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="editCommessaStato" class="form-label">Stato Commessa *</label>
+                                            <select class="form-select" id="editCommessaStato" required>
+                                                <option value="In corso" ${commessa.Stato_Commessa === 'In corso' ? 'selected' : ''}>In corso</option>
+                                                <option value="Sospesa" ${commessa.Stato_Commessa === 'Sospesa' ? 'selected' : ''}>Sospesa</option>
+                                                <option value="Chiusa" ${commessa.Stato_Commessa === 'Chiusa' ? 'selected' : ''}>Chiusa</option>
+                                                <option value="Archiviata" ${commessa.Stato_Commessa === 'Archiviata' ? 'selected' : ''}>Archiviata</option>
+                                            </select>
+                                        </div>
+                                        <div class="mb-3" id="editCommessaClienteContainer" style="${commessa.Tipo_Commessa === 'Cliente' ? '' : 'display: none;'}">
+                                            <label for="editCommessaCliente" class="form-label">Cliente *</label>
+                                            <select class="form-select" id="editCommessaCliente">
+                                                <option value="">Seleziona Cliente</option>
+                                                ${this.clienti.map(c => 
+                                                    `<option value="${c.ID_CLIENTE}" ${commessa.ID_CLIENTE == c.ID_CLIENTE ? 'selected' : ''}>${c.Cliente}</option>`
+                                                ).join('')}
+                                            </select>
+                                        </div>
+                                        <div class="mb-3" id="editCommessaCommissioneContainer" style="${commessa.Tipo_Commessa === 'Cliente' ? '' : 'display: none;'}">
+                                            <label for="editCommessaCommissione" class="form-label">Commissione (da 0 a 1, es. 0.25 per 25%)</label>
+                                            <input type="number" class="form-control" id="editCommessaCommissione" min="0" max="1" step="0.01" placeholder="0.25" value="${commessa.Commissione || ''}">
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="editCommessaResponsabile" class="form-label">Responsabile *</label>
+                                            <select class="form-select" id="editCommessaResponsabile" required>
+                                                <option value="">Seleziona responsabile</option>
+                                                ${this.collaboratori.map(c => 
+                                                    `<option value="${c.ID_COLLABORATORE}" ${commessa.ID_COLLABORATORE == c.ID_COLLABORATORE ? 'selected' : ''}>${c.Collaboratore}</option>`
+                                                ).join('')}
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="editCommessaDescrizione" class="form-label">Descrizione Commessa</label>
+                                            <textarea class="form-control" id="editCommessaDescrizione" rows="3">${commessa.Desc_Commessa || ''}</textarea>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="editCommessaDataInizio" class="form-label">Data Inizio</label>
+                                            <input type="date" class="form-control" id="editCommessaDataInizio" value="${commessa.Data_Apertura_Commessa || today}">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                    <i class="fas fa-times me-1"></i>Annulla
+                                </button>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save me-1"></i>Salva Modifiche
+                                </button>
+                                ${deleteButtonHtml}
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        `;
+        // Event listener per il pulsante elimina commessa
+        setTimeout(() => {
+            const deleteBtn = document.getElementById('deleteCommessaBtn');
+            if (deleteBtn) {
+                deleteBtn.addEventListener('click', () => {
+                    if (confirm('Sei sicuro di voler eliminare questa commessa? Questa azione è irreversibile.')) {
+                        this.deleteCommessaWithConfirmation(commessa.ID_COMMESSA, commessa.Commessa);
+                    }
+                });
+            }
+        }, 300);
+    }
+
+    async deleteCommessaWithConfirmation(idCommessa, nomeCommessa) {
+        try {
+            const response = await fetch(`API/index.php?resource=commesse&action=delete&id=${encodeURIComponent(idCommessa)}`, {
+                method: 'DELETE'
+            });
+            const result = await response.json();
+            if (result.success) {
+                this.showToast(`Commessa "${nomeCommessa}" eliminata con successo!`, 'success');
+                const modal = bootstrap.Modal.getInstance(document.getElementById('editCommessaModal'));
+                modal.hide();
+                await this.loadCommesse();
+                if (typeof this.renderCommesseTask === 'function') {
+                    this.renderCommesseTask();
+                } else if (typeof this.renderCommesse === 'function') {
+                    this.renderCommesse();
+                }
+            } else {
+                this.showToast(result.message || result.error || 'Errore durante l\'eliminazione della commessa', 'error');
+            }
+        } catch (error) {
+            this.showToast('Errore di rete: ' + error.message, 'error');
+        }
+    }
+    var oldModal = document.getElementById('editCommessaModal');
+    if (oldModal) { oldModal.remove(); }
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    document.getElementById('editCommessaForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const submitBtn = document.querySelector('#editCommessaForm button[type="submit"]');
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Salvataggio...';
+            submitBtn.disabled = true;
+            // Raccogli dati
+            const tipoCommessa = document.getElementById('editCommessaTipo').value;
+            let idCliente = document.getElementById('editCommessaCliente').value || null;
+            if (tipoCommessa === 'Interna') {
+                idCliente = null;
+            }
+            const updatedCommessa = {
+                ID_COMMESSA: commessa.ID_COMMESSA,
+                Commessa: document.getElementById('editCommessaName').value,
+                Desc_Commessa: document.getElementById('editCommessaDescrizione').value || null,
+                Tipo_Commessa: tipoCommessa,
+                Stato_Commessa: document.getElementById('editCommessaStato').value,
+                ID_CLIENTE: idCliente,
+                Commissione: document.getElementById('editCommessaCommissione').value || 0,
+                ID_COLLABORATORE: document.getElementById('editCommessaResponsabile').value || null,
+                Data_Apertura_Commessa: document.getElementById('editCommessaDataInizio').value || null
+            };
+            // Validazioni
+            if (!updatedCommessa.Commessa.trim()) {
+                this.showToast('Inserisci il nome della commessa', 'error');
+                submitBtn.innerHTML = '<i class="fas fa-save me-1"></i>Salva Modifiche';
+                submitBtn.disabled = false;
+                return;
+            }
+            if (!updatedCommessa.Tipo_Commessa) {
+                this.showToast('Seleziona il tipo di commessa', 'error');
+                submitBtn.innerHTML = '<i class="fas fa-save me-1"></i>Salva Modifiche';
+                submitBtn.disabled = false;
+                return;
+            }
+            if (updatedCommessa.Tipo_Commessa === 'Cliente' && !updatedCommessa.ID_CLIENTE) {
+                this.showToast('Seleziona un cliente per le commesse di tipo Cliente', 'error');
+                submitBtn.innerHTML = '<i class="fas fa-save me-1"></i>Salva Modifiche';
+                submitBtn.disabled = false;
+                return;
+            }
+            if (!updatedCommessa.ID_COLLABORATORE) {
+                this.showToast('Seleziona il responsabile della commessa', 'error');
+                submitBtn.innerHTML = '<i class="fas fa-save me-1"></i>Salva Modifiche';
+                submitBtn.disabled = false;
+                return;
+            }
+            // Chiamata API per aggiornare la commessa (PUT, ID in URL)
+            try {
+                const response = await fetch(`API/index.php?resource=commesse&action=update&id=${encodeURIComponent(commessa.ID_COMMESSA)}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(updatedCommessa)
+                });
+                const result = await response.json();
+                if (result.success) {
+                    this.showToast('Commessa aggiornata con successo!', 'success');
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('editCommessaModal'));
+                    modal.hide();
+                    await this.loadCommesse();
+                    if (typeof this.renderCommesseTask === 'function') {
+                        this.renderCommesseTask();
+                    } else if (typeof this.renderCommesse === 'function') {
+                        this.renderCommesse();
+                    }
+                } else {
+                    console.error('Errore API:', result);
+                    this.showToast(result.message || result.error || 'Errore durante l\'aggiornamento della commessa', 'error');
+                }
+            } catch (error) {
+                this.showToast('Errore di rete: ' + error.message, 'error');
+            } finally {
+                submitBtn.innerHTML = '<i class="fas fa-save me-1"></i>Salva Modifiche';
+                submitBtn.disabled = false;
+            }
+        });
+        document.getElementById('editCommessaTipo').addEventListener('change', () => {
+            const tipo = document.getElementById('editCommessaTipo').value;
+            document.getElementById('editCommessaClienteContainer').style.display = tipo === 'Cliente' ? '' : 'none';
+            document.getElementById('editCommessaCommissioneContainer').style.display = tipo === 'Cliente' ? '' : 'none';
+        });
+        const modal = new bootstrap.Modal(document.getElementById('editCommessaModal'));
+        modal.show();
+    }
+
+    async deleteCommessaWithConfirmation(idCommessa, nomeCommessa) {
+        try {
+            const response = await fetch(`API/index.php?resource=commesse&action=delete&id=${encodeURIComponent(idCommessa)}`, {
+                method: 'DELETE'
+            });
+            const result = await response.json();
+            if (result.success) {
+                this.showToast(`Commessa "${nomeCommessa}" eliminata con successo!`, 'success');
+                const modal = bootstrap.Modal.getInstance(document.getElementById('editCommessaModal'));
+                if (modal) modal.hide();
+                await this.loadCommesse();
+                if (typeof this.renderCommesseTask === 'function') {
+                    this.renderCommesseTask();
+                } else if (typeof this.renderCommesse === 'function') {
+                    this.renderCommesse();
+                }
+            } else {
+                this.showToast(result.message || result.error || 'Errore durante l\'eliminazione della commessa', 'error');
+            }
+        } catch (error) {
+            this.showToast('Errore di rete: ' + error.message, 'error');
+        }
+    }
     constructor() {
         this.currentUser = null;
         this.currentSection = 'commesse-task';
-        this.sidebarCollapsed = true;
+        this.sidebarCollapsed = true; // Inizia con sidebar collassato
         this.isMobile = window.innerWidth < 768;
         
         // Dati cache
@@ -24,6 +269,7 @@ class ManagementApp {
     }
     
     init() {
+        // Controlla se l'utente è già autenticato
         this.checkAuthentication().then(() => {
             if (this.currentUser) {
                 this.showDashboard();
@@ -33,8 +279,10 @@ class ManagementApp {
             }
         });
         
+        // Event listeners
         this.setupEventListeners();
         
+        // Responsive handling
         this.handleResize();
         window.addEventListener('resize', () => this.handleResize());
     }
@@ -65,6 +313,7 @@ class ManagementApp {
     }
     
     setupEventListeners() {
+        // Login form
         document.addEventListener('submit', (e) => {
             if (e.target.id === 'loginForm') {
                 e.preventDefault();
@@ -76,32 +325,39 @@ class ManagementApp {
             }
         });
         
+        // Navigation clicks
         document.addEventListener('click', (e) => {
+            // Sidebar toggle
             if (e.target.closest('.sidebar-toggle') || e.target.closest('[data-action="toggle-sidebar"]')) {
                 e.preventDefault();
                 this.toggleSidebar();
             }
             
+            // Navigation links
             if (e.target.closest('.nav-link[data-section]')) {
                 e.preventDefault();
                 const section = e.target.closest('.nav-link').dataset.section;
                 this.showSection(section);
             }
             
+            // Logout
             if (e.target.id === 'logoutBtn' || e.target.closest('#logoutBtn')) {
                 e.preventDefault();
                 this.handleLogout();
             }
             
+            // Change password
             if (e.target.id === 'changePwdBtn' || e.target.closest('#changePwdBtn')) {
                 e.preventDefault();
                 this.showChangePasswordModal();
             }
             
+            // Sidebar overlay (mobile)
             if (e.target.classList.contains('sidebar-overlay')) {
                 this.closeSidebar();
             }
             
+            // Action buttons
             if (e.target.closest('[data-action]')) {
                 const action = e.target.closest('[data-action]').dataset.action;
                 const itemId = e.target.closest('[data-action]').dataset.id;
@@ -183,6 +439,7 @@ class ManagementApp {
         const spinner = submitBtn.querySelector('.loading-spinner');
         const errorDiv = document.getElementById('loginError');
         
+        // Show loading state
         submitBtn.disabled = true;
         btnText.textContent = 'Accesso in corso...';
         spinner.classList.remove('d-none');
@@ -206,6 +463,7 @@ class ManagementApp {
             if (result.success) {
                 this.currentUser = result.user;
                 
+                // Verifica che l'utente abbia i permessi di gestione
                 if (!this.currentUser.ruolo || !['Admin', 'Manager'].includes(this.currentUser.ruolo)) {
                     throw new Error('Accesso non autorizzato. Contatta l\'amministratore.');
                 }
@@ -226,6 +484,7 @@ class ManagementApp {
             errorDiv.classList.remove('d-none');
             document.getElementById('loginErrorMessage').textContent = error.message;
         } finally {
+            // Reset button state
             submitBtn.disabled = false;
             btnText.textContent = 'Accedi al Management';
             spinner.classList.add('d-none');
@@ -253,6 +512,7 @@ class ManagementApp {
     showDashboard() {
         const appContainer = document.getElementById('appContainer');
         appContainer.innerHTML = `
+            <!-- Sidebar -->
             <div class="management-sidebar" id="managementSidebar">
                 <div class="sidebar-header">
                     <div class="vp-logo-text">
@@ -329,9 +589,12 @@ class ManagementApp {
                 </div>
             </div>
             
+            <!-- Overlay per mobile -->
             <div class="sidebar-overlay" id="sidebarOverlay"></div>
             
+            <!-- Main Content -->
             <div class="management-content" id="managementContent">
+                <!-- Top Bar -->
                 <div class="management-topbar">
                     <div class="topbar-left">
                         <button class="sidebar-toggle" data-action="toggle-sidebar">
@@ -351,8 +614,10 @@ class ManagementApp {
                     </div>
                 </div>
                 
+                <!-- Content Area -->
                 <div class="management-section" id="contentArea">
-                    </div>
+                    <!-- Il contenuto viene caricato dinamicamente -->
+                </div>
             </div>
         `;
         
@@ -432,13 +697,16 @@ class ManagementApp {
     showSection(sectionName) {
         this.currentSection = sectionName;
         
+        // Aggiorna navigazione attiva
         document.querySelectorAll('.nav-link').forEach(link => {
             link.classList.remove('active');
         });
         document.querySelector(`[data-section="${sectionName}"]`)?.classList.add('active');
         
+        // Aggiorna titolo
         this.updatePageTitle(sectionName);
         
+        // Carica contenuto sezione
         switch (sectionName) {
             case 'commesse-task':
                 this.showCommesseTaskSection();
@@ -465,6 +733,7 @@ class ManagementApp {
                 this.showCommesseTaskSection();
         }
         
+        // Chiudi sidebar su mobile dopo navigazione
         if (this.isMobile) {
             this.closeSidebar();
         }
@@ -513,105 +782,58 @@ class ManagementApp {
     
     async loadInitialData() {
         try {
+            // Test rapido del router API
+            console.log('Test connessione API...');
+            try {
+                const testResponse = await fetch('API/index.php?resource=status');
+                const testResult = await testResponse.text();
+                console.log('API Status test:', testResult);
+            } catch (error) {
+                console.error('API Status test failed:', error);
+            }
+            
+            // Carica dati in sequenza per evitare problemi di timing
             console.log('=== INIZIO CARICAMENTO DATI ===');
             
-            const [
-                commesseResponse, 
-                tasksResponse, 
-                giornateResponse, 
-                clientiResponse, 
-                collaboratoriResponse
-            ] = await Promise.all([
-                fetch('API/index.php?resource=commesse&action=getAll').then(res => res.json()),
-                fetch('API/index.php?resource=task&action=getAll&limit=100').then(res => res.json()),
-                this.loadAllGiornatePages(), 
-                fetch('API/index.php?resource=clienti&action=getAll').then(res => res.json()),
-                fetch('API/index.php?resource=collaboratori&action=getAll').then(res => res.json())
-            ]);
+            await this.loadCommesse();
+            console.log('✓ Commesse caricate:', this.commesse.length);
             
-            if (commesseResponse.success) {
-                this.commesse = commesseResponse.data.data || [];
-                console.log('✓ Commesse caricate:', this.commesse.length);
-            } else {
-                console.error('Errore caricamento commesse:', commesseResponse.message);
-            }
+            await this.loadTasks();
+            console.log('✓ Task caricati:', this.tasks.length);
             
-            if (tasksResponse.success) {
-                this.tasks = tasksResponse.data.data || [];
-                console.log('✓ Task caricati:', this.tasks.length);
-            } else {
-                console.error('Errore caricamento task:', tasksResponse.message);
-            }
+            await this.loadGiornate();
+            console.log('✓ Giornate caricate:', this.giornate.length);
             
-            if (giornateResponse.success) {
-                this.giornate = giornateResponse.data.data || [];
-                console.log('✓ Giornate caricate:', this.giornate.length);
-            } else {
-                console.error('Errore caricamento giornate:', giornateResponse.message);
-            }
+            await this.loadClienti();
+            console.log('✓ Clienti caricati:', this.clienti.length);
             
-            if (clientiResponse.success) {
-                this.clienti = clientiResponse.data.data || [];
-                console.log('✓ Clienti caricati:', this.clienti.length);
-            } else {
-                console.error('Errore caricamento clienti:', clientiResponse.message);
-            }
-            
-            if (collaboratoriResponse.success) {
-                this.collaboratori = collaboratoriResponse.data.data || [];
-                console.log('✓ Collaboratori caricati:', this.collaboratori.length);
-            } else {
-                console.error('Errore caricamento collaboratori:', collaboratoriResponse.message);
-            }
+            await this.loadCollaboratori();
+            console.log('✓ Collaboratori caricati:', this.collaboratori.length);
             
             console.log('=== FINE CARICAMENTO DATI ===');
             
+            // Aggiorna le statistiche dopo che tutti i dati sono caricati
+            console.log('Aggiornamento statistiche dopo caricamento dati...');
             this.updateStatistics();
-            this.populateCommesseTaskFilters();
-            this.loadCommesseTaskData();
             
+            // Se siamo nella pagina commesse-task, ricarica i dati
+            if (this.currentSection === 'commesse-task') {
+                this.loadCommesseTaskData();
+            }
         } catch (error) {
             console.error('Errore caricamento dati iniziali:', error);
-            this.showToast('Errore nel caricamento dei dati. Si prega di riprovare più tardi.', 'error');
-            document.getElementById('loadingScreen').style.display = 'none';
-        }
-    }
-    
-    async loadAllGiornatePages() {
-        let allGiornate = [];
-        let currentPage = 1;
-        let totalPages = 1;
-
-        try {
-            do {
-                const response = await fetch(`API/index.php?resource=giornate&action=getAll&limit=100&page=${currentPage}`);
-                const result = await response.json();
-                
-                if (!result.success) {
-                    throw new Error(result.message || 'Errore caricamento pagina giornate');
-                }
-
-                allGiornate = allGiornate.concat(result.data.data || []);
-                totalPages = result.data.pagination.pages;
-                currentPage++;
-
-            } while (currentPage <= totalPages);
-
-            return { success: true, data: { data: allGiornate } };
-
-        } catch (error) {
-            console.error('Errore durante il caricamento paginato delle giornate:', error);
-            return { success: false, message: error.message };
+            this.showToast('Errore nel caricamento dei dati', 'error');
         }
     }
     
     updateStatistics() {
         console.log('Aggiornamento statistiche...');
         
+        // Aggiorna statistiche solo se siamo nella pagina corretta
         const totalCommesseEl = document.getElementById('totalCommesse');
         const totalTasksEl = document.getElementById('totalTasks');
         const totalGiornateEl = document.getElementById('totalGiornate');
-        const commesseAttiveEl = document.getElementById('activeCommesse');
+        const commesseAttiveEl = document.getElementById('commesseAttive');
         
         if (totalCommesseEl) {
             totalCommesseEl.textContent = this.commesse.length;
@@ -622,6 +844,7 @@ class ManagementApp {
         }
         
         if (totalGiornateEl) {
+            // Fix calcolo giornate - gestisce sia formati numerici che con virgola
             const totalGiornate = this.giornate.reduce((sum, g) => {
                 let gg = g.gg || 0;
                 if (typeof gg === 'string') {
@@ -634,6 +857,8 @@ class ManagementApp {
         }
         
         if (commesseAttiveEl) {
+            // Possibili stati: 'In corso', 'Sospesa', 'Chiusa', 'Archiviata', o vuoto
+            // Consideriamo "In corso" e vuoto come attive (per compatibilità con dati esistenti)
             const commesseAttive = this.commesse.filter(c => 
                 c.Stato_Commessa === 'In corso' || 
                 !c.Stato_Commessa || 
@@ -643,8 +868,10 @@ class ManagementApp {
             console.log('✓ Commesse attive aggiornate:', commesseAttive);
         }
         
+        // Aggiorna anche i filtri dopo aver caricato i dati
         this.populateCommesseTaskFilters();
         
+        // Se siamo nella pagina commesse-task, assicuriamoci che i filtri siano popolati
         setTimeout(() => {
             if (this.currentSection === 'commesse-task') {
                 this.populateCommesseTaskFilters();
@@ -720,6 +947,7 @@ class ManagementApp {
             let currentPage = 1;
             let totalPages = 1;
             
+            // Carica tutte le pagine di giornate
             do {
                 const response = await fetch(`API/index.php?resource=giornate&action=getAll&limit=100&page=${currentPage}`);
                 
@@ -754,6 +982,7 @@ class ManagementApp {
             this.giornate = allGiornate;
             console.log(`✓ Giornate caricate completamente: ${this.giornate.length} totali`);
             
+            // Test calcolo totale
             if (this.giornate.length > 0) {
                 const totalTest = this.giornate.reduce((sum, g) => {
                     let gg = g.gg || 0;
@@ -842,6 +1071,7 @@ class ManagementApp {
         const contentArea = document.getElementById('contentArea');
         
         contentArea.innerHTML = `
+            <!-- Statistiche rapide -->
             <div class="stats-row">
                 <div class="stat-card-management">
                     <div class="stat-icon">
@@ -873,6 +1103,7 @@ class ManagementApp {
                 </div>
             </div>
             
+            <!-- Filtri di ricerca -->
             <div class="search-filters">
                 <div class="row">
                     <div class="col-md-4">
@@ -908,6 +1139,7 @@ class ManagementApp {
                 </div>
             </div>
             
+            <!-- Contenitore principale per commesse e task -->
             <div id="commesseTaskContainer">
                 <div class="text-center py-5">
                     <div class="loading-text">
@@ -918,6 +1150,7 @@ class ManagementApp {
             </div>
         `;
         
+        // Carica i dati nelle tabelle - IMPORTANTE: solo se i dati sono già caricati
         if (this.commesse.length > 0 && this.tasks.length > 0) {
             console.log('Dati già disponibili, caricamento immediato');
             this.updateCommesseTaskStats();
@@ -929,9 +1162,11 @@ class ManagementApp {
     }
     
     updateCommesseTaskStats() {
+        // Aggiorna le statistiche
         document.getElementById('totalCommesse').textContent = this.commesse.length;
         document.getElementById('totalTasks').textContent = this.tasks.length;
         
+        // Calcolo corretto del totale giornate
         const totalGiornate = this.giornate.reduce((sum, g) => {
             let gg = g.gg || 0;
             if (typeof gg === 'string') {
@@ -941,6 +1176,7 @@ class ManagementApp {
         }, 0);
         document.getElementById('totalGiornate').textContent = totalGiornate.toFixed(1);
         
+        // Correggi qui il calcolo delle commesse attive
         const activeCommesse = this.commesse.filter(c => c.Stato_Commessa === 'In corso').length;
         document.getElementById('activeCommesse').textContent = activeCommesse;
         
@@ -948,9 +1184,11 @@ class ManagementApp {
     }
     
     populateCommesseTaskFilters() {
+        // Popola filtro commesse
         const filterCommesse = document.getElementById('filterCommesse');
         
         if (filterCommesse && this.commesse.length > 0) {
+            // Salva il valore corrente
             const currentValue = filterCommesse.value;
             
             filterCommesse.innerHTML = '<option value="">Tutte le commesse</option>';
@@ -958,10 +1196,12 @@ class ManagementApp {
                 filterCommesse.innerHTML += `<option value="${commessa.ID_COMMESSA}">${commessa.Commessa}</option>`;
             });
             
+            // Ripristina il valore se era selezionato qualcosa
             if (currentValue) {
                 filterCommesse.value = currentValue;
             }
             
+            // Aggiungi event listener per filtro automatico (solo se non già presente)
             if (!filterCommesse.hasAttribute('data-listener-added')) {
                 filterCommesse.addEventListener('change', () => {
                     this.filterCommesseTask();
@@ -970,11 +1210,13 @@ class ManagementApp {
             }
         }
         
+        // Aggiungi anche listeners agli altri filtri (solo se non già presenti)
         const searchInput = document.getElementById('searchCommesseTask');
         const statoFilter = document.getElementById('filterStatoCommesse');
         
         if (searchInput && !searchInput.hasAttribute('data-listener-added')) {
             searchInput.addEventListener('input', () => {
+                // Filtro con debounce per non sovraccaricare
                 clearTimeout(this.searchTimeout);
                 this.searchTimeout = setTimeout(() => {
                     this.filterCommesseTask();
@@ -995,6 +1237,7 @@ class ManagementApp {
         const container = document.getElementById('commesseTaskContainer');
         if (!container) return;
         
+        // Raggruppa i task per commessa
         const commesseConTask = this.groupTasksByCommessa();
         
         if (commesseConTask.length === 0) {
@@ -1018,6 +1261,7 @@ class ManagementApp {
     groupTasksByCommessa() {
         const commesseMap = new Map();
         
+        // Crea mappa delle commesse
         this.commesse.forEach(commessa => {
             const cliente = this.clienti.find(c => c.ID_CLIENTE == commessa.ID_CLIENTE);
             const responsabile = this.collaboratori.find(c => c.ID_COLLABORATORE == commessa.ID_COLLABORATORE);
@@ -1030,11 +1274,14 @@ class ManagementApp {
             });
         });
         
+        // Aggiungi i task alle commesse
         this.tasks.forEach(task => {
             if (commesseMap.has(task.ID_COMMESSA)) {
                 const commessa = commesseMap.get(task.ID_COMMESSA);
                 
+                // Calcola le giornate per questo task - VERIFICA MATCH RIGOROSO
                 const giornateTask = this.giornate.filter(g => {
+                    // Prova match sia stringhe che numeri
                     const match = g.ID_TASK == task.ID_TASK || g.ID_TASK === task.ID_TASK ||
                                   String(g.ID_TASK) === String(task.ID_TASK);
                     return match;
@@ -1056,6 +1303,7 @@ class ManagementApp {
             }
         });
         
+        // Mostra tutte le commesse 'In corso', anche senza task
         const result = Array.from(commesseMap.values())
             .filter(commessa => commessa.Stato_Commessa === 'In corso')
             .sort((a, b) => (a.Commessa || '').localeCompare(b.Commessa || ''));
@@ -1117,6 +1365,7 @@ class ManagementApp {
         const collaboratore = this.collaboratori.find(c => c.ID_COLLABORATORE === task.ID_COLLABORATORE);
         const collaboratoreNome = collaboratore ? collaboratore.Collaboratore : 'Non assegnato';
         
+        // Statistiche giornate
         const giornateStats = this.calculateGiornateStats(task.giornate);
         
         return `
@@ -1146,6 +1395,7 @@ class ManagementApp {
                             </small>` : ''}
                         </div>
                         
+                        <!-- Statistiche Giornate -->
                         <div class="row text-center mb-3">
                             <div class="${task.Tipo === 'Monitoraggio' ? 'col-12' : 'col-4'}">
                                 <div class="border rounded p-2">
@@ -1169,6 +1419,7 @@ class ManagementApp {
                             ` : ''}
                         </div>
                         
+                        <!-- Lista Giornate -->
                         ${task.giornate.length > 0 ? `
                             <button class="btn btn-outline-primary btn-sm w-100" 
                                     onclick="app.showGiornateModal('${task.ID_TASK}')">
@@ -1210,6 +1461,7 @@ class ManagementApp {
                 giornate_campo += gg;
             }
             
+            // Calcola spese totali
             const spese_viaggi = parseFloat((g.Spese_Viaggi || '0').toString().replace(',', '.')) || 0;
             const vitto_alloggio = parseFloat((g.Vitto_alloggio || '0').toString().replace(',', '.')) || 0;
             const altri_costi = parseFloat((g.Altri_costi || '0').toString().replace(',', '.')) || 0;
@@ -1259,12 +1511,14 @@ class ManagementApp {
         const toggleBtn = document.getElementById('toggleAllBtn');
         
         if (allCollapsed.length > allExpanded.length) {
+            // Espandi tutto
             document.querySelectorAll('#commesseTaskContainer .collapse').forEach(collapse => {
                 new bootstrap.Collapse(collapse, { show: true });
             });
             toggleBtn.innerHTML = '<i class="fas fa-compress-arrows-alt"></i>';
             toggleBtn.title = 'Comprimi tutto';
         } else {
+            // Comprimi tutto
             document.querySelectorAll('#commesseTaskContainer .collapse.show').forEach(collapse => {
                 new bootstrap.Collapse(collapse, { hide: true });
             });
@@ -1336,13 +1590,16 @@ class ManagementApp {
             </div>
         `;
         
+        // Rimuovi modal esistente
         const existingModal = document.getElementById('giornateModal');
         if (existingModal) {
             existingModal.remove();
         }
         
+        // Aggiungi nuovo modal
         document.body.insertAdjacentHTML('beforeend', modalHtml);
         
+        // Mostra modal
         const modal = new bootstrap.Modal(document.getElementById('giornateModal'));
         modal.show();
     }
@@ -1385,12 +1642,14 @@ class ManagementApp {
         if (!dateString) return '-';
         
         try {
+            // Gestisce formato DD/MM/YY e varianti
             const parts = dateString.split('/');
             if (parts.length === 3) {
                 const day = parts[0].padStart(2, '0');
                 const month = parts[1].padStart(2, '0');
                 let year = parts[2];
                 
+                // Converte anno a 2 cifre in 4 cifre
                 if (year.length === 2) {
                     year = parseInt(year) > 50 ? '19' + year : '20' + year;
                 }
@@ -1413,12 +1672,15 @@ class ManagementApp {
         
         console.log('Filtri applicati:', { searchText, selectedCommessa, selectedStato });
         
+        // Filtra le commesse in base ai criteri
         let commesseFiltrate = this.commesse;
         
+        // Filtro per commessa specifica
         if (selectedCommessa) {
             commesseFiltrate = commesseFiltrate.filter(c => c.ID_COMMESSA === selectedCommessa);
         }
         
+        // Filtro per stato commessa
         if (selectedStato) {
             const statoMap = {
                 'attiva': 'In corso',
@@ -1429,11 +1691,13 @@ class ManagementApp {
             commesseFiltrate = commesseFiltrate.filter(c => c.Stato_Commessa === statoReale);
         }
         
+        // Filtro per testo di ricerca (nome commessa, task, cliente)
         if (searchText) {
             commesseFiltrate = commesseFiltrate.filter(commessa => {
                 const nomeCommessa = (commessa.Commessa || '').toLowerCase();
                 const cliente = (commessa.cliente_nome || '').toLowerCase();
                 
+                // Cerca anche nei task di questa commessa
                 const tasks = this.tasks.filter(t => t.ID_COMMESSA === commessa.ID_COMMESSA);
                 const hasTaskMatch = tasks.some(task => 
                     (task.Task || '').toLowerCase().includes(searchText) ||
@@ -1448,6 +1712,7 @@ class ManagementApp {
         
         console.log('Commesse filtrate:', commesseFiltrate.length);
         
+        // Ricostruisci la visualizzazione con le commesse filtrate
         this.renderFilteredCommesse(commesseFiltrate);
     }
     
@@ -1455,6 +1720,7 @@ class ManagementApp {
         const container = document.getElementById('commesseTaskContainer');
         if (!container) return;
         
+        // Raggruppa i task per le commesse filtrate
         const commesseConTask = [];
         
         commesseFiltrate.forEach(commessa => {
@@ -1468,8 +1734,10 @@ class ManagementApp {
                 tasks: []
             };
             
+            // Aggiungi i task di questa commessa
             this.tasks.forEach(task => {
                 if (task.ID_COMMESSA === commessa.ID_COMMESSA) {
+                    // Calcola le giornate per questo task
                     const giornateTask = this.giornate.filter(g => g.ID_TASK === task.ID_TASK);
                     const totaleGiornate = giornateTask.reduce((sum, g) => {
                         let gg = g.gg || 0;
@@ -1487,6 +1755,7 @@ class ManagementApp {
                 }
             });
             
+            // Includi solo commesse con task
             if (commessaData.tasks.length > 0) {
                 commesseConTask.push(commessaData);
             }
@@ -1520,9 +1789,10 @@ class ManagementApp {
         document.getElementById('searchCommesseTask').value = '';
         document.getElementById('filterCommesse').value = '';
         document.getElementById('filterStatoCommesse').value = '';
-        this.loadCommesseTaskData();
+        this.loadCommesseTaskData(); // Ricarica tutti i dati
     }
     
+    // Placeholder per altre sezioni
     showClientiSection() {
         const contentArea = document.getElementById('contentArea');
         contentArea.innerHTML = `
@@ -1649,6 +1919,7 @@ class ManagementApp {
         `;
     }
     
+    // Funzioni di utilità
     handleAction(action, type, id) {
         switch (action) {
             case 'view':
@@ -1691,10 +1962,12 @@ class ManagementApp {
             return;
         }
         
+        // Trova la commessa associata
         const commessa = this.commesse.find(c => c.ID_COMMESSA === task.ID_COMMESSA);
         const cliente = this.clienti.find(c => c.ID_CLIENTE === commessa?.ID_CLIENTE);
         const collaboratore = this.collaboratori.find(c => c.ID_COLLABORATORE === task.ID_COLLABORATORE);
         
+        // Calcola le giornate per questo task
         const giornateTask = this.giornate.filter(g => g.ID_TASK === taskId);
         const totaleGiornate = giornateTask.reduce((sum, g) => {
             let gg = g.gg || 0;
@@ -1704,6 +1977,7 @@ class ManagementApp {
             return sum + (isNaN(gg) ? 0 : gg);
         }, 0);
         
+        // Calcola le statistiche
         const giornateStats = this.calculateGiornateStats(giornateTask);
         const valoreCalcolato = totaleGiornate * parseFloat(task.Valore_gg || 0);
         
@@ -1720,6 +1994,7 @@ class ManagementApp {
                         </div>
                         <div class="modal-body">
                             <div class="row">
+                                <!-- Informazioni principali -->
                                 <div class="col-md-6">
                                     <div class="card h-100">
                                         <div class="card-header">
@@ -1770,6 +2045,7 @@ class ManagementApp {
                                     </div>
                                 </div>
                                 
+                                <!-- Informazioni economiche -->
                                 <div class="col-md-6">
                                     <div class="card h-100">
                                         <div class="card-header">
@@ -1815,6 +2091,7 @@ class ManagementApp {
                                 </div>
                             </div>
                             
+                            <!-- Giornate del task -->
                             <div class="row mt-3">
                                 <div class="col-12">
                                     <div class="card">
@@ -1885,13 +2162,16 @@ class ManagementApp {
             </div>
         `;
         
+        // Rimuovi modal esistente
         const existingModal = document.getElementById('taskDetailsModal');
         if (existingModal) {
             existingModal.remove();
         }
         
+        // Aggiungi nuovo modal
         document.body.insertAdjacentHTML('beforeend', modalHtml);
         
+        // Mostra modal
         const modal = new bootstrap.Modal(document.getElementById('taskDetailsModal'));
         modal.show();
     }
@@ -1903,8 +2183,10 @@ class ManagementApp {
             return;
         }
         
+        // Trova la commessa associata
         const commessa = this.commesse.find(c => c.ID_COMMESSA === task.ID_COMMESSA);
         
+        // Crea il form di editing
         const editModalHtml = `
             <div class="modal fade" id="taskEditModal" tabindex="-1">
                 <div class="modal-dialog modal-lg">
@@ -2032,16 +2314,20 @@ class ManagementApp {
             </div>
         `;
         
+        // Rimuovi modal esistenti
         document.getElementById('taskDetailsModal')?.remove();
         document.getElementById('taskEditModal')?.remove();
         
+        // Aggiungi nuovo modal
         document.body.insertAdjacentHTML('beforeend', editModalHtml);
         
+        // Aggiungi event listener per il submit
         document.getElementById('editTaskForm').addEventListener('submit', (e) => {
             e.preventDefault();
             this.saveTaskChanges(taskId);
         });
         
+        // Mostra modal
         const modal = new bootstrap.Modal(document.getElementById('taskEditModal'));
         modal.show();
     }
@@ -2054,6 +2340,7 @@ class ManagementApp {
             valoreSpesesContainer.style.display = 'block';
         } else {
             valoreSpesesContainer.style.display = 'none';
+            // Reset del valore quando le spese sono comprese
             document.getElementById('editTaskValoreSpese').value = '';
         }
     }
@@ -2066,13 +2353,16 @@ class ManagementApp {
                 return;
             }
             
+            // Verifica se ci sono giornate associate al task
             const giornateAssociate = this.giornate.filter(g => g.ID_TASK === taskId);
             
             if (giornateAssociate.length > 0) {
+                // Mostra modal di errore se ci sono giornate
                 this.showDeleteTaskErrorModal(task.Task, giornateAssociate.length);
                 return;
             }
             
+            // Se non ci sono giornate, procedi con la conferma eliminazione
             this.showDeleteTaskConfirmModal(taskId, task.Task);
             
         } catch (error) {
@@ -2120,10 +2410,13 @@ class ManagementApp {
             </div>
         `;
         
+        // Rimuovi modal esistenti
         document.getElementById('deleteTaskErrorModal')?.remove();
         
+        // Aggiungi nuovo modal
         document.body.insertAdjacentHTML('beforeend', modalHtml);
         
+        // Mostra modal
         const modal = new bootstrap.Modal(document.getElementById('deleteTaskErrorModal'));
         modal.show();
     }
@@ -2165,10 +2458,13 @@ class ManagementApp {
             </div>
         `;
         
+        // Rimuovi modal esistenti
         document.getElementById('deleteTaskConfirmModal')?.remove();
         
+        // Aggiungi nuovo modal
         document.body.insertAdjacentHTML('beforeend', modalHtml);
         
+        // Mostra modal
         const modal = new bootstrap.Modal(document.getElementById('deleteTaskConfirmModal'));
         modal.show();
     }
@@ -2184,11 +2480,14 @@ class ManagementApp {
             if (result.success) {
                 this.showToast('Task eliminato con successo', 'success');
                 
+                // Chiudi tutti i modal
                 bootstrap.Modal.getInstance(document.getElementById('deleteTaskConfirmModal'))?.hide();
                 bootstrap.Modal.getInstance(document.getElementById('taskEditModal'))?.hide();
                 
+                // Ricarica i dati
                 await this.loadTasks();
                 
+                // Ricarica la visualizzazione delle commesse
                 if (this.currentSection === 'commesse-task') {
                     this.loadCommesseTaskData();
                 }
@@ -2208,7 +2507,7 @@ class ManagementApp {
             const formData = {
                 Task: document.getElementById('editTaskName').value,
                 Desc_Task: document.getElementById('editTaskDesc').value,
-                ID_COMMESSA: document.getElementById('editTaskCommessaId').value,
+                ID_COMMESSA: document.getElementById('editTaskCommessaId').value, // Usa l'hidden field
                 Tipo: document.getElementById('editTaskTipo').value,
                 Stato_Task: document.getElementById('editTaskStato').value,
                 Data_Apertura_Task: document.getElementById('editTaskDataApertura').value || null,
@@ -2217,6 +2516,7 @@ class ManagementApp {
                 Spese_Comprese: document.getElementById('editTaskSpeseComprese').value
             };
             
+            // Aggiungi collaboratore solo se è un task di monitoraggio
             const task = this.tasks.find(t => t.ID_TASK === taskId);
             if (task && task.Tipo === 'Monitoraggio') {
                 const collaboratoreElement = document.getElementById('editTaskCollaboratore');
@@ -2225,12 +2525,14 @@ class ManagementApp {
                 formData.ID_COLLABORATORE = null;
             }
             
+            // Aggiungi valore spese solo se spese non comprese
             if (formData.Spese_Comprese === 'No') {
                 formData.Valore_Spese_std = document.getElementById('editTaskValoreSpese').value || null;
             } else {
                 formData.Valore_Spese_std = null;
             }
             
+            // Mostra loading
             const submitBtn = document.querySelector('#editTaskForm button[type="submit"]');
             const originalText = submitBtn.innerHTML;
             submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Salvando...';
@@ -2249,14 +2551,18 @@ class ManagementApp {
             if (result.success) {
                 this.showToast('Task aggiornato con successo', 'success');
                 
+                // Ricarica i dati
                 await this.loadTasks();
                 
+                // Chiudi modal e torna alla visualizzazione
                 bootstrap.Modal.getInstance(document.getElementById('taskEditModal')).hide();
                 
+                // Ricarica la visualizzazione delle commesse
                 if (this.currentSection === 'commesse-task') {
                     this.loadCommesseTaskData();
                 }
                 
+                // Mostra di nuovo i dettagli del task aggiornato
                 setTimeout(() => {
                     this.showTaskDetails(taskId);
                 }, 500);
@@ -2269,6 +2575,7 @@ class ManagementApp {
             console.error('Errore salvataggio task:', error);
             this.showToast(error.message, 'error');
         } finally {
+            // Ripristina pulsante
             const submitBtn = document.querySelector('#editTaskForm button[type="submit"]');
             if (submitBtn) {
                 submitBtn.innerHTML = '<i class="fas fa-save me-1"></i>Salva Modifiche';
@@ -2306,230 +2613,8 @@ class ManagementApp {
         }
     }
     
-    async showEditCommessaModal(idCommessa) {
-        const commessa = this.commesse.find(c => c.ID_COMMESSA === idCommessa);
-        if (!commessa) {
-            this.showToast('Commessa non trovata', 'error');
-            return;
-        }
-        const today = new Date().toISOString().split('T')[0];
-        const hasTasks = this.tasks.some(t => t.ID_COMMESSA === commessa.ID_COMMESSA);
-        const deleteButtonHtml = !hasTasks ? `
-            <button type="button" class="btn btn-danger" id="deleteCommessaBtn">
-                <i class="fas fa-trash me-1"></i>Elimina Commessa
-            </button>
-        ` : '';
-        const modalHtml = `
-            <div class="modal fade" id="editCommessaModal" tabindex="-1">
-                <div class="modal-dialog modal-lg">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h5 class="modal-title">
-                                <i class="fas fa-edit me-2"></i>
-                                Modifica Commessa
-                            </h5>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                        </div>
-                        <form id="editCommessaForm">
-                            <div class="modal-body">
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <div class="mb-3">
-                                            <label for="editCommessaName" class="form-label">Nome Commessa *</label>
-                                            <input type="text" class="form-control" id="editCommessaName" value="${commessa.Commessa || ''}" required>
-                                        </div>
-                                        <div class="mb-3">
-                                            <label for="editCommessaTipo" class="form-label">Tipo Commessa *</label>
-                                            <select class="form-select" id="editCommessaTipo" required>
-                                                <option value="">Seleziona tipo</option>
-                                                <option value="Cliente" ${commessa.Tipo_Commessa === 'Cliente' ? 'selected' : ''}>Cliente</option>
-                                                <option value="Interna" ${commessa.Tipo_Commessa === 'Interna' ? 'selected' : ''}>Interna</option>
-                                            </select>
-                                        </div>
-                                        <div class="mb-3">
-                                            <label for="editCommessaStato" class="form-label">Stato Commessa *</label>
-                                            <select class="form-select" id="editCommessaStato" required>
-                                                <option value="In corso" ${commessa.Stato_Commessa === 'In corso' ? 'selected' : ''}>In corso</option>
-                                                <option value="Sospesa" ${commessa.Stato_Commessa === 'Sospesa' ? 'selected' : ''}>Sospesa</option>
-                                                <option value="Chiusa" ${commessa.Stato_Commessa === 'Chiusa' ? 'selected' : ''}>Chiusa</option>
-                                                <option value="Archiviata" ${commessa.Stato_Commessa === 'Archiviata' ? 'selected' : ''}>Archiviata</option>
-                                            </select>
-                                        </div>
-                                        <div class="mb-3" id="editCommessaClienteContainer" style="${commessa.Tipo_Commessa === 'Cliente' ? '' : 'display: none;'}">
-                                            <label for="editCommessaCliente" class="form-label">Cliente *</label>
-                                            <select class="form-select" id="editCommessaCliente">
-                                                <option value="">Seleziona Cliente</option>
-                                                ${this.clienti.map(c => 
-                                                    `<option value="${c.ID_CLIENTE}" ${commessa.ID_CLIENTE == c.ID_CLIENTE ? 'selected' : ''}>${c.Cliente}</option>`
-                                                ).join('')}
-                                            </select>
-                                        </div>
-                                        <div class="mb-3" id="editCommessaCommissioneContainer" style="${commessa.Tipo_Commessa === 'Cliente' ? '' : 'display: none;'}">
-                                            <label for="editCommessaCommissione" class="form-label">Commissione (da 0 a 1, es. 0.25 per 25%)</label>
-                                            <input type="number" class="form-control" id="editCommessaCommissione" min="0" max="1" step="0.01" placeholder="0.25" value="${commessa.Commissione || ''}">
-                                        </div>
-                                        <div class="mb-3">
-                                            <label for="editCommessaResponsabile" class="form-label">Responsabile *</label>
-                                            <select class="form-select" id="editCommessaResponsabile" required>
-                                                <option value="">Seleziona responsabile</option>
-                                                ${this.collaboratori.map(c => 
-                                                    `<option value="${c.ID_COLLABORATORE}" ${commessa.ID_COLLABORATORE == c.ID_COLLABORATORE ? 'selected' : ''}>${c.Collaboratore}</option>`
-                                                ).join('')}
-                                            </select>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <div class="mb-3">
-                                            <label for="editCommessaDescrizione" class="form-label">Descrizione Commessa</label>
-                                            <textarea class="form-control" id="editCommessaDescrizione" rows="3">${commessa.Desc_Commessa || ''}</textarea>
-                                        </div>
-                                        <div class="mb-3">
-                                            <label for="editCommessaDataInizio" class="form-label">Data Inizio</label>
-                                            <input type="date" class="form-control" id="editCommessaDataInizio" value="${commessa.Data_Apertura_Commessa || today}">
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                                    <i class="fas fa-times me-1"></i>Annulla
-                                </button>
-                                <button type="submit" class="btn btn-primary">
-                                    <i class="fas fa-save me-1"></i>Salva Modifiche
-                                </button>
-                                ${deleteButtonHtml}
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            </div>
-        `;
-        
-        const oldModal = document.getElementById('editCommessaModal');
-        if (oldModal) { oldModal.remove(); }
-        document.body.insertAdjacentHTML('beforeend', modalHtml);
-        
-        setTimeout(() => {
-            const deleteBtn = document.getElementById('deleteCommessaBtn');
-            if (deleteBtn) {
-                deleteBtn.addEventListener('click', () => {
-                    if (confirm('Sei sicuro di voler eliminare questa commessa? Questa azione è irreversibile.')) {
-                        this.deleteCommessaWithConfirmation(commessa.ID_COMMESSA, commessa.Commessa);
-                    }
-                });
-            }
-        }, 300);
-        
-        document.getElementById('editCommessaForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const submitBtn = document.querySelector('#editCommessaForm button[type="submit"]');
-            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Salvataggio...';
-            submitBtn.disabled = true;
-            
-            const tipoCommessa = document.getElementById('editCommessaTipo').value;
-            let idCliente = document.getElementById('editCommessaCliente').value || null;
-            if (tipoCommessa === 'Interna') {
-                idCliente = null;
-            }
-            const updatedCommessa = {
-                ID_COMMESSA: commessa.ID_COMMESSA,
-                Commessa: document.getElementById('editCommessaName').value,
-                Desc_Commessa: document.getElementById('editCommessaDescrizione').value || null,
-                Tipo_Commessa: tipoCommessa,
-                Stato_Commessa: document.getElementById('editCommessaStato').value,
-                ID_CLIENTE: idCliente,
-                Commissione: document.getElementById('editCommessaCommissione').value || 0,
-                ID_COLLABORATORE: document.getElementById('editCommessaResponsabile').value || null,
-                Data_Apertura_Commessa: document.getElementById('editCommessaDataInizio').value || null
-            };
-            
-            if (!updatedCommessa.Commessa.trim()) {
-                this.showToast('Inserisci il nome della commessa', 'error');
-                submitBtn.innerHTML = '<i class="fas fa-save me-1"></i>Salva Modifiche';
-                submitBtn.disabled = false;
-                return;
-            }
-            if (!updatedCommessa.Tipo_Commessa) {
-                this.showToast('Seleziona il tipo di commessa', 'error');
-                submitBtn.innerHTML = '<i class="fas fa-save me-1"></i>Salva Modifiche';
-                submitBtn.disabled = false;
-                return;
-            }
-            if (updatedCommessa.Tipo_Commessa === 'Cliente' && !updatedCommessa.ID_CLIENTE) {
-                this.showToast('Seleziona un cliente per le commesse di tipo Cliente', 'error');
-                submitBtn.innerHTML = '<i class="fas fa-save me-1"></i>Salva Modifiche';
-                submitBtn.disabled = false;
-                return;
-            }
-            if (!updatedCommessa.ID_COLLABORATORE) {
-                this.showToast('Seleziona il responsabile della commessa', 'error');
-                submitBtn.innerHTML = '<i class="fas fa-save me-1"></i>Salva Modifiche';
-                submitBtn.disabled = false;
-                return;
-            }
-            
-            try {
-                const response = await fetch(`API/index.php?resource=commesse&action=update&id=${encodeURIComponent(commessa.ID_COMMESSA)}`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(updatedCommessa)
-                });
-                const result = await response.json();
-                if (result.success) {
-                    this.showToast('Commessa aggiornata con successo!', 'success');
-                    const modal = bootstrap.Modal.getInstance(document.getElementById('editCommessaModal'));
-                    modal.hide();
-                    await this.loadCommesse();
-                    if (typeof this.renderCommesseTask === 'function') {
-                        this.renderCommesseTask();
-                    } else if (typeof this.renderCommesse === 'function') {
-                        this.renderCommesse();
-                    }
-                } else {
-                    console.error('Errore API:', result);
-                    this.showToast(result.message || result.error || 'Errore durante l\'aggiornamento della commessa', 'error');
-                }
-            } catch (error) {
-                this.showToast('Errore di rete: ' + error.message, 'error');
-            } finally {
-                submitBtn.innerHTML = '<i class="fas fa-save me-1"></i>Salva Modifiche';
-                submitBtn.disabled = false;
-            }
-        });
-        document.getElementById('editCommessaTipo').addEventListener('change', () => {
-            const tipo = document.getElementById('editCommessaTipo').value;
-            document.getElementById('editCommessaClienteContainer').style.display = tipo === 'Cliente' ? '' : 'none';
-            document.getElementById('editCommessaCommissioneContainer').style.display = tipo === 'Cliente' ? '' : 'none';
-        });
-        const modal = new bootstrap.Modal(document.getElementById('editCommessaModal'));
-        modal.show();
-    }
-    
-    async deleteCommessaWithConfirmation(idCommessa, nomeCommessa) {
-        try {
-            const response = await fetch(`API/index.php?resource=commesse&action=delete&id=${encodeURIComponent(idCommessa)}`, {
-                method: 'DELETE'
-            });
-            const result = await response.json();
-            if (result.success) {
-                this.showToast(`Commessa "${nomeCommessa}" eliminata con successo!`, 'success');
-                const modal = bootstrap.Modal.getInstance(document.getElementById('editCommessaModal'));
-                if (modal) modal.hide();
-                await this.loadCommesse();
-                if (typeof this.renderCommesseTask === 'function') {
-                    this.renderCommesseTask();
-                } else if (typeof this.renderCommesse === 'function') {
-                    this.renderCommesse();
-                }
-            } else {
-                this.showToast(result.message || result.error || 'Errore durante l\'eliminazione della commessa', 'error');
-            }
-        } catch (error) {
-            this.showToast('Errore di rete: ' + error.message, 'error');
-        }
-    }
-    
     showNewCommessaModal() {
+        // Ottieni la data odierna in formato YYYY-MM-DD
         const today = new Date().toISOString().split('T')[0];
         
         const modalHtml = `
@@ -2614,19 +2699,24 @@ class ManagementApp {
             </div>
         `;
         
+        // Rimuovi modal esistenti
         document.getElementById('newCommessaModal')?.remove();
         
+        // Aggiungi nuovo modal
         document.body.insertAdjacentHTML('beforeend', modalHtml);
         
+        // Aggiungi event listener per il submit
         document.getElementById('newCommessaForm').addEventListener('submit', (e) => {
             e.preventDefault();
             this.createNewCommessaWithTask();
         });
 
+        // Aggiungi event listener per il tipo commessa
         document.getElementById('newCommessaTipo').addEventListener('change', () => {
             this.toggleCommissioneField();
         });
         
+        // Mostra modal
         const modal = new bootstrap.Modal(document.getElementById('newCommessaModal'));
         modal.show();
     }
@@ -2637,6 +2727,7 @@ class ManagementApp {
             submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Creazione...';
             submitBtn.disabled = true;
 
+            // Raccogli i dati della commessa
             const commessaData = {
                 Commessa: document.getElementById('newCommessaName').value,
                 Desc_Commessa: document.getElementById('newCommessaDescrizione').value || null,
@@ -2645,11 +2736,13 @@ class ManagementApp {
                 Commissione: document.getElementById('newCommessaCommissione').value || 0,
                 ID_COLLABORATORE: document.getElementById('newCommessaResponsabile').value || null,
                 Data_Apertura_Commessa: document.getElementById('newCommessaDataInizio').value || null,
-                Stato_Commessa: 'In corso'
+                Stato_Commessa: 'In corso' // Default per nuove commesse
             };
 
+            // Genera automaticamente il codice commessa
             commessaData.ID_COMMESSA = this.generateCommessaCode();
 
+            // Validazioni
             if (!commessaData.Commessa.trim()) {
                 throw new Error('Inserisci il nome della commessa');
             }
@@ -2665,6 +2758,7 @@ class ManagementApp {
 
             console.log('Dati commessa da creare:', commessaData);
 
+            // Chiamata API per creare la commessa - ENDPOINT ROUTER
             const response = await fetch('API/index.php?resource=commesse&action=create', {
                 method: 'POST',
                 headers: {
@@ -2674,23 +2768,29 @@ class ManagementApp {
             });
 
             const result = await response.json();
+            // ...removed accidental HTML injection...
             console.log('Risposta creazione commessa:', result);
 
             if (result.success) {
                 this.showToast('Commessa creata con successo!', 'success');
+                // Chiudi il modal
                 const modal = bootstrap.Modal.getInstance(document.getElementById('newCommessaModal'));
                 modal.hide();
+                // Ricarica i dati e aggiorna la vista
                 await this.loadCommesse();
+                // Refresh automatico della vista commesse
                 if (typeof this.renderCommesseTask === 'function') {
                     this.renderCommesseTask();
                 } else if (typeof this.renderCommesse === 'function') {
                     this.renderCommesse();
                 } else {
+                    // Aggiornamento manuale della lista commesse se non esiste funzione dedicata
                     const commesseList = document.getElementById('commesseList');
                     if (commesseList) {
                         commesseList.innerHTML = this.commesse.map(c => `<li>${c.Commessa}</li>`).join('');
                     }
                 }
+                // Refresh automatico del filtro commesse (header)
                 const filterCommessa = document.getElementById('filterCommessa');
                 if (filterCommessa) {
                     let options = '<option value="">Tutte le commesse</option>';
@@ -2707,6 +2807,7 @@ class ManagementApp {
             console.error('Errore creazione commessa:', error);
             this.showToast(error.message, 'error');
         } finally {
+            // Ripristina pulsante
             const submitBtn = document.querySelector('#newCommessaForm button[type="submit"]');
             if (submitBtn) {
                 submitBtn.innerHTML = '<i class="fas fa-plus me-1"></i>Crea Commessa';
@@ -2716,9 +2817,11 @@ class ManagementApp {
     }
 
     generateCommessaCode() {
+        // Genera un codice automatico nel formato COM + anno + numero progressivo
         const year = new Date().getFullYear();
         const existingCommesse = this.commesse || [];
         
+        // Trova il numero progressivo più alto per l'anno corrente
         let maxNumber = 0;
         const yearPrefix = `COM${year}`;
         
@@ -2732,6 +2835,7 @@ class ManagementApp {
             }
         });
         
+        // Incrementa e formatta con zero padding
         const nextNumber = (maxNumber + 1).toString().padStart(3, '0');
         return `${yearPrefix}${nextNumber}`;
     }
@@ -2762,6 +2866,7 @@ class ManagementApp {
     showNewTaskModalForCommessa(commessaId) {
         console.log('Mostra modal nuovo task', commessaId ? `per commessa ${commessaId}` : 'generale');
         
+        // Filtra clienti e collaboratori per i dropdown
         const clientiOptions = this.clienti.map(c => 
             `<option value="${c.id_cliente}">${c.nome_cliente}</option>`
         ).join('');
@@ -2770,6 +2875,7 @@ class ManagementApp {
             `<option value="${c.id_collaboratore}">${c.nome} ${c.cognome}</option>`
         ).join('');
 
+        // Filtra commesse per il dropdown (se non è specificata una commessa)
         let commesseDropdown = '';
         if (!commessaId) {
             commesseDropdown = `<div class="mb-3">
@@ -2870,13 +2976,16 @@ class ManagementApp {
             </div>
         `;
 
+        // Rimuovi modal esistente se presente
         const existingModal = document.getElementById('newTaskModal');
         if (existingModal) {
             existingModal.remove();
         }
 
+        // Aggiungi il modal al DOM
         document.body.insertAdjacentHTML('beforeend', modalHtml);
 
+        // Se commessaId è specificato, impostalo come valore fisso
         if (commessaId) {
             const hiddenInput = document.createElement('input');
             hiddenInput.type = 'hidden';
@@ -2885,9 +2994,11 @@ class ManagementApp {
             document.getElementById('newTaskForm').appendChild(hiddenInput);
         }
 
+        // Imposta la data di apertura di default a oggi
         const today = new Date().toISOString().slice(0, 10);
         document.getElementById('newTaskDataApertura').value = today;
 
+        // Mostra/nascondi collaboratore in base al tipo
         document.getElementById('newTaskTipo').addEventListener('change', function() {
             const collabContainer = document.getElementById('newTaskCollaboratoreContainer');
             if (this.value === 'Monitoraggio') {
@@ -2898,27 +3009,31 @@ class ManagementApp {
             }
         });
 
+        // Gestione submit del form
         document.getElementById('newTaskForm').addEventListener('submit', (e) => {
             e.preventDefault();
             this.createNewTask(commessaId);
         });
 
+        // Mostra il modal
         const modal = new bootstrap.Modal(document.getElementById('newTaskModal'));
         modal.show();
     }
 
     toggleCollaboratoreForNewTask(collaboratoreId) {
         console.log('Toggle collaboratore per nuovo task:', collaboratoreId);
+        // Logica per gestire la selezione/deselezione dei collaboratori
+        // Potrebbe essere utilizzata per validazioni o feedback visivi
     }
 
     toggleValoreSpeseForNewTask() {
-        const selectSpeseComprese = document.getElementById('newTaskSpeseComprese');
-        const containerValoreSpese = document.getElementById('newTaskValoreSpeseContainer');
+        const checkbox = document.getElementById('newTaskConSpese');
+        const container = document.getElementById('newTaskValoreSpeseContainer');
         
-        if (selectSpeseComprese.value === 'No') {
-            containerValoreSpese.style.display = 'block';
+        if (checkbox.checked) {
+            container.style.display = 'block';
         } else {
-            containerValoreSpese.style.display = 'none';
+            container.style.display = 'none';
             document.getElementById('newTaskValoreSpese').value = '';
         }
     }
@@ -2929,24 +3044,24 @@ class ManagementApp {
             submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Creazione...';
             submitBtn.disabled = true;
 
-            const formData = {
-                ID_COMMESSA: commessaId || document.getElementById('newTaskCommessa').value,
-                Task: document.getElementById('newTaskNome').value,
-                Desc_Task: document.getElementById('newTaskDescrizione').value || null,
-                Tipo: document.getElementById('newTaskTipo').value,
-                Stato_Task: 'In corso',
-                Data_Apertura_Task: document.getElementById('newTaskDataApertura').value || null,
-                gg_previste: document.getElementById('newTaskGgPreviste').value || null,
-                Valore_gg: document.getElementById('newTaskValoreGg').value || 0,
-                Spese_Comprese: document.getElementById('newTaskSpeseComprese').value,
-                Valore_Spese_std: document.getElementById('newTaskSpeseComprese').value === 'No' ? document.getElementById('newTaskValoreSpese').value || null : null
-            };
+            // Raccogli i dati dal form
+                const formData = {
+                    ID_COMMESSA: commessaId || document.getElementById('newTaskCommessa').value,
+                    Task: document.getElementById('newTaskNome').value,
+                    Desc_Task: document.getElementById('newTaskDescrizione').value || null,
+                    Tipo: document.getElementById('newTaskTipo').value,
+                    Stato_Task: 'In corso',
+                    Data_Apertura_Task: document.getElementById('newTaskDataApertura').value || null,
+                    gg_previste: document.getElementById('newTaskGgPreviste').value || null,
+                    Valore_gg: document.getElementById('newTaskValoreGg').value || 0,
+                    Spese_Comprese: document.getElementById('newTaskSpeseComprese').value,
+                    Valore_Spese_std: document.getElementById('newTaskValoreSpese').value || null
+                };
 
-            if (document.getElementById('newTaskTipo').value === 'Monitoraggio') {
-                formData.ID_COLLABORATORE = document.getElementById('newTaskCollaboratore').value || null;
-            } else {
-                formData.ID_COLLABORATORE = null;
-            }
+                // Aggiungi ID_COLLABORATORE solo se il tipo è Monitoraggio
+                if (document.getElementById('newTaskTipo').value === 'Monitoraggio') {
+                    formData.ID_COLLABORATORE = document.getElementById('newTaskCollaboratore').value || null;
+                }
 
             const apiUrl = 'API/index.php?resource=task&action=create';
             const payload = { ...formData };
@@ -2974,6 +3089,7 @@ class ManagementApp {
                 this.showToast('Task creato con successo', 'success');
                 bootstrap.Modal.getInstance(document.getElementById('newTaskModal')).hide();
                 document.getElementById('newTaskForm').reset();
+                // Aggiorna la UI, ad esempio ricarica i task della commessa
                 if (typeof this.loadTasksForCommessa === 'function') {
                     this.loadTasksForCommessa(formData.ID_COMMESSA);
                 }
@@ -2984,12 +3100,6 @@ class ManagementApp {
         } catch (error) {
             console.error('Errore creazione task:', error);
             this.showToast(error.message, 'error');
-        } finally {
-            const submitBtn = document.querySelector('#newTaskForm button[type="submit"]');
-            if (submitBtn) {
-                submitBtn.innerHTML = '<i class="fas fa-plus me-1"></i>Crea Task';
-                submitBtn.disabled = false;
-            }
         }
     }
     
@@ -3016,6 +3126,7 @@ class ManagementApp {
         const toast = new bootstrap.Toast(toastElement);
         toast.show();
         
+        // Rimuovi il toast dal DOM dopo che è stato nascosto
         toastElement.addEventListener('hidden.bs.toast', () => {
             toastElement.remove();
         });
@@ -3042,9 +3153,11 @@ class ManagementApp {
     }
 }
 
+// Inizializza l'applicazione quando il DOM è caricato
 let app;
 document.addEventListener('DOMContentLoaded', () => {
     app = new ManagementApp();
 });
 
+// Esponi l'app globalmente per debug
 window.managementApp = app;

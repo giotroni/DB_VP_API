@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Management V&P - Vaglio & Partners</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="assets/images/fav-icon.ico">
+    
+    <!-- CSS Frameworks -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    
+    <!-- Custom CSS -->
+    <link href="assets/css/vp-theme.css" rel="stylesheet">
+    <link href="assets/css/management.css" rel="stylesheet">
+    
+    <!-- Meta tags for SEO and sharing -->
+    <meta name="description" content="Sistema di gestione per amministratori Vaglio & Partners - Gestione commesse, clienti, collaboratori">
+    <meta name="keywords" content="management, gestione, vaglio partners, commesse, clienti, collaboratori, amministrazione">
+    <meta name="author" content="Vaglio & Partners">
+    
+    <!-- Open Graph meta tags -->
+    <meta property="og:title" content="Management V&P">
+    <meta property="og:description" content="Sistema di gestione per amministratori Vaglio & Partners">
+    <meta property="og:type" content="website">
+    
+    <!-- Preload key resources -->
+    <link rel="preload" href="assets/css/management.css" as="style">
+    <link rel="preload" href="assets/js/management.js" as="script">
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div id="loadingScreen" class="loading-screen">
+        <div class="loading-content">
+            <div class="loading-spinner-large"></div>
+            <h2>Caricamento V&P Management...</h2>
+        </div>
+    </div>
+
+    <!-- Main Application Container -->
+    <div id="appContainer">
+        <!-- L'interfaccia viene caricata dinamicamente tramite JavaScript -->
+    </div>
+
+    <!-- Modals e componenti di utilità -->
+    
+    <!-- Modal di conferma -->
+    <div class="modal fade" id="confirmModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Conferma</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p id="confirmMessage">Sei sicuro di voler procedere?</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                    <button type="button" class="btn btn-primary" id="confirmAction">Conferma</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal cambio password -->
+    <div class="modal fade" id="changePasswordModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Cambio Password</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="changePasswordForm">
+                        <div class="mb-3">
+                            <label for="currentPassword" class="form-label">Password Attuale</label>
+                            <input type="password" class="form-control" id="currentPassword" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="newPassword" class="form-label">Nuova Password</label>
+                            <input type="password" class="form-control" id="newPassword" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="confirmPassword" class="form-label">Conferma Nuova Password</label>
+                            <input type="password" class="form-control" id="confirmPassword" required>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                    <button type="submit" form="changePasswordForm" class="btn btn-vp-primary">Cambia Password</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal per aggiunta/modifica elementi -->
+    <div class="modal fade" id="editModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editModalTitle">Modifica</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="editModalBody">
+                    <!-- Contenuto dinamico del modal -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                    <button type="button" class="btn btn-vp-primary" id="saveEditBtn">Salva</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast container per notifiche -->
+    <div class="toast-container position-fixed top-0 end-0 p-3" id="toastContainer">
+        <!-- I toast vengono inseriti qui dinamicamente -->
+    </div>
+
+    <!-- Informazioni di debug (solo in development) -->
+    <div id="debugInfo" class="debug-info d-none">
+        <h6>Debug Info</h6>
+        <div id="debugContent"></div>
+    </div>
+
+    <!-- JavaScript Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Custom JavaScript -->
+    <script src="assets/js/management.js"></script>
+
+    <!-- Service Worker per cache (opzionale per PWA) -->
+    <script>
+        // Service Worker per migliorare le performance
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                // Registrazione service worker commentata per ora
+                // navigator.serviceWorker.register('/sw.js');
+            });
+        }
+
+        // Gestione errori globali
+        window.addEventListener('error', (e) => {
+            console.error('Errore applicazione:', e.error);
+            
+            // In produzione, qui si potrebbe inviare l'errore ad un servizio di logging
+            if (window.location.hostname !== 'localhost') {
+                // fetch('/api/log-error', { ... });
+            }
+        });
+
+        // Gestione eventi di connessione
+        window.addEventListener('online', () => {
+            console.log('Connessione ripristinata');
+            // Qui si potrebbero sincronizzare i dati offline
+        });
+
+        window.addEventListener('offline', () => {
+            console.log('Connessione persa');
+            // Mostra un avviso all'utente
+        });
+
+        // Rimozione loading screen quando l'app è caricata
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                const loadingScreen = document.getElementById('loadingScreen');
+                if (loadingScreen) {
+                    loadingScreen.style.opacity = '0';
+                    setTimeout(() => {
+                        loadingScreen.style.display = 'none';
+                    }, 300);
+                }
+            }, 500);
+        });
+    </script>
+
+    <!-- Stili aggiuntivi per il loading screen -->
+    <style>
+        .loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            transition: opacity 0.3s ease;
+        }
+
+        .loading-content {
+            text-align: center;
+            color: white;
+        }
+
+        .loading-content h2 {
+            margin-top: 1rem;
+            font-weight: 300;
+        }
+
+        .loading-spinner-large {
+            width: 60px;
+            height: 60px;
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #667eea;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        .debug-info {
+            position: fixed;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            max-width: 300px;
+            z-index: 1000;
+        }
+
+        .toast-container .toast {
+            background: white;
+            border: none;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+        }
+
+        .toast-header {
+            background: var(--primary-gradient);
+            color: white;
+            border-bottom: none;
+        }
+
+        .toast-header .btn-close {
+            filter: brightness(0) invert(1);
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .loading-content h2 {
+                font-size: 1.2rem;
+            }
+            
+            .loading-spinner-large {
+                width: 40px;
+                height: 40px;
+                border-width: 3px;
+            }
+        }
+
+        /* Utility per nascondere elementi durante il loading */
+        .app-loading #appContainer {
+            opacity: 0;
+        }
+    </style>
+</body>
+</html>
