@@ -1,7 +1,7 @@
 /**
  * @file commesse-task-section.js
  * @description Classe per la gestione della sezione "Commesse & Task".
- * @version 2.4 - Corretti errori logici e ripristinati i filtri.
+ * @version 2.9 - Corretta la chiusura delle modali dopo l'eliminazione.
  */
 
 class CommesseTaskSection extends BaseSection {
@@ -62,48 +62,29 @@ class CommesseTaskSection extends BaseSection {
         document.getElementById('filterStatoCommesse')?.addEventListener('change', () => this.filterData());
     }
 
-    // CORREZIONE: Rimossi i 'case' duplicati
-    handleAction(action, id) {
+    handleAction(action, id, type, targetElement) {
+        if (targetElement && targetElement.closest('.management-card-header') && !['toggle-commessa', 'edit-commessa'].includes(action)) {
+            event.stopPropagation();
+        }
         switch (action) {
-            case 'add-commessa':
-                this.showNewCommessaModal();
-                break;
-            case 'add-task':
-                this.showNewTaskModal(id);
-                break;
-            case 'edit-task':
-                this.showEditTaskModal(id);
-                break;
-            case 'toggle-commessa':
-                this.toggleCommessa(id);
-                break;
-            case 'view-task':
-                this.showTaskDetailsModal(id);
-                break;
-            case 'view-giornate':
-                this.showGiornateModal(id);
-                break;
-            case 'filter':
-                this.filterData();
-                break;
-            case 'toggle-all-commesse':
-                this.toggleAllCommesse();
-                break;
-            default:
-                console.warn(`Azione non gestita in CommesseTaskSection: ${action}`);
+            case 'add-commessa': this.showNewCommessaModal(); break;
+            case 'edit-commessa': this.showEditCommessaModal(id); break;
+            case 'add-task': this.showNewTaskModal(id); break;
+            case 'edit-task': this.showEditTaskModal(id); break;
+            case 'toggle-commessa': this.toggleCommessa(id); break;
+            case 'view-task': this.showTaskDetailsModal(id); break;
+            case 'view-giornate': this.showGiornateModal(id); break;
+            case 'filter': this.filterData(); break;
+            case 'toggle-all-commesse': this.toggleAllCommesse(); break;
+            default: console.warn(`Azione non gestita: ${action}`);
         }
     }
-
-
-    
     // ========================================================================
-    // SEZIONE: LOGICA DI RENDERING
+    // SEZIONE: RENDERING DEI COMPONENTI
     // ========================================================================
 
     renderCommesseCards(data) {
-        if (data.length === 0) {
-            return this.ui.createEmptyState('fas fa-search', 'Nessuna Commessa Trovata', 'Prova a modificare i filtri di ricerca.');
-        }
+        if (data.length === 0) { return this.ui.createEmptyState('fas fa-search', 'Nessuna Commessa Trovata', 'Prova a modificare i filtri di ricerca.'); }
         return data.map(commessa => this.createCommessaCard(commessa)).join('');
     }
 
@@ -116,9 +97,10 @@ class CommesseTaskSection extends BaseSection {
                 <div class="management-card-header" data-action="toggle-commessa" data-id="${commessa.ID_COMMESSA}">
                     <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
                         <h5 class="management-card-title mb-0 me-2"><i class="fas fa-briefcase me-2"></i>${commessa.Commessa}</h5>
-                        <div class="d-flex align-items-center gap-3">
+                        <div class="d-flex align-items-center gap-2">
                             <span class="badge bg-primary">${totalTasks} Task</span>
                             <span class="badge bg-success">${totalGiornate.toFixed(1)} Giorni</span>
+                            <button class="btn btn-sm btn-outline-light" data-action="edit-commessa" data-id="${commessa.ID_COMMESSA}" title="Modifica Commessa"><i class="fas fa-pencil-alt"></i></button>
                             <button class="btn btn-vp-primary btn-sm" data-action="add-task" data-id="${commessa.ID_COMMESSA}" title="Aggiungi nuovo task"><i class="fas fa-plus me-1"></i>Nuovo Task</button>
                             <button class="commessa-toggle-btn" id="toggleBtn-${commessa.ID_COMMESSA}"><i class="fas fa-chevron-down"></i></button>
                         </div>
@@ -170,24 +152,19 @@ class CommesseTaskSection extends BaseSection {
     // ========================================================================
     // SEZIONE: LOGICA DI INTERAZIONE E FILTRI
     // ========================================================================
-
+    
     toggleCommessa(commessaId, forceState = null) {
         const collapseElement = document.getElementById(`commessa-${commessaId}`);
         const toggleBtn = document.getElementById(`toggleBtn-${commessaId}`);
         if (!collapseElement || !toggleBtn) return;
-
         const bsCollapse = bootstrap.Collapse.getOrCreateInstance(collapseElement);
         if (forceState === true) { bsCollapse.show(); } 
         else if (forceState === false) { bsCollapse.hide(); } 
         else { bsCollapse.toggle(); }
-
         const onShown = () => this.updateToggleButton(toggleBtn, true);
         const onHidden = () => this.updateToggleButton(toggleBtn, false);
-
         collapseElement.addEventListener('shown.bs.collapse', onShown, { once: true });
         collapseElement.addEventListener('hidden.bs.collapse', onHidden, { once: true });
-        
-        // Update immediately for a responsive feel
         this.updateToggleButton(toggleBtn, collapseElement.classList.contains('show'));
     }
 
@@ -200,8 +177,7 @@ class CommesseTaskSection extends BaseSection {
             icon.classList.toggle('fa-chevron-up', isShown);
         }
     }
-    
-    // CORREZIONE: Logica di espansione/compressione resa funzionante
+
     toggleAllCommesse() {
         const allCollapses = document.querySelectorAll('#commesseTaskContainer .collapse');
         const isAnyCollapsed = Array.from(allCollapses).some(el => !el.classList.contains('show'));
@@ -230,137 +206,88 @@ class CommesseTaskSection extends BaseSection {
         });
         document.getElementById('commesseTaskContainer').innerHTML = this.renderCommesseCards(filteredData);
     }
+
     // ========================================================================
-    // SEZIONE: GESTIONE MODALI COMMESSA (Nuova Logica)
+    // SEZIONE: GESTIONE MODALI
     // ========================================================================
 
-    /**
-     * Mostra la modale per creare una nuova commessa.
-     */
     showNewCommessaModal() {
         const modalTitle = 'Crea Nuova Commessa';
         const modalId = 'newCommessaModal';
         const modalBody = this.getCommessaFormHTML();
-
         const modalActions = [
             { html: '<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>' },
             { html: `<button type="submit" form="${modalId}_form" class="btn btn-primary">Crea Commessa</button>` }
         ];
+        this.ui.createModal(modalId, modalTitle, modalBody, modalActions, { size: 'modal-lg' });
+        this.addCommessaFormListeners(`${modalId}_form`);
+    }
 
-        this.ui.createModal(modalId, modalTitle, modalBody, modalActions);
-        document.getElementById(`${modalId}_form`).addEventListener('submit', (e) => this.handleCommessaFormSubmit(e));
+    showEditCommessaModal(commessaId) {
+        const commessa = this.commesseConTask.find(c => c.ID_COMMESSA === commessaId);
+        if (!commessa) { this.ui.showToast('Commessa non trovata.', 'error'); return; }
+
+        const modalTitle = `Modifica Commessa: ${commessa.Commessa}`;
+        const modalId = `editCommessaModal_${commessaId}`;
+        const modalBody = this.getCommessaFormHTML(commessa);
         
-        // Aggiunge il listener per mostrare/nascondere il campo cliente
-        document.getElementById('Tipo_Commessa').addEventListener('change', (e) => {
-            document.getElementById('clienteFieldContainer').style.display = e.target.value === 'Cliente' ? 'block' : 'none';
-        });
+        const canDelete = commessa.tasks.length === 0;
+        const deleteButton = {
+            html: `<button type="button" class="btn btn-danger me-auto" ${!canDelete ? 'disabled' : ''} title="${!canDelete ? 'Elimina prima i task associati' : 'Elimina commessa'}">Elimina</button>`,
+            selector: `.btn-danger`,
+            handler: () => this.handleDeleteCommessa(commessaId)
+        };
+        const modalActions = [
+            deleteButton,
+            { html: '<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>' },
+            { html: `<button type="submit" form="${modalId}_form" class="btn btn-primary">Salva Modifiche</button>` }
+        ];
+
+        this.ui.createModal(modalId, modalTitle, modalBody, modalActions, { size: 'modal-lg' });
+        this.addCommessaFormListeners(`${modalId}_form`);
     }
 
-    /**
-     * Gestisce il salvataggio di una nuova commessa.
-     * @param {Event} event L'evento di submit del form.
-     */
-    async handleCommessaFormSubmit(event) {
-        event.preventDefault();
-        const form = event.target;
-        const formData = new FormData(form);
-        const commessaData = Object.fromEntries(formData.entries());
-
-        // Genera un nuovo ID per la commessa
-        commessaData.ID_COMMESSA = this.generateCommessaCode();
-        commessaData.Stato_Commessa = 'In corso'; // Default
-
-        // Se la commessa è 'Interna', il cliente deve essere null
-        if (commessaData.Tipo_Commessa === 'Interna') {
-            commessaData.ID_CLIENTE = null;
-        }
-
-        try {
-            const result = await this.api.createCommessa(commessaData);
-            if (result.success) {
-                this.ui.showToast('Commessa creata con successo!', 'success');
-                const modal = bootstrap.Modal.getInstance(form.closest('.modal'));
-                modal.hide();
-                await this.app.loadInitialData(); // Ricarica tutto per mostrare la nuova commessa
-            } else {
-                throw new Error(result.message || 'Errore nella creazione della commessa.');
-            }
-        } catch (error) {
-            console.error('Errore creazione commessa:', error);
-            this.ui.showToast(error.message, 'error');
-        }
+    showNewTaskModal(commessaId) {
+        const commessa = this.app.commesse.find(c => c.ID_COMMESSA === commessaId);
+        if (!commessa) return;
+        const modalTitle = `Nuovo Task per: ${commessa.Commessa}`;
+        const defaultTaskData = {
+            ID_COMMESSA: commessaId, Tipo: 'Campo', Stato_Task: 'In corso',
+            Data_Apertura_Task: new Date().toISOString().split('T')[0], Spese_Comprese: 'No'
+        };
+        const modalBody = this.getTaskFormHTML(defaultTaskData);
+        const modalId = `newTaskModal_${commessaId}`;
+        const modalActions = [
+            { html: '<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>' },
+            { html: `<button type="submit" form="${modalId}_form" class="btn btn-primary">Crea Task</button>` }
+        ];
+        this.ui.createModal(modalId, modalTitle, modalBody, modalActions, { size: 'modal-lg' });
+        this.addTaskFormListeners(`${modalId}_form`);
     }
 
-    /**
-     * Genera l'HTML per il form di una nuova commessa.
-     * @returns {string} La stringa HTML del form.
-     */
-    getCommessaFormHTML() {
-        const formId = 'newCommessaModal_form';
-        const clientiOptions = this.app.clienti.map(c => `<option value="${c.ID_CLIENTE}">${c.Cliente}</option>`).join('');
-        const collaboratoriOptions = this.app.collaboratori.map(c => `<option value="${c.ID_COLLABORATORE}">${c.Collaboratore}</option>`).join('');
-        const today = new Date().toISOString().split('T')[0];
+    showEditTaskModal(taskId) {
+        const task = this.commesseConTask.flatMap(c => c.tasks).find(t => t.ID_TASK === taskId);
+        if (!task) { this.ui.showToast('Task non trovato.', 'error'); return; }
 
-        return `
-            <form id="${formId}" novalidate>
-                <div class="row">
-                    <div class="col-md-8 mb-3">
-                        <label for="Commessa" class="form-label">Nome Commessa</label>
-                        <input type="text" class="form-control" id="Commessa" name="Commessa" required>
-                    </div>
-                    <div class="col-md-4 mb-3">
-                        <label for="Tipo_Commessa" class="form-label">Tipo</label>
-                        <select class="form-select" id="Tipo_Commessa" name="Tipo_Commessa">
-                            <option value="Cliente">Cliente</option>
-                            <option value="Interna">Interna</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="mb-3" id="clienteFieldContainer">
-                    <label for="ID_CLIENTE" class="form-label">Cliente</label>
-                    <select class="form-select" id="ID_CLIENTE" name="ID_CLIENTE">
-                        <option value="">Seleziona cliente...</option>
-                        ${clientiOptions}
-                    </select>
-                </div>
-                <div class="mb-3">
-                    <label for="ID_COLLABORATORE" class="form-label">Responsabile</label>
-                    <select class="form-select" id="ID_COLLABORATORE" name="ID_COLLABORATORE" required>
-                        <option value="">Seleziona responsabile...</option>
-                        ${collaboratoriOptions}
-                    </select>
-                </div>
-                 <div class="mb-3">
-                    <label for="Data_Apertura_Commessa" class="form-label">Data Inizio</label>
-                    <input type="date" class="form-control" id="Data_Apertura_Commessa" name="Data_Apertura_Commessa" value="${today}">
-                </div>
-                <div class="mb-3">
-                    <label for="Desc_Commessa" class="form-label">Descrizione</label>
-                    <textarea class="form-control" id="Desc_Commessa" name="Desc_Commessa" rows="3"></textarea>
-                </div>
-            </form>
-        `;
-    }
+        const modalTitle = `Modifica Task: ${task.Task}`;
+        const modalBody = this.getTaskFormHTML(task);
+        const modalId = `editTaskModal_${taskId}`;
 
-    /**
-     * Genera un codice univoco per la nuova commessa (es. COM2025001).
-     * @returns {string} Il nuovo ID della commessa.
-     */
-    generateCommessaCode() {
-        const year = new Date().getFullYear();
-        const prefix = `COM${year}`;
-        const commesseAnnoCorrente = this.app.commesse.filter(c => c.ID_COMMESSA.startsWith(prefix));
-        
-        let maxNum = 0;
-        commesseAnnoCorrente.forEach(c => {
-            const num = parseInt(c.ID_COMMESSA.replace(prefix, ''), 10);
-            if (num > maxNum) {
-                maxNum = num;
-            }
-        });
+        const canDelete = task.giornate.length === 0;
+        const deleteButton = {
+            html: `<button type="button" class="btn btn-danger me-auto" ${!canDelete ? 'disabled' : ''} title="${!canDelete ? 'Elimina prima le giornate associate' : 'Elimina task'}">Elimina</button>`,
+            selector: `.btn-danger`,
+            handler: () => this.handleDeleteTask(taskId)
+        };
 
-        const nextNum = (maxNum + 1).toString().padStart(3, '0');
-        return `${prefix}${nextNum}`;
+        const modalActions = [
+            deleteButton,
+            { html: '<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>' },
+            { html: `<button type="submit" form="${modalId}_form" class="btn btn-primary">Salva Modifiche</button>` }
+        ];
+
+        this.ui.createModal(modalId, modalTitle, modalBody, modalActions, { size: 'modal-lg' });
+        this.addTaskFormListeners(`${modalId}_form`);
     }
 
     showTaskDetailsModal(taskId) {
@@ -384,21 +311,29 @@ class CommesseTaskSection extends BaseSection {
         `;
         const modalActions = [
             { html: '<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Chiudi</button>' },
-            { html: `<button type="button" class="btn btn-primary" data-action="edit-task" data-id="${taskId}">Modifica</button>`, 
-              selector: `[data-action="edit-task"][data-id="${taskId}"]`,
-              handler: (e) => {
-                bootstrap.Modal.getInstance(e.target.closest('.modal'))?.hide();
-                this.handleAction('edit-task', taskId);
-              }
+            { 
+                html: `<button type="button" class="btn btn-primary">Modifica</button>`,
+                selector: `.btn-primary`,
+                handler: (e) => {
+                    bootstrap.Modal.getInstance(e.target.closest('.modal'))?.hide();
+                    this.showEditTaskModal(taskId);
+                }
             }
         ];
 
         this.ui.createModal(`taskDetailsModal_${taskId}`, modalTitle, modalBody, modalActions, { size: 'modal-lg' });
     }
 
+    /**
+     * Mostra la modale con l'elenco delle giornate di un task.
+     * @param {string} taskId L'ID del task.
+     */
     showGiornateModal(taskId) {
         const task = this.app.tasks.find(t => t.ID_TASK === taskId);
-        if (!task) return;
+        if (!task) {
+            this.ui.showToast('Task non trovato.', 'error');
+            return;
+        }
 
         const giornateTask = this.app.giornate.filter(g => String(g.ID_TASK) === String(taskId));
 
@@ -426,65 +361,72 @@ class CommesseTaskSection extends BaseSection {
         const modalActions = [{ html: '<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Chiudi</button>' }];
         this.ui.createModal(`giornateModal_${taskId}`, modalTitle, modalBody, modalActions, { size: 'modal-lg' });
     }
+  
+    
+    // ========================================================================
+    // SEZIONE: GESTIONE FORM E SALVATAGGI
+    // ========================================================================
 
-    showNewTaskModal(commessaId) {
-        const commessa = this.app.commesse.find(c => c.ID_COMMESSA === commessaId);
-        if (!commessa) return;
-
-        const modalTitle = `Nuovo Task per: ${commessa.Commessa}`;
-        const defaultTaskData = {
-            ID_COMMESSA: commessaId, Tipo: 'Campo', Stato_Task: 'In corso',
-            Data_Apertura_Task: new Date().toISOString().split('T')[0], Spese_Comprese: 'No'
+    addCommessaFormListeners(formId) {
+        const form = document.getElementById(formId);
+        if (!form) return;
+        const commessaId = form.id.includes('editCommessaModal') ? form.id.split('_')[1] : null;
+        form.addEventListener('submit', (e) => this.handleCommessaFormSubmit(e, commessaId));
+        const tipoSelect = form.querySelector('#Tipo_Commessa');
+        const clienteContainer = form.querySelector('#clienteFieldContainer');
+        const responsabileContainer = form.querySelector('#responsabileFieldContainer');
+        const commissioneContainer = form.querySelector('#commissioneFieldContainer');
+        const toggleCommessaFields = () => {
+            const isCliente = tipoSelect.value === 'Cliente';
+            clienteContainer.style.display = isCliente ? 'block' : 'none';
+            responsabileContainer.style.display = isCliente ? 'block' : 'none';
+            commissioneContainer.style.display = isCliente ? 'block' : 'none';
+            form.querySelector('#ID_CLIENTE').required = isCliente;
+            form.querySelector('#ID_COLLABORATORE').required = isCliente;
+            form.querySelector('#Commissione').required = isCliente;
         };
-        const modalBody = this.getTaskFormHTML(defaultTaskData);
-        const modalId = `newTaskModal_${commessaId}`;
-        const modalActions = [
-            { html: '<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>' },
-            { html: `<button type="submit" form="${modalId}_form" class="btn btn-primary">Crea Task</button>` }
-        ];
-
-        this.ui.createModal(modalId, modalTitle, modalBody, modalActions, { size: 'modal-lg' });
-        document.getElementById(`${modalId}_form`).addEventListener('submit', (e) => this.handleTaskFormSubmit(e));
-        this.addTaskFormListeners(`${modalId}_form`);
+        tipoSelect?.addEventListener('change', toggleCommessaFields);
+        toggleCommessaFields();
     }
 
-    showEditTaskModal(taskId) {
-        const task = this.app.tasks.find(t => t.ID_TASK === taskId);
-        if (!task) return;
+    async handleCommessaFormSubmit(event, commessaId = null) {
+        event.preventDefault();
+        const form = event.target;
+        const formData = new FormData(form);
+        const commessaData = Object.fromEntries(formData.entries());
 
-        const modalTitle = `Modifica Task: ${task.Task}`;
-        const modalBody = this.getTaskFormHTML(task);
-        const modalId = `editTaskModal_${taskId}`;
-        const modalActions = [
-            { html: '<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>' },
-            { html: `<button type="submit" form="${modalId}_form" class="btn btn-primary">Salva Modifiche</button>` }
-        ];
+        if (commessaData.Tipo_Commessa === 'Interna') {
+            commessaData.ID_CLIENTE = null;
+            commessaData.ID_COLLABORATORE = null;
+            commessaData.Commissione = null;
+        }
+        if (!commessaId) { commessaData.ID_COMMESSA = this.generateCommessaCode(); }
 
-        this.ui.createModal(modalId, modalTitle, modalBody, modalActions, { size: 'modal-lg' });
-        document.getElementById(`${modalId}_form`).addEventListener('submit', (e) => this.handleTaskFormSubmit(e, taskId));
-        this.addTaskFormListeners(`${modalId}_form`);
+        try {
+            const result = commessaId
+                ? await this.api.updateCommessa(commessaId, commessaData)
+                : await this.api.createCommessa(commessaData);
+            if (result.success) {
+                this.ui.showToast(`Commessa ${commessaId ? 'aggiornata' : 'creata'} con successo!`, 'success');
+                bootstrap.Modal.getInstance(form.closest('.modal'))?.hide();
+                await this.app.loadInitialData();
+            } else { throw new Error(result.message || 'Errore nel salvataggio della commessa.'); }
+        } catch (error) { this.ui.showToast(error.message, 'error'); }
     }
-
 
     addTaskFormListeners(formId) {
         const form = document.getElementById(formId);
         if (!form) return;
-
+        const taskId = form.id.includes('editTaskModal') ? form.id.split('_')[1] : null;
+        form.addEventListener('submit', (e) => this.handleTaskFormSubmit(e, taskId));
         const tipoSelect = form.querySelector('#Tipo');
         const assegnatoContainer = form.querySelector('#assegnatoAContainer');
         const speseSelect = form.querySelector('#Spese_Comprese');
         const speseStdContainer = form.querySelector('#valoreSpeseStdContainer');
-
-        const toggleAssegnato = () => {
-            assegnatoContainer.style.display = tipoSelect.value === 'Monitoraggio' ? 'block' : 'none';
-        };
-        const toggleSpeseStd = () => {
-            speseStdContainer.style.display = speseSelect.value === 'No' ? 'block' : 'none';
-        };
-
+        const toggleAssegnato = () => { assegnatoContainer.style.display = tipoSelect.value === 'Monitoraggio' ? 'block' : 'none'; };
+        const toggleSpeseStd = () => { speseStdContainer.style.display = speseSelect.value === 'No' ? 'block' : 'none'; };
         tipoSelect?.addEventListener('change', toggleAssegnato);
         speseSelect?.addEventListener('change', toggleSpeseStd);
-        
         toggleAssegnato();
         toggleSpeseStd();
     }
@@ -494,32 +436,96 @@ class CommesseTaskSection extends BaseSection {
         const form = event.target;
         const formData = new FormData(form);
         const taskData = Object.fromEntries(formData.entries());
-
-        for (const key in taskData) {
-            if (taskData[key] === '') { taskData[key] = null; }
-        }
-
+        for (const key in taskData) { if (taskData[key] === '') { taskData[key] = null; } }
         try {
-            let result;
-            if (taskId) {
-                result = await this.api.updateTask(taskId, taskData);
-                this.ui.showToast('Task aggiornato con successo!', 'success');
-            } else {
-                result = await this.api.createTask(taskData);
-                this.ui.showToast('Task creato con successo!', 'success');
-            }
-
+            const result = taskId
+                ? await this.api.updateTask(taskId, taskData)
+                : await this.api.createTask(taskData);
             if (result.success) {
-                const modal = bootstrap.Modal.getInstance(form.closest('.modal'));
-                modal.hide();
+                this.ui.showToast(`Task ${taskId ? 'aggiornato' : 'creato'} con successo!`, 'success');
+                bootstrap.Modal.getInstance(form.closest('.modal'))?.hide();
                 await this.app.loadInitialData();
-            } else {
-                throw new Error(result.message || 'Errore nel salvataggio del task.');
-            }
-        } catch (error) {
-            console.error('Errore salvataggio task:', error);
-            this.ui.showToast(error.message, 'error');
+            } else { throw new Error(result.message || 'Errore nel salvataggio del task.'); }
+        } catch (error) { this.ui.showToast(error.message, 'error'); }
+    }
+
+    // ========================================================================
+    // SEZIONE: AZIONI DI ELIMINAZIONE
+    // ========================================================================
+
+    async handleDeleteCommessa(commessaId) {
+        const commessa = this.commesseConTask.find(c => c.ID_COMMESSA === commessaId);
+        if (!commessa) return;
+        if (commessa.tasks.length > 0) {
+            this.ui.showToast('Impossibile eliminare: ci sono task associati.', 'error');
+            return;
         }
+        if (confirm(`Sei sicuro di voler eliminare la commessa "${commessa.Commessa}"? L'azione è irreversibile.`)) {
+            try {
+                const result = await this.api.deleteCommessa(commessaId);
+                if (result.success) {
+                    this.ui.showToast('Commessa eliminata!', 'success');
+                    const modalElement = document.getElementById(`editCommessaModal_${commessaId}`);
+                    if (modalElement) {
+                        bootstrap.Modal.getInstance(modalElement)?.hide();
+                    }
+                    await this.app.loadInitialData();
+                } else { throw new Error(result.message); }
+            } catch (error) { this.ui.showToast(error.message, 'error'); }
+        }
+    }
+
+    async handleDeleteTask(taskId) {
+        const task = this.commesseConTask.flatMap(c => c.tasks).find(t => t.ID_TASK === taskId);
+        if (!task) return;
+        if (task.giornate.length > 0) {
+            this.ui.showToast('Impossibile eliminare: ci sono giornate associate.', 'error');
+            return;
+        }
+        if (confirm(`Sei sicuro di voler eliminare il task "${task.Task}"? L'azione è irreversibile.`)) {
+            try {
+                const result = await this.api.deleteTask(taskId);
+                if (result.success) {
+                    this.ui.showToast('Task eliminato!', 'success');
+                    const modalElement = document.getElementById(`editTaskModal_${taskId}`);
+                    if (modalElement) {
+                        bootstrap.Modal.getInstance(modalElement)?.hide();
+                    }
+                    await this.app.loadInitialData();
+                } else { throw new Error(result.message); }
+            } catch (error) { this.ui.showToast(error.message, 'error'); }
+        }
+    }
+
+    // ========================================================================
+    // SEZIONE: GENERAZIONE HTML E UTILITÀ
+    // ========================================================================
+    
+    getCommessaFormHTML(commessa = {}) {
+        const formId = commessa.ID_COMMESSA ? `editCommessaModal_${commessa.ID_COMMESSA}_form` : 'newCommessaModal_form';
+        const clientiOptions = this.app.clienti.map(c => `<option value="${c.ID_CLIENTE}" ${commessa.ID_CLIENTE == c.ID_CLIENTE ? 'selected' : ''}>${c.Cliente}</option>`).join('');
+        const collaboratoriOptions = this.app.collaboratori.map(c => `<option value="${c.ID_COLLABORATORE}" ${commessa.ID_COLLABORATORE == c.ID_COLLABORATORE ? 'selected' : ''}>${c.Collaboratore}</option>`).join('');
+        const stati = ['In corso', 'Sospesa', 'Chiusa', 'Archiviata'];
+        const statiOptions = stati.map(s => `<option value="${s}" ${(commessa.Stato_Commessa || 'In corso') === s ? 'selected' : ''}>${s}</option>`).join('');
+        const today = new Date().toISOString().split('T')[0];
+        const dataApertura = commessa.Data_Apertura_Commessa ? new Date(commessa.Data_Apertura_Commessa).toISOString().split('T')[0] : today;
+
+        return `
+            <form id="${formId}" novalidate>
+                <div class="row">
+                    <div class="col-md-6 mb-3"><label for="Commessa" class="form-label">Nome Commessa</label><input type="text" class="form-control" id="Commessa" name="Commessa" value="${commessa.Commessa || ''}" required></div>
+                    <div class="col-md-3 mb-3"><label for="Tipo_Commessa" class="form-label">Tipo</label><select class="form-select" id="Tipo_Commessa" name="Tipo_Commessa"><option value="Cliente" ${commessa.Tipo_Commessa === 'Cliente' ? 'selected' : ''}>Cliente</option><option value="Interna" ${commessa.Tipo_Commessa === 'Interna' ? 'selected' : ''}>Interna</option></select></div>
+                    <div class="col-md-3 mb-3"><label for="Stato_Commessa" class="form-label">Stato</label><select class="form-select" id="Stato_Commessa" name="Stato_Commessa" required>${statiOptions}</select></div>
+                </div>
+                <div id="clienteFieldsContainer">
+                    <div class="mb-3" id="clienteFieldContainer"><label for="ID_CLIENTE" class="form-label">Cliente</label><select class="form-select" id="ID_CLIENTE" name="ID_CLIENTE"><option value="">Seleziona cliente...</option>${clientiOptions}</select></div>
+                    <div class="mb-3" id="responsabileFieldContainer"><label for="ID_COLLABORATORE" class="form-label">Responsabile</label><select class="form-select" id="ID_COLLABORATORE" name="ID_COLLABORATORE"><option value="">Seleziona responsabile...</option>${collaboratoriOptions}</select></div>
+                    <div class="mb-3" id="commissioneFieldContainer"><label for="Commissione" class="form-label">Commissione</label><input type="number" class="form-control" id="Commissione" name="Commissione" min="0" max="1" step="0.01" value="${commessa.Commissione || '0.27'}"></div>
+                </div>
+                <div class="mb-3"><label for="Data_Apertura_Commessa" class="form-label">Data Inizio</label><input type="date" class="form-control" id="Data_Apertura_Commessa" name="Data_Apertura_Commessa" value="${dataApertura}"></div>
+                <div class="mb-3"><label for="Desc_Commessa" class="form-label">Descrizione</label><textarea class="form-control" id="Desc_Commessa" name="Desc_Commessa" rows="3">${commessa.Desc_Commessa || ''}</textarea></div>
+            </form>
+        `;
     }
 
     getTaskFormHTML(task = {}) {
@@ -548,7 +554,7 @@ class CommesseTaskSection extends BaseSection {
                 <h5>Dettagli Economici</h5>
                 <div class="row align-items-end">
                     <div class="col-md-4 mb-3"><label for="gg_previste" class="form-label">Giorni Previsti</label><input type="number" step="0.5" class="form-control" id="gg_previste" name="gg_previste" value="${task.gg_previste || ''}"></div>
-                    <div class="col-md-4 mb-3"><label for="Spese_Comprese" class="form-label">Spese Comprese</label><select class="form-select" id="Spese_Comprese" name="Spese_Comprese"><option value="No" ${task.Spese_Comprese === 'No' ? 'selected' : ''}>No</option><option value="Si" ${task.Spese_Comprese === 'Si' ? 'selected' : ''}>Si</option></select></div>
+                    <div class="col-md-4 mb-3"><label for="Spese_Comprese" class="form-label">Spese Comprese</label><select class="form-select" id="Spese_Comprese" name="Spese_Comprese"><option value="No" ${task.Spese_Comprese === 'No' || !task.Spese_Comprese ? 'selected' : ''}>No</option><option value="Si" ${task.Spese_Comprese === 'Si' ? 'selected' : ''}>Si</option></select></div>
                     <div class="col-md-4 mb-3" id="valoreSpeseStdContainer" style="display: none;"><label for="Valore_Spese_std" class="form-label">Valore Spese Standard (€)</label><input type="number" step="0.01" class="form-control" id="Valore_Spese_std" name="Valore_Spese_std" value="${task.Valore_Spese_std || ''}"></div>
                 </div>
                  <div class="row"><div class="col-md-4 mb-3"><label for="Valore_gg" class="form-label">Valore Giorno (€)</label><input type="number" step="0.01" class="form-control" id="Valore_gg" name="Valore_gg" value="${task.Valore_gg || ''}"></div></div>
@@ -556,33 +562,45 @@ class CommesseTaskSection extends BaseSection {
         `;
     }
 
-    // ========================================================================
-    // SEZIONE: METODI DI UTILITÀ
-    // ========================================================================
+    generateCommessaCode() {
+        // Genera un codice automatico nel formato COM + anno + numero progressivo
+        const year = new Date().getFullYear();
+        const existingCommesse = this.commesse || [];
+        
+        // Trova il numero progressivo più alto per l'anno corrente
+        let maxNumber = 0;
+        const yearPrefix = `COM${year}`;
+        
+        existingCommesse.forEach(commessa => {
+            if (commessa.ID_COMMESSA && commessa.ID_COMMESSA.startsWith(yearPrefix)) {
+                const numberPart = commessa.ID_COMMESSA.replace(yearPrefix, '');
+                const number = parseInt(numberPart, 10);
+                if (!isNaN(number) && number > maxNumber) {
+                    maxNumber = number;
+                }
+            }
+        });
+        
+        // Incrementa e formatta con zero padding
+        const nextNumber = (maxNumber + 1).toString().padStart(3, '0');
+        return `${yearPrefix}${nextNumber}`;
+    }
 
     groupTasksByCommessa() {
         const commesseMap = new Map();
         this.app.commesse.forEach(commessa => {
             const cliente = this.app.clienti.find(c => c.ID_CLIENTE == commessa.ID_CLIENTE);
             const responsabile = this.app.collaboratori.find(c => c.ID_COLLABORATORE == commessa.ID_COLLABORATORE);
-            commesseMap.set(commessa.ID_COMMESSA, {
-                ...commessa,
-                cliente_nome: cliente?.Cliente || 'N/D',
-                responsabile_nome: responsabile?.Collaboratore || 'N/D',
-                tasks: []
-            });
+            commesseMap.set(commessa.ID_COMMESSA, { ...commessa, cliente_nome: cliente?.Cliente || 'N/D', responsabile_nome: responsabile?.Collaboratore || 'N/D', tasks: [] });
         });
         this.app.tasks.forEach(task => {
             if (commesseMap.has(task.ID_COMMESSA)) {
                 const giornateTask = this.app.giornate.filter(g => String(g.ID_TASK) === String(task.ID_TASK));
                 const totaleGiornate = giornateTask.reduce((sum, g) => sum + (parseFloat(g.gg?.toString().replace(',', '.')) || 0), 0);
-                commesseMap.get(task.ID_COMMESSA).tasks.push({ 
-                    ...task, 
-                    giornate: giornateTask,
-                    totale_giornate: totaleGiornate 
-                });
+                commesseMap.get(task.ID_COMMESSA).tasks.push({ ...task, giornate: giornateTask, totale_giornate: totaleGiornate });
             }
         });
         return Array.from(commesseMap.values()).sort((a, b) => (a.Commessa || '').localeCompare(b.Commessa || ''));
     }
 }
+
