@@ -19,7 +19,7 @@ class ManagementApp {
         // --- Moduli e Componenti ---
         this.api = new APIClient();
         this.ui = UIComponents;
-
+        this.utils = Utils;
         // --- Cache dei Dati Globali ---
         this.commesse = [];
         this.tasks = [];
@@ -140,7 +140,11 @@ class ManagementApp {
             <div class="management-content" id="managementContent">
                 <div class="management-topbar">
                     <div class="topbar-left">
-                        <button class="sidebar-toggle" data-action="toggle-sidebar"><i class="fas fa-bars"></i></button>
+                        
+                        <button class="sidebar-toggle" data-action="toggle-sidebar">
+                            <i class="fas fa-bars"></i>
+                        </button>
+                        
                         <div>
                             <h1 class="page-title" id="pageTitle"></h1>
                             <p class="page-subtitle" id="pageSubtitle"></p>
@@ -150,6 +154,7 @@ class ManagementApp {
                         <div class="topbar-actions" id="topbarActions"></div>
                     </div>
                 </div>
+                
                 <div class="management-section" id="contentArea"></div>
             </div>`;
         this.updateSidebarState();
@@ -226,6 +231,8 @@ class ManagementApp {
                 this.showSection(section);
                 break;
             case 'toggle-sidebar':
+                document.body.classList.toggle('sidebar-expanded');
+            break;
             case 'close-sidebar':
                 this.toggleSidebar();
                 break;

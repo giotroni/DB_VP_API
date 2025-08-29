@@ -3,6 +3,7 @@
  * @description Classe per la gestione della sezione "Commesse & Task".
  * Contiene tutta la logica per il rendering, la gestione degli eventi
  * e le interazioni utente relative a commesse e task.
+ * @version 2.2 - Corretti stili e funzionalità dei pulsanti task.
  */
 class CommesseTaskSection extends BaseSection {
     constructor(appInstance) {
@@ -14,8 +15,6 @@ class CommesseTaskSection extends BaseSection {
      * Prepara i dati necessari per la sezione, raggruppando i task per commessa.
      */
     async loadData() {
-        // I dati grezzi (this.app.commesse, this.app.tasks, etc.) sono già stati caricati
-        // dalla classe principale. Qui li processiamo per le esigenze di questa sezione.
         this.commesseConTask = this.groupTasksByCommessa();
         this.isLoaded = true;
     }
@@ -100,8 +99,6 @@ class CommesseTaskSection extends BaseSection {
 
     /**
      * Gestore centrale per tutte le azioni specifiche di questa sezione.
-     * @param {string} action L'azione da eseguire (es. 'view-task').
-     * @param {string} id L'ID dell'elemento su cui agire.
      */
     handleAction(action, id) {
         switch (action) {
@@ -111,16 +108,16 @@ class CommesseTaskSection extends BaseSection {
             case 'view-task':
                 this.showTaskDetailsModal(id);
                 break;
+            case 'view-giornate': // Azione per visualizzare le giornate
+                this.showGiornateModal(id);
+                break;
             case 'edit-task':
-                // this.showEditTaskModal(id);
                 this.ui.showToast(`Modifica task ${id} (in sviluppo)`, 'info');
                 break;
             case 'add-task':
-                // this.showNewTaskModal(id); // id è l'ID della commessa
                 this.ui.showToast(`Aggiungi task a commessa ${id} (in sviluppo)`, 'info');
                 break;
             case 'add-commessa':
-                // this.showNewCommessaModal();
                 this.ui.showToast('Aggiungi commessa (in sviluppo)', 'info');
                 break;
             case 'filter':
@@ -182,20 +179,46 @@ class CommesseTaskSection extends BaseSection {
     }
 
     createTaskCard(task) {
+        const collaboratore = this.app.collaboratori.find(c => c.ID_COLLABORATORE === task.ID_COLLABORATORE);
+        
+        const giornateHtml = task.giornate.length > 0
+            ? `<button class="btn btn-outline-primary btn-sm w-100 mt-3" data-action="view-giornate" data-id="${task.ID_TASK}">
+                   <i class="fas fa-calendar-alt me-1"></i>
+                   Visualizza ${task.giornate.length} Giornate
+               </button>`
+            : `<p class="text-muted text-center small mt-3 mb-0">
+                   <i class="fas fa-calendar-times me-1"></i>
+                   Nessuna giornata registrata
+               </p>`;
+
         return `
             <div class="col-lg-6 col-xl-4 mb-3">
-                <div class="card h-100 border-0 shadow-sm">
-                    <div class="card-header bg-light border-0 d-flex justify-content-between align-items-start">
-                        <h6 class="card-title mb-0 fw-bold">${task.Task}</h6>
-                        <span class="status-badge ${task.Stato_Task === 'In corso' ? 'active' : 'inactive'}"><i class="fas fa-circle"></i> ${task.Stato_Task}</span>
+                <div class="card h-100 border-0 shadow-sm d-flex flex-column">
+                    <div class="card-header bg-light border-0">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <h6 class="card-title mb-0 fw-bold">${task.Task}</h6>
+                            <span class="status-badge ${task.Stato_Task === 'In corso' ? 'active' : 'inactive'}"><i class="fas fa-circle"></i> ${task.Stato_Task}</span>
+                        </div>
+                        <small class="text-muted d-block"><i class="fas fa-tag me-1"></i>${task.Tipo || 'Campo'}</small>
                     </div>
                     <div class="card-body">
-                        <p class="card-text text-muted small">${task.Desc_Task || 'Nessuna descrizione.'}</p>
+                        <p class="card-text text-muted small">${task.Desc_Task || ''}</p>
+                        <div class="row text-center">
+                            <div class="col-6">
+                                <div class="fw-bold text-primary">${task.totale_giornate.toFixed(1)}</div>
+                                <small class="text-muted">Tot. Giorni</small>
+                            </div>
+                            <div class="col-6">
+                                 <div class="fw-bold">${task.gg_previste || '-'}</div>
+                                 <small class="text-muted">Previsti</small>
+                            </div>
                         </div>
-                    <div class="card-footer bg-transparent border-0">
-                        <div class="action-buttons d-flex justify-content-end">
-                            <button class="btn-action view" data-action="view-task" data-id="${task.ID_TASK}" title="Visualizza dettagli"><i class="fas fa-eye"></i></button>
-                            <button class="btn-action edit" data-action="edit-task" data-id="${task.ID_TASK}" title="Modifica task"><i class="fas fa-edit"></i></button>
+                        ${giornateHtml}
+                    </div>
+                    <div class="card-footer bg-transparent border-0 mt-auto">
+                        <div class="action-buttons d-flex justify-content-end gap-2">
+                            <button class="btn btn-outline-secondary btn-sm" data-action="view-task" data-id="${task.ID_TASK}" title="Visualizza dettagli"><i class="fas fa-eye"></i></button>
+                            <button class="btn btn-outline-primary btn-sm" data-action="edit-task" data-id="${task.ID_TASK}" title="Modifica task"><i class="fas fa-edit"></i></button>
                         </div>
                     </div>
                 </div>
@@ -213,30 +236,25 @@ class CommesseTaskSection extends BaseSection {
         
         const isOpening = !collapseElement.classList.contains('show');
         bootstrap.Collapse.getOrCreateInstance(collapseElement).toggle();
+
         toggleBtn.classList.toggle('expanded', isOpening);
-        toggleBtn.querySelector('i').classList.toggle('fa-chevron-down', !isOpening);
-        toggleBtn.querySelector('i').classList.toggle('fa-chevron-up', isOpening);
+        const icon = toggleBtn.querySelector('i');
+        icon.classList.toggle('fa-chevron-down', !isOpening);
+        icon.classList.toggle('fa-chevron-up', isOpening);
     }
     
     toggleAllCommesse() {
         const allCollapses = document.querySelectorAll('#commesseTaskContainer .collapse');
-        const isExpand = Array.from(allCollapses).some(el => !el.classList.contains('show'));
+        const isAnyCollapsed = Array.from(allCollapses).some(el => !el.classList.contains('show'));
         
         allCollapses.forEach(el => {
             const id = el.id.replace('commessa-', '');
-            const btn = document.getElementById(`toggleBtn-${id}`);
-            if (isExpand) {
-                bootstrap.Collapse.getOrCreateInstance(el).show();
-                if(btn) btn.classList.add('expanded');
-            } else {
-                bootstrap.Collapse.getOrCreateInstance(el).hide();
-                if(btn) btn.classList.remove('expanded');
-            }
+            this.toggleCommessa(id, isAnyCollapsed);
         });
 
         const toggleAllBtn = document.getElementById('toggleAllBtn');
-        toggleAllBtn.innerHTML = isExpand ? '<i class="fas fa-compress-arrows-alt"></i>' : '<i class="fas fa-expand-arrows-alt"></i>';
-        toggleAllBtn.title = isExpand ? 'Comprimi tutto' : 'Espandi tutto';
+        toggleAllBtn.innerHTML = isAnyCollapsed ? '<i class="fas fa-compress-arrows-alt"></i>' : '<i class="fas fa-expand-arrows-alt"></i>';
+        toggleAllBtn.title = isAnyCollapsed ? 'Comprimi tutto' : 'Espandi tutto';
     }
 
     filterData() {
@@ -297,6 +315,37 @@ class CommesseTaskSection extends BaseSection {
 
         this.ui.createModal(`taskDetailsModal_${taskId}`, modalTitle, modalBody, modalActions, { size: 'modal-lg' });
     }
+
+    showGiornateModal(taskId) {
+        const task = this.app.tasks.find(t => t.ID_TASK === taskId);
+        if (!task) return;
+
+        const giornateTask = this.app.giornate.filter(g => String(g.ID_TASK) === String(taskId));
+
+        const modalTitle = `<i class="fas fa-calendar-day me-2"></i>Giornate - ${task.Task}`;
+        const modalBody = giornateTask.length === 0
+            ? '<p class="text-muted">Nessuna giornata registrata per questo task.</p>'
+            : `<div class="table-responsive">
+                   <table class="table table-sm table-hover">
+                       <thead><tr><th>Data</th><th>Collaboratore</th><th>Ore</th><th>Tipo</th><th>Note</th></tr></thead>
+                       <tbody>
+                           ${giornateTask.map(g => {
+                               const collab = this.app.collaboratori.find(c => c.ID_COLLABORATORE === g.ID_COLLABORATORE);
+                               return `<tr>
+                                   <td>${new Date(g.Data).toLocaleDateString('it-IT')}</td>
+                                   <td>${collab?.Collaboratore || 'N/A'}</td>
+                                   <td><span class="badge bg-primary">${g.gg}h</span></td>
+                                   <td>${g.Tipo}</td>
+                                   <td>${g.Note || '-'}</td>
+                               </tr>`;
+                           }).join('')}
+                       </tbody>
+                   </table>
+               </div>`;
+
+        const modalActions = [{ html: '<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Chiudi</button>' }];
+        this.ui.createModal(`giornateModal_${taskId}`, modalTitle, modalBody, modalActions, { size: 'modal-lg' });
+    }
     
     // ========================================================================
     // SEZIONE: METODI DI UTILITÀ
@@ -320,7 +369,12 @@ class CommesseTaskSection extends BaseSection {
             if (commesseMap.has(task.ID_COMMESSA)) {
                 const giornateTask = this.app.giornate.filter(g => String(g.ID_TASK) === String(task.ID_TASK));
                 const totaleGiornate = giornateTask.reduce((sum, g) => sum + (parseFloat(g.gg?.toString().replace(',', '.')) || 0), 0);
-                commesseMap.get(task.ID_COMMESSA).tasks.push({ ...task, totale_giornate: totaleGiornate });
+                
+                commesseMap.get(task.ID_COMMESSA).tasks.push({ 
+                    ...task, 
+                    giornate: giornateTask, // Aggiunge l'array delle giornate
+                    totale_giornate: totaleGiornate 
+                });
             }
         });
 
