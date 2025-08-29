@@ -295,23 +295,22 @@ class ManagementApp {
         try {
             const responses = await Promise.all([
                 this.api.getCommesse(),
-                this.api.getTasks({ limit: 1000 }), // Carica un numero maggiore di task
+                this.api.getTasks({ limit: 1000 }),
                 this.api.getAllGiornate(),
                 this.api.getClienti(),
                 this.api.getCollaboratori(),
-                this.api.getTariffe(),
+                this.api.getTariffe(), // <-- NUOVA CHIAMATA API
                 this.api.getFatture()
             ]);
 
-            // Assegna i dati alle proprietà della classe in modo sicuro
+            // Assegna i dati alle proprietà della classe
             [
                 this.commesse, this.tasks, this.giornate, 
-                this.clienti, this.collaboratori, this.tariffe, this.fatture
+                this.clienti, this.collaboratori, this.tariffe, this.fatture // <-- AGGIUNTO this.tariffe
             ] = responses.map(res => (res.success && res.data.data) ? res.data.data : []);
             
-            console.log('✅ Dati iniziali caricati con successo.');
+            console.log('✅ Dati iniziali caricati (incluse tariffe).');
 
-            // Ora che i dati sono pronti, inizializza la sezione di default
             await this.showSection(this.currentSection);
 
         } catch (error) {

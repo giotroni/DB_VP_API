@@ -290,7 +290,8 @@ class CommesseTaskSection extends BaseSection {
         this.addTaskFormListeners(`${modalId}_form`);
     }
 
-    showTaskDetailsModal(taskId) {
+
+        showTaskDetailsModal(taskId) {
         const task = this.app.tasks.find(t => t.ID_TASK === taskId);
         if (!task) {
             this.ui.showToast('Task non trovato.', 'error');
@@ -328,6 +329,7 @@ class CommesseTaskSection extends BaseSection {
      * Mostra la modale con l'elenco delle giornate di un task.
      * @param {string} taskId L'ID del task.
      */
+
     showGiornateModal(taskId) {
         const task = this.app.tasks.find(t => t.ID_TASK === taskId);
         if (!task) {
@@ -361,7 +363,6 @@ class CommesseTaskSection extends BaseSection {
         const modalActions = [{ html: '<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Chiudi</button>' }];
         this.ui.createModal(`giornateModal_${taskId}`, modalTitle, modalBody, modalActions, { size: 'modal-lg' });
     }
-  
     
     // ========================================================================
     // SEZIONE: GESTIONE FORM E SALVATAGGI
