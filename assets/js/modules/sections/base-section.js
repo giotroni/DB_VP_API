@@ -1,40 +1,47 @@
-// ============================================================================
-// 2. assets/js/modules/sections/base-section.js - PRIORITÀ ALTA
-// ============================================================================
+// assets/js/modules/sections/base-section.js
 class BaseSection {
-    constructor(name, apiClient, uiComponents) {
+    constructor(name, appInstance) {
+        if (!appInstance) {
+            throw new Error("L'istanza dell'applicazione è richiesta per inizializzare una sezione.");
+        }
         this.name = name;
-        this.api = apiClient;
-        this.ui = uiComponents;
-        this.data = [];
+        this.app = appInstance; // Riferimento all'istanza di ManagementApp
+        this.api = appInstance.api;
+        this.ui = appInstance.ui;
+        
         this.isLoaded = false;
-        this.currentPage = 1;
-        this.totalPages = 1;
+        this.data = []; // Dati specifici della sezione
         this.filters = {};
     }
 
     async initialize() {
         this.showLoading();
-        
         if (!this.isLoaded) {
             await this.loadData();
             this.isLoaded = true;
         }
-        
         this.render();
         this.bindEvents();
     }
 
     async loadData() {
-        throw new Error(`loadData must be implemented in ${this.constructor.name}`);
+        // Da implementare nelle sottoclassi
+        console.warn(`Metodo loadData non implementato per ${this.name}`);
     }
 
     render() {
-        throw new Error(`render must be implemented in ${this.constructor.name}`);
+        // Da implementare nelle sottoclassi
+        throw new Error(`Metodo render deve essere implementato in ${this.constructor.name}`);
+    }
+    
+    bindEvents() {
+        // Opzionale, da implementare nelle sottoclassi se necessario per eventi specifici
     }
 
-    bindEvents() {
-        // Override in subclasses if needed
+    handleAction(action, id, type, targetElement) {
+        // Gestore di azioni generico, può essere esteso
+        console.log(`Azione '${action}' gestita da BaseSection per l'elemento`, { id, type, targetElement });
+        this.ui.showToast(`Azione '${action}' non ancora implementata.`, 'info');
     }
 
     getContainer() {
@@ -42,29 +49,15 @@ class BaseSection {
     }
 
     showLoading() {
-        const container = this.getContainer();
-        if (container) {
-            container.innerHTML = this.ui.createLoadingState(`Caricamento ${this.name}...`);
-        }
+        this.getContainer().innerHTML = this.ui.createLoadingState(`Caricamento ${this.name}...`);
     }
 
     updatePageTitle(title, subtitle) {
-        const titleEl = document.getElementById('pageTitle');
-        const subtitleEl = document.getElementById('pageSubtitle');
-        
-        if (titleEl) titleEl.textContent = title;
-        if (subtitleEl) subtitleEl.textContent = subtitle;
+        document.getElementById('pageTitle').textContent = title;
+        document.getElementById('pageSubtitle').textContent = subtitle;
     }
 
-    applyFilters(filters) {
-        this.filters = { ...this.filters, ...filters };
-        this.render();
-    }
-
-    clearFilters() {
-        this.filters = {};
-        this.render();
+    updateTopbarActions(html = '') {
+        document.getElementById('topbarActions').innerHTML = html;
     }
 }
-
-window.BaseSection = BaseSection;

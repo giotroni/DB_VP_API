@@ -2,10 +2,17 @@
 // 1. assets/js/modules/ui-components.js - PRIORITÀ ALTA
 // ============================================================================
 class UIComponents {
-    static createModal(id, title, content, actions = []) {
+
+        static createModal(id, title, content, actions = [], options = {}) {
+        const modalId = id || `modal_${Date.now()}`;
+        const modalSize = options.size || 'modal-lg'; // es. 'modal-xl', 'modal-sm'
+
+        // Rimuove eventuali modali precedenti con lo stesso ID
+        document.getElementById(modalId)?.remove();
+
         const modalHTML = `
-            <div class="modal fade" id="${id}" tabindex="-1">
-                <div class="modal-dialog modal-lg">
+            <div class="modal fade" id="${modalId}" tabindex="-1">
+                <div class="modal-dialog ${modalSize}">
                     <div class="modal-content">
                         <div class="modal-header">
                             <h5 class="modal-title">${title}</h5>
@@ -20,19 +27,25 @@ class UIComponents {
             </div>
         `;
         
-        document.getElementById(id)?.remove();
         document.body.insertAdjacentHTML('beforeend', modalHTML);
+        const modalElement = document.getElementById(modalId);
         
-        // Bind eventi
+        // Associa gli handler per le azioni del footer
         actions.forEach(action => {
-            if (action.handler) {
-                document.querySelector(`#${id} ${action.selector}`)
-                    ?.addEventListener('click', action.handler);
+            if (action.selector && action.handler) {
+                modalElement.querySelector(action.selector)?.addEventListener('click', action.handler);
             }
         });
         
-        return new bootstrap.Modal(document.getElementById(id));
+        const modal = new bootstrap.Modal(modalElement);
+        modal.show();
+
+        // Pulisce il DOM dopo la chiusura della modale
+        modalElement.addEventListener('hidden.bs.toast', () => modalElement.remove());
+
+        return modal;
     }
+
 
     static showToast(message, type = 'info') {
         const toastContainer = document.getElementById('toastContainer');
