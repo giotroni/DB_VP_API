@@ -1130,8 +1130,8 @@ class ConsuntivazioneApp {
                     <div class="consuntivazione-tipo">${this.getTipoTag(cons.Tipo)}</div>
                     <div class="consuntivazione-status">
                         ${cons.Confermata === 'Si' ? 
-                            '<span class="badge bg-success">Confermata</span>' : 
-                            '<span class="badge bg-warning text-dark">Non Confermata</span>'
+                            '<span class="badge bg-success">Non Editabile</span>' : 
+                            '<span class="badge bg-warning text-dark">Editabile</span>'
                         }
                     </div>
                 </div>
@@ -1537,8 +1537,8 @@ class ConsuntivazioneApp {
                     </td>
                     <td class="text-center">
                         ${cons.Confermata === 'Si' ? 
-                            '<span class="badge bg-success">Confermata</span>' : 
-                            '<span class="badge bg-warning text-dark">Non Confermata</span>'
+                            '<span class="badge bg-success">Non modificabile</span>' : 
+                            '<span class="badge bg-warning text-dark">Non Modificabile</span>'
                         }
                     </td>
                     <td>
