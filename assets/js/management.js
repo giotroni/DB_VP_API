@@ -11,6 +11,12 @@ class ManagementApp {
         this.sidebarCollapsed = true;
         this.isMobile = window.innerWidth < 768;
         
+        // API Client
+        this.api = new APIClient();
+        
+        // UI Components centralizzati
+        this.ui = UIComponents;
+        
         // Dati cache
         this.commesse = [];
         this.tasks = [];
@@ -19,6 +25,13 @@ class ManagementApp {
         this.collaboratori = [];
         this.tariffe = [];
         this.fatture = [];
+        
+        // Inizializzazione sezioni modulari
+        this.sections = {
+            'clienti': new ClientiSection(this.api, this.ui),
+            'collaboratori': new CollaboratoriSection(this.api, this.ui),
+            // Aggiungerai altre sezioni qui man mano
+        };
         
         this.init();
     }
@@ -41,15 +54,7 @@ class ManagementApp {
     
     async checkAuthentication() {
         try {
-            const response = await fetch('API/auth.php', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ action: 'check_auth' })
-            });
-            
-            const result = await response.json();
+            const result = await this.api.checkAuth();
             
             if (result.success && result.authenticated) {
                 this.currentUser = result.user;
@@ -189,19 +194,7 @@ class ManagementApp {
         errorDiv.classList.add('d-none');
         
         try {
-            const response = await fetch('API/auth.php', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    action: 'login',
-                    email: emailOrUsername,
-                    password: password
-                })
-            });
-            
-            const result = await response.json();
+            const result = await this.api.login(emailOrUsername, password);
             
             if (result.success) {
                 this.currentUser = result.user;
@@ -234,13 +227,7 @@ class ManagementApp {
     
     async handleLogout() {
         try {
-            await fetch('API/auth.php', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ action: 'logout' })
-            });
+            await this.api.logout();
         } catch (error) {
             console.error('Errore logout:', error);
         }
@@ -343,10 +330,8 @@ class ManagementApp {
                         </div>
                     </div>
                     <div class="topbar-right">
-                        <div class="topbar-actions">
-                            <button class="btn btn-vp-primary" data-action="add" data-type="commessa">
-                                <i class="fas fa-plus me-2"></i>Nuova Commessa
-                            </button>
+                        <div class="topbar-actions" id="topbarActions">
+                            <!-- Contenuto dinamico basato sulla sezione corrente -->
                         </div>
                     </div>
                 </div>
@@ -359,7 +344,38 @@ class ManagementApp {
         this.updateSidebarState();
         this.showSection('commesse-task');
     }
-    
+
+    updateTopbarActions(sectionName) {
+        const topbarActions = document.getElementById('topbarActions');
+        if (!topbarActions) return;
+        
+        switch (sectionName) {
+            case 'commesse-task':
+                topbarActions.innerHTML = `
+                    <button class="btn btn-vp-primary" data-action="add" data-type="commessa">
+                        <i class="fas fa-plus me-2"></i>Nuova Commessa
+                    </button>
+                `;
+                break;
+            case 'clienti':
+                topbarActions.innerHTML = `
+                    <button class="btn btn-vp-primary" onclick="clientiSection.showNewClientModal()">
+                        <i class="fas fa-plus me-2"></i>Nuovo Cliente
+                    </button>
+                `;
+                break;
+            case 'collaboratori':
+                topbarActions.innerHTML = `
+                    <button class="btn btn-vp-primary" onclick="collaboratoriSection.showNewCollaboratoreModal()">
+                        <i class="fas fa-plus me-2"></i>Nuovo Collaboratore
+                    </button>
+                `;
+                break;
+            default:
+                topbarActions.innerHTML = ''; // Nessun bottone per le altre sezioni
+        }
+    }
+
     getUserInitials() {
         if (!this.currentUser) return 'VP';
         const nome = this.currentUser.nome || '';
@@ -428,8 +444,8 @@ class ManagementApp {
             }
         }
     }
-    
-    showSection(sectionName) {
+
+    async showSection(sectionName) {
         this.currentSection = sectionName;
         
         document.querySelectorAll('.nav-link').forEach(link => {
@@ -438,38 +454,44 @@ class ManagementApp {
         document.querySelector(`[data-section="${sectionName}"]`)?.classList.add('active');
         
         this.updatePageTitle(sectionName);
+        this.updateTopbarActions(sectionName); // Aggiungi questa riga
         
-        switch (sectionName) {
-            case 'commesse-task':
-                this.showCommesseTaskSection();
-                break;
-            case 'clienti':
-                this.showClientiSection();
-                break;
-            case 'collaboratori':
-                this.showCollaboratoriSection();
-                break;
-            case 'tariffe':
-                this.showTariffeSection();
-                break;
-            case 'fatture':
-                this.showFattureSection();
-                break;
-            case 'giornate':
-                this.showGiornateSection();
-                break;
-            case 'statistiche':
-                this.showStatisticheSection();
-                break;
-            default:
-                this.showCommesseTaskSection();
+        // Usa le sezioni modulari se disponibili
+        if (this.sections && this.sections[sectionName]) {
+            await this.sections[sectionName].initialize();
+        } else {
+            // Fallback per le sezioni esistenti (sincroni)
+            switch (sectionName) {
+                case 'commesse-task':
+                    this.showCommesseTaskSection();
+                    break;
+                case 'clienti':
+                    this.showClientiSection();
+                    break;
+                case 'collaboratori':
+                    this.showCollaboratoriSection();
+                    break;
+                case 'tariffe':
+                    this.showTariffeSection();
+                    break;
+                case 'fatture':
+                    this.showFattureSection();
+                    break;
+                case 'giornate':
+                    this.showGiornateSection();
+                    break;
+                case 'statistiche':
+                    this.showStatisticheSection();
+                    break;
+                default:
+                    this.showCommesseTaskSection();
+            }
         }
         
         if (this.isMobile) {
             this.closeSidebar();
         }
     }
-    
     updatePageTitle(sectionName) {
         const titles = {
             'commesse-task': {
@@ -522,11 +544,11 @@ class ManagementApp {
                 clientiResponse, 
                 collaboratoriResponse
             ] = await Promise.all([
-                fetch('API/index.php?resource=commesse&action=getAll').then(res => res.json()),
-                fetch('API/index.php?resource=task&action=getAll&limit=100').then(res => res.json()),
-                this.loadAllGiornatePages(), 
-                fetch('API/index.php?resource=clienti&action=getAll').then(res => res.json()),
-                fetch('API/index.php?resource=collaboratori&action=getAll').then(res => res.json())
+                this.api.getCommesse(),
+                this.api.getTasks({ limit: 100 }),
+                this.api.getAllGiornate(), 
+                this.api.getClienti(),
+                this.api.getCollaboratori()
             ]);
             
             if (commesseResponse.success) {
@@ -575,35 +597,8 @@ class ManagementApp {
             this.showToast('Errore nel caricamento dei dati. Si prega di riprovare più tardi.', 'error');
             document.getElementById('loadingScreen').style.display = 'none';
         }
-    }
-    
-    async loadAllGiornatePages() {
-        let allGiornate = [];
-        let currentPage = 1;
-        let totalPages = 1;
+    }    
 
-        try {
-            do {
-                const response = await fetch(`API/index.php?resource=giornate&action=getAll&limit=100&page=${currentPage}`);
-                const result = await response.json();
-                
-                if (!result.success) {
-                    throw new Error(result.message || 'Errore caricamento pagina giornate');
-                }
-
-                allGiornate = allGiornate.concat(result.data.data || []);
-                totalPages = result.data.pagination.pages;
-                currentPage++;
-
-            } while (currentPage <= totalPages);
-
-            return { success: true, data: { data: allGiornate } };
-
-        } catch (error) {
-            console.error('Errore durante il caricamento paginato delle giornate:', error);
-            return { success: false, message: error.message };
-        }
-    }
     
     updateStatistics() {
         console.log('Aggiornamento statistiche...');
@@ -650,185 +645,6 @@ class ManagementApp {
                 this.populateCommesseTaskFilters();
             }
         }, 100);
-    }
-    
-    async loadCommesse() {
-        try {
-            const response = await fetch('API/index.php?resource=commesse&action=getAll');
-            
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            
-            const responseText = await response.text();
-            
-            if (!responseText.trim()) {
-                console.warn('Risposta vuota dall\'API Commesse');
-                this.commesse = [];
-                return;
-            }
-            
-            const result = JSON.parse(responseText);
-            
-            if (result.success) {
-                this.commesse = result.data.data || [];
-                console.log('✓ Commesse caricate:', this.commesse.length);
-            } else {
-                throw new Error(result.message || 'Errore caricamento commesse');
-            }
-        } catch (error) {
-            console.error('Errore caricamento commesse:', error);
-            this.commesse = [];
-        }
-    }
-    
-    async loadTasks() {
-        try {
-            const response = await fetch('API/index.php?resource=task&action=getAll&limit=100');
-            
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            
-            const responseText = await response.text();
-            
-            if (!responseText.trim()) {
-                console.warn('Risposta vuota dall\'API Task');
-                this.tasks = [];
-                return;
-            }
-            
-            const result = JSON.parse(responseText);
-            
-            if (result.success) {
-                this.tasks = result.data.data || [];
-                console.log('✓ Task caricati:', this.tasks.length);
-            } else {
-                throw new Error(result.message || 'Errore caricamento task');
-            }
-        } catch (error) {
-            console.error('Errore caricamento task:', error);
-            this.tasks = [];
-        }
-    }
-    
-    async loadGiornate() {
-        try {
-            console.log('Caricamento giornate...');
-            
-            let allGiornate = [];
-            let currentPage = 1;
-            let totalPages = 1;
-            
-            do {
-                const response = await fetch(`API/index.php?resource=giornate&action=getAll&limit=100&page=${currentPage}`);
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                
-                const responseText = await response.text();
-                
-                if (!responseText.trim()) {
-                    console.warn('Risposta vuota dall\'API Giornate');
-                    break;
-                }
-                
-                const result = JSON.parse(responseText);
-                
-                if (result.success) {
-                    const pageData = result.data.data || [];
-                    allGiornate = allGiornate.concat(pageData);
-                    
-                    if (result.data.pagination) {
-                        totalPages = result.data.pagination.pages;
-                        console.log(`✓ Pagina ${currentPage}/${totalPages} caricata: ${pageData.length} giornate`);
-                    }
-                    
-                    currentPage++;
-                } else {
-                    throw new Error(result.message || 'Errore caricamento giornate');
-                }
-            } while (currentPage <= totalPages);
-            
-            this.giornate = allGiornate;
-            console.log(`✓ Giornate caricate completamente: ${this.giornate.length} totali`);
-            
-            if (this.giornate.length > 0) {
-                const totalTest = this.giornate.reduce((sum, g) => {
-                    let gg = g.gg || 0;
-                    if (typeof gg === 'string') {
-                        gg = parseFloat(gg.replace(',', '.'));
-                    }
-                    return sum + (isNaN(gg) ? 0 : gg);
-                }, 0);
-                console.log(`✓ Totale ore calcolate: ${totalTest.toFixed(1)}`);
-            }
-            
-        } catch (error) {
-            console.error('❌ Errore caricamento giornate:', error);
-            this.giornate = [];
-        }
-    }
-    
-    async loadClienti() {
-        try {
-            const response = await fetch('API/index.php?resource=clienti&action=getAll');
-            
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            
-            const responseText = await response.text();
-            
-            if (!responseText.trim()) {
-                console.warn('Risposta vuota dall\'API Clienti');
-                this.clienti = [];
-                return;
-            }
-            
-            const result = JSON.parse(responseText);
-            
-            if (result.success) {
-                this.clienti = result.data.data || [];
-                console.log('✓ Clienti caricati:', this.clienti.length);
-            } else {
-                throw new Error(result.message || 'Errore caricamento clienti');
-            }
-        } catch (error) {
-            console.error('Errore caricamento clienti:', error);
-            this.clienti = [];
-        }
-    }
-    
-    async loadCollaboratori() {
-        try {
-            const response = await fetch('API/index.php?resource=collaboratori&action=getAll');
-            
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            
-            const responseText = await response.text();
-            
-            if (!responseText.trim()) {
-                console.warn('Risposta vuota dall\'API Collaboratori');
-                this.collaboratori = [];
-                return;
-            }
-            
-            const result = JSON.parse(responseText);
-            
-            if (result.success) {
-                this.collaboratori = result.data.data || [];
-                console.log('✓ Collaboratori caricati:', this.collaboratori.length);
-            } else {
-                throw new Error(result.message || 'Errore caricamento collaboratori');
-            }
-        } catch (error) {
-            console.error('Errore caricamento collaboratori:', error);
-            this.collaboratori = [];
-        }
     }
     
     showCommesseTaskSection() {
@@ -1064,54 +880,54 @@ class ManagementApp {
         return result;
     }
     
-    createCommessaCard(commessa) {
-        const totaleTasks = commessa.tasks.length;
-        const totaleGiornate = commessa.tasks.reduce((sum, task) => sum + task.totale_giornate, 0);
-        const tasksAttivi = commessa.tasks.filter(t => t.Stato_Task === 'In corso').length;
-        
-        return `
-            <div class="management-card mb-4">
-                <div class="management-card-header">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div class="d-flex align-items-center">
-                            <h5 class="management-card-title mb-0 me-2">
-                                <i class="fas fa-briefcase me-2"></i>
-                                ${commessa.Commessa || commessa.ID_COMMESSA || 'Commessa'}
-                            </h5>
-                            <button class="btn btn-warning btn-sm ms-2" onclick="app.showEditCommessaModal('${commessa.ID_COMMESSA}')" title="Modifica questa commessa">
-                                <i class="fas fa-edit me-1"></i>Modifica
-                            </button>
-                        </div>
-                        <div class="d-flex align-items-center gap-3">
-                            <span class="badge bg-primary">${totaleTasks} Task</span>
-                            <span class="badge bg-success">${totaleGiornate.toFixed(1)} Giorni</span>
-                            <button class="btn btn-vp-primary btn-sm" onclick="app.showNewTaskModalForCommessa('${commessa.ID_COMMESSA}')" title="Aggiungi nuovo task a questa commessa">
-                                <i class="fas fa-plus me-1"></i>Nuovo Task
-                            </button>
-                            <button class="btn btn-light btn-sm" onclick="app.toggleCommessa('${commessa.ID_COMMESSA}')" id="toggleBtn-${commessa.ID_COMMESSA}">
-                                <i class="fas fa-chevron-down"></i>
-                            </button>
-                        </div>
+createCommessaCard(commessa) {
+    const totaleTasks = commessa.tasks.length;
+    const totaleGiornate = commessa.tasks.reduce((sum, task) => sum + task.totale_giornate, 0);
+    const tasksAttivi = commessa.tasks.filter(t => t.Stato_Task === 'In corso').length;
+    
+    return `
+        <div class="management-card mb-4">
+            <div class="management-card-header" onclick="app.toggleCommessa('${commessa.ID_COMMESSA}')" data-commessa-id="${commessa.ID_COMMESSA}">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center">
+                        <h5 class="management-card-title mb-0 me-2">
+                            <i class="fas fa-briefcase me-2"></i>
+                            ${commessa.Commessa || commessa.ID_COMMESSA || 'Commessa'}
+                        </h5>
+                        <button class="btn btn-warning btn-sm ms-2" onclick="event.stopPropagation(); app.showEditCommessaModal('${commessa.ID_COMMESSA}')" title="Modifica questa commessa">
+                            <i class="fas fa-edit me-1"></i>Modifica
+                        </button>
                     </div>
-                    <div class="mt-2">
-                        <small class="text-light">
-                            <i class="fas fa-building me-1"></i>
-                            ${commessa.Tipo_Commessa === 'Interna' ? 'Interna' : `Cliente: ${commessa.cliente_nome}`} |
-                            <i class="fas fa-user me-1"></i>Responsabile: ${commessa.responsabile_nome} |
-                            <i class="fas fa-tasks me-1"></i>Task attivi: ${tasksAttivi}
-                        </small>
+                    <div class="d-flex align-items-center gap-3">
+                        <span class="badge bg-primary">${totaleTasks} Task</span>
+                        <span class="badge bg-success">${totaleGiornate.toFixed(1)} Giorni</span>
+                        <button class="btn btn-vp-primary btn-sm" onclick="event.stopPropagation(); app.showNewTaskModalForCommessa('${commessa.ID_COMMESSA}')" title="Aggiungi nuovo task a questa commessa">
+                            <i class="fas fa-plus me-1"></i>Nuovo Task
+                        </button>
+                        <button class="commessa-toggle-btn" onclick="event.stopPropagation()" id="toggleBtn-${commessa.ID_COMMESSA}">
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
                     </div>
                 </div>
-                <div class="collapse" id="commessa-${commessa.ID_COMMESSA}">
-                    <div class="management-card-body">
-                        <div class="row">
-                            ${commessa.tasks.map(task => this.createTaskCard(task)).join('')}
-                        </div>
+                <div class="mt-2">
+                    <small class="text-light">
+                        <i class="fas fa-building me-1"></i>
+                        ${commessa.Tipo_Commessa === 'Interna' ? 'Interna' : `Cliente: ${commessa.cliente_nome}`} |
+                        <i class="fas fa-user me-1"></i>Responsabile: ${commessa.responsabile_nome} |
+                        <i class="fas fa-tasks me-1"></i>Task attivi: ${tasksAttivi}
+                    </small>
+                </div>
+            </div>
+            <div class="collapse" id="commessa-${commessa.ID_COMMESSA}">
+                <div class="management-card-body">
+                    <div class="row">
+                        ${commessa.tasks.map(task => this.createTaskCard(task)).join('')}
                     </div>
                 </div>
             </div>
-        `;
-    }
+        </div>
+    `;
+}
     
     createTaskCard(task) {
         const collaboratore = this.collaboratori.find(c => c.ID_COLLABORATORE === task.ID_COLLABORATORE);
@@ -1347,22 +1163,22 @@ class ManagementApp {
         modal.show();
     }
     
-    toggleCommessa(commessaId) {
-        const collapseElement = document.getElementById(`commessa-${commessaId}`);
-        const toggleBtn = document.getElementById(`toggleBtn-${commessaId}`);
+toggleCommessa(commessaId) {
+    const collapseElement = document.getElementById(`commessa-${commessaId}`);
+    const toggleBtn = document.getElementById(`toggleBtn-${commessaId}`);
+    
+    if (collapseElement && toggleBtn) {
+        const bsCollapse = new bootstrap.Collapse(collapseElement, { toggle: false });
         
-        if (collapseElement && toggleBtn) {
-            const bsCollapse = new bootstrap.Collapse(collapseElement, { toggle: false });
-            
-            if (collapseElement.classList.contains('show')) {
-                bsCollapse.hide();
-                toggleBtn.innerHTML = '<i class="fas fa-chevron-down"></i>';
-            } else {
-                bsCollapse.show();
-                toggleBtn.innerHTML = '<i class="fas fa-chevron-up"></i>';
-            }
+        if (collapseElement.classList.contains('show')) {
+            bsCollapse.hide();
+            toggleBtn.classList.remove('expanded');
+        } else {
+            bsCollapse.show();
+            toggleBtn.classList.add('expanded');
         }
     }
+}
     
     toggleTaskGiornate(taskId) {
         const collapseElement = document.getElementById(`giornate-${taskId}`);
@@ -2187,7 +2003,10 @@ class ManagementApp {
                 bootstrap.Modal.getInstance(document.getElementById('deleteTaskConfirmModal'))?.hide();
                 bootstrap.Modal.getInstance(document.getElementById('taskEditModal'))?.hide();
                 
-                await this.loadTasks();
+                const tasksResponse = await this.api.getTasks({ limit: 100 });
+                if (tasksResponse.success) {
+                    this.tasks = tasksResponse.data.data || [];
+                }
                 
                 if (this.currentSection === 'commesse-task') {
                     this.loadCommesseTaskData();
@@ -2479,7 +2298,10 @@ class ManagementApp {
                     this.showToast('Commessa aggiornata con successo!', 'success');
                     const modal = bootstrap.Modal.getInstance(document.getElementById('editCommessaModal'));
                     modal.hide();
-                    await this.loadCommesse();
+                    const commesseResponse = await this.api.getCommesse();
+                    if (commesseResponse.success) {
+                        this.commesse = commesseResponse.data.data || [];
+                    }
                     if (typeof this.renderCommesseTask === 'function') {
                         this.renderCommesseTask();
                     } else if (typeof this.renderCommesse === 'function') {
@@ -2630,90 +2452,65 @@ class ManagementApp {
         const modal = new bootstrap.Modal(document.getElementById('newCommessaModal'));
         modal.show();
     }
-    
     async createNewCommessaWithTask() {
-        try {
-            const submitBtn = document.querySelector('#newCommessaForm button[type="submit"]');
-            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Creazione...';
-            submitBtn.disabled = true;
+    try {
+        const submitBtn = document.querySelector('#newCommessaForm button[type="submit"]');
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Creazione...';
+        submitBtn.disabled = true;
 
-            const commessaData = {
-                Commessa: document.getElementById('newCommessaName').value,
-                Desc_Commessa: document.getElementById('newCommessaDescrizione').value || null,
-                Tipo_Commessa: document.getElementById('newCommessaTipo').value,
-                ID_CLIENTE: document.getElementById('newCommessaCliente').value || null,
-                Commissione: document.getElementById('newCommessaCommissione').value || 0,
-                ID_COLLABORATORE: document.getElementById('newCommessaResponsabile').value || null,
-                Data_Apertura_Commessa: document.getElementById('newCommessaDataInizio').value || null,
-                Stato_Commessa: 'In corso'
-            };
+        const commessaData = {
+            Commessa: document.getElementById('newCommessaName').value,
+            Desc_Commessa: document.getElementById('newCommessaDescrizione').value || null,
+            Tipo_Commessa: document.getElementById('newCommessaTipo').value,
+            ID_CLIENTE: document.getElementById('newCommessaCliente').value || null,
+            Commissione: document.getElementById('newCommessaCommissione').value || 0,
+            ID_COLLABORATORE: document.getElementById('newCommessaResponsabile').value || null,
+            Data_Apertura_Commessa: document.getElementById('newCommessaDataInizio').value || null,
+            Stato_Commessa: 'In corso'
+        };
 
-            commessaData.ID_COMMESSA = this.generateCommessaCode();
+        commessaData.ID_COMMESSA = this.generateCommessaCode();
 
-            if (!commessaData.Commessa.trim()) {
-                throw new Error('Inserisci il nome della commessa');
+        // Validazioni...
+        if (!commessaData.Commessa.trim()) {
+            throw new Error('Inserisci il nome della commessa');
+        }
+        // ... altre validazioni esistenti ...
+
+        console.log('Dati commessa da creare:', commessaData);
+
+        const result = await this.api.createCommessa(commessaData);
+        console.log('Risposta creazione commessa:', result);
+
+        if (result.success) {
+            this.showToast('Commessa creata con successo!', 'success');
+            const modal = bootstrap.Modal.getInstance(document.getElementById('newCommessaModal'));
+            modal.hide();
+            
+            // Ricarica le commesse
+            const commesseResponse = await this.api.getCommesse();
+            if (commesseResponse.success) {
+                this.commesse = commesseResponse.data.data || [];
             }
-            if (!commessaData.Tipo_Commessa) {
-                throw new Error('Seleziona il tipo di commessa');
-            }
-            if (commessaData.Tipo_Commessa === 'Cliente' && !commessaData.ID_CLIENTE) {
-                throw new Error('Seleziona un cliente per le commesse di tipo Cliente');
-            }
-            if (!commessaData.ID_COLLABORATORE) {
-                throw new Error('Seleziona il responsabile della commessa');
-            }
+            
+            this.loadCommesseTaskData();
+            this.populateCommesseTaskFilters();
+        } else {
+            throw new Error(result.message || 'Errore durante la creazione della commessa');
+        }
 
-            console.log('Dati commessa da creare:', commessaData);
-
-            const response = await fetch('API/index.php?resource=commesse&action=create', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(commessaData)
-            });
-
-            const result = await response.json();
-            console.log('Risposta creazione commessa:', result);
-
-            if (result.success) {
-                this.showToast('Commessa creata con successo!', 'success');
-                const modal = bootstrap.Modal.getInstance(document.getElementById('newCommessaModal'));
-                modal.hide();
-                await this.loadCommesse();
-                if (typeof this.renderCommesseTask === 'function') {
-                    this.renderCommesseTask();
-                } else if (typeof this.renderCommesse === 'function') {
-                    this.renderCommesse();
-                } else {
-                    const commesseList = document.getElementById('commesseList');
-                    if (commesseList) {
-                        commesseList.innerHTML = this.commesse.map(c => `<li>${c.Commessa}</li>`).join('');
-                    }
-                }
-                const filterCommessa = document.getElementById('filterCommessa');
-                if (filterCommessa) {
-                    let options = '<option value="">Tutte le commesse</option>';
-                    this.commesse.forEach(c => {
-                        options += `<option value="${c.ID_COMMESSA}">${c.Commessa}</option>`;
-                    });
-                    filterCommessa.innerHTML = options;
-                }
-            } else {
-                throw new Error(result.message || 'Errore durante la creazione della commessa');
-            }
-
-        } catch (error) {
-            console.error('Errore creazione commessa:', error);
-            this.showToast(error.message, 'error');
-        } finally {
-            const submitBtn = document.querySelector('#newCommessaForm button[type="submit"]');
-            if (submitBtn) {
-                submitBtn.innerHTML = '<i class="fas fa-plus me-1"></i>Crea Commessa';
-                submitBtn.disabled = false;
-            }
+    } catch (error) {
+        console.error('Errore creazione commessa:', error);
+        this.showToast(error.message, 'error');
+    } finally {
+        const submitBtn = document.querySelector('#newCommessaForm button[type="submit"]');
+        if (submitBtn) {
+            submitBtn.innerHTML = '<i class="fas fa-plus me-1"></i>Crea Commessa';
+            submitBtn.disabled = false;
         }
     }
+    }
+
 
     generateCommessaCode() {
         const year = new Date().getFullYear();
@@ -2939,7 +2736,8 @@ class ManagementApp {
                 gg_previste: document.getElementById('newTaskGgPreviste').value || null,
                 Valore_gg: document.getElementById('newTaskValoreGg').value || 0,
                 Spese_Comprese: document.getElementById('newTaskSpeseComprese').value,
-                Valore_Spese_std: document.getElementById('newTaskSpeseComprese').value === 'No' ? document.getElementById('newTaskValoreSpese').value || null : null
+                Valore_Spese_std: document.getElementById('newTaskSpeseComprese').value === 'No' ? 
+                    document.getElementById('newTaskValoreSpese').value || null : null
             };
 
             if (document.getElementById('newTaskTipo').value === 'Monitoraggio') {
@@ -2948,37 +2746,24 @@ class ManagementApp {
                 formData.ID_COLLABORATORE = null;
             }
 
-            const apiUrl = 'API/index.php?resource=task&action=create';
-            const payload = { ...formData };
-            console.log('[Nuovo Task] Chiamata API:', apiUrl);
-            console.log('[Nuovo Task] Payload inviato:', payload);
-            const response = await fetch(apiUrl, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(payload)
-            });
-            const responseText = await response.text();
-            console.log('[Nuovo Task] Risposta grezza:', responseText);
-            let result = null;
-            try {
-                result = JSON.parse(responseText);
-            } catch (err) {
-                console.error('Risposta API non valida o vuota:', responseText);
-                this.showToast('Errore API: risposta non valida o vuota', 'error');
-                throw new Error('API response not valid JSON');
-            }
+            console.log('[Nuovo Task] Payload inviato:', formData);
+            
+            const result = await this.api.createTask(formData);
+            console.log('[Nuovo Task] Risposta:', result);
 
             if (result && result.success) {
                 this.showToast('Task creato con successo', 'success');
                 bootstrap.Modal.getInstance(document.getElementById('newTaskModal')).hide();
                 document.getElementById('newTaskForm').reset();
-                if (typeof this.loadTasksForCommessa === 'function') {
-                    this.loadTasksForCommessa(formData.ID_COMMESSA);
+                
+                // Ricarica i task
+                const tasksResponse = await this.api.getTasks({ limit: 100 });
+                if (tasksResponse.success) {
+                    this.tasks = tasksResponse.data.data || [];
                 }
+                
+                this.loadCommesseTaskData();
             } else {
-                console.error('Errore creazione task:', result);
                 throw new Error((result && result.message) || 'Errore creazione task');
             }
         } catch (error) {
@@ -2992,33 +2777,10 @@ class ManagementApp {
             }
         }
     }
+
     
     showToast(message, type = 'info') {
-        const toastContainer = document.getElementById('toastContainer');
-        const toastId = 'toast_' + Date.now();
-        
-        const toastHtml = `
-            <div class="toast" id="${toastId}" role="alert" aria-live="assertive" aria-atomic="true">
-                <div class="toast-header">
-                    <i class="fas fa-${this.getToastIcon(type)} me-2"></i>
-                    <strong class="me-auto">${this.getToastTitle(type)}</strong>
-                    <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
-                </div>
-                <div class="toast-body">
-                    ${message}
-                </div>
-            </div>
-        `;
-        
-        toastContainer.insertAdjacentHTML('beforeend', toastHtml);
-        
-        const toastElement = document.getElementById(toastId);
-        const toast = new bootstrap.Toast(toastElement);
-        toast.show();
-        
-        toastElement.addEventListener('hidden.bs.toast', () => {
-            toastElement.remove();
-        });
+        this.ui.showToast(message, type);
     }
     
     getToastIcon(type) {
