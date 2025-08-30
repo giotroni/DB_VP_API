@@ -1,12 +1,13 @@
 /**
  * @file commesse-task-section.js
  * @description Classe per la gestione della sezione "Commesse & Task".
- * @version 3.1 - Aggiunta modale dettagli task.
+ * @version 3.3 - Aggiunta opzione Seleziona/Deseleziona tutto ai filtri
  */
 class CommesseTaskSection extends BaseSection {
     constructor(appInstance) {
         super('Commesse & Task', appInstance);
         this.commesseConTask = [];
+        this.activeDateFilter = null;
     }
 
     // ========================================================================
@@ -19,93 +20,96 @@ class CommesseTaskSection extends BaseSection {
     }
 
     render() {
-            this.updatePageTitle('Situazione Commesse e Task', 'Visualizza e gestisci commesse e task');
-            this.updateTopbarActions(`
-                <button class="btn btn-vp-primary" data-action="add-commessa">
-                    <i class="fas fa-plus me-2"></i>Nuova Commessa
-                </button>
-            `);
-            const container = this.getContainer();
+        this.updatePageTitle('Situazione Commesse e Task', 'Visualizza e gestisci commesse e task');
+        this.updateTopbarActions(`
+            <button class="btn btn-vp-primary" data-action="add-commessa">
+                <i class="fas fa-plus me-2"></i>Nuova Commessa
+            </button>
+        `);
+        const container = this.getContainer();
 
-            // --- NUOVO: Logica per generare le opzioni dei filtri Anno e Mese ---
-            const currentYear = new Date().getFullYear();
-            let yearOptions = '';
-            for (let y = 2024; y <= currentYear + 1; y++) {
-                yearOptions += `<li><label class="dropdown-item"><input type="checkbox" class="form-check-input me-2" value="${y}">${y}</label></li>`;
-            }
+        const currentYear = new Date().getFullYear();
+        let yearOptions = '';
+        for (let y = 2024; y <= currentYear + 1; y++) {
+            yearOptions += `<li><label class="dropdown-item"><input type="checkbox" class="form-check-input me-2" value="${y}">${y}</label></li>`;
+        }
 
-            const months = ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"];
-            let monthOptions = months.map((month, index) => 
-                `<li><label class="dropdown-item"><input type="checkbox" class="form-check-input me-2" value="${index + 1}">${month}</label></li>`
-            ).join('');
-            // --- FINE BLOCCO NUOVO ---
+        const months = ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"];
+        let monthOptions = months.map((month, index) => 
+            `<li><label class="dropdown-item"><input type="checkbox" class="form-check-input me-2" value="${index + 1}">${month}</label></li>`
+        ).join('');
 
-            container.innerHTML = `
-                <div id="stats-row-container"></div>
-                
-                <div class="search-filters">
-                    <div class="row gy-3">
-                        <div class="col-lg-3 col-md-6"><label class="form-label">Cerca</label><input type="text" class="form-control" id="searchCommesseTask" placeholder="Nome, codice, cliente..."></div>
-                        <div class="col-lg-2 col-md-6"><label class="form-label">Commessa</label><select class="form-select" id="filterCommesse"><option value="">Tutte</option>${this.app.commesse.map(c => `<option value="${c.ID_COMMESSA}">${c.Commessa}</option>`).join('')}</select></div>
-                        <div class="col-lg-2 col-md-6"><label class="form-label">Stato</label><select class="form-select" id="filterStatoCommesse"><option value="">Tutti</option><option value="In corso">In corso</option><option value="Chiusa">Chiusa</option><option value="Sospesa">Sospesa</option></select></div>
-                        
-                        <div class="col-lg-1 col-md-3"><label class="form-label">Anno</label>
-                            <div class="dropdown"><button class="btn btn-outline-secondary dropdown-toggle w-100" type="button" id="filterAnnoBtn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">Tutti</button>
-                                <ul class="dropdown-menu" id="filterAnno" aria-labelledby="filterAnnoBtn">${yearOptions}</ul>
-                            </div>
-                        </div>
-                        <div class="col-lg-2 col-md-3"><label class="form-label">Mese</label>
-                            <div class="dropdown"><button class="btn btn-outline-secondary dropdown-toggle w-100" type="button" id="filterMeseBtn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">Tutti</button>
-                                <ul class="dropdown-menu" id="filterMese" aria-labelledby="filterMeseBtn">${monthOptions}</ul>
-                            </div>
-                        </div>
-                        <div class="col-lg-2 col-md-6"><label class="form-label">&nbsp;</label><div class="d-flex gap-2"><button class="btn btn-vp-primary" data-action="filter" title="Applica Filtri"><i class="fas fa-search"></i></button><button class="btn btn-outline-primary" data-action="toggle-all-commesse" id="toggleAllBtn" title="Espandi/Comprimi tutto"><i class="fas fa-expand-arrows-alt"></i></button></div></div>
-                    </div>
-                </div>
-                <div id="commesseTaskContainer">${this.renderCommesseCards(this.commesseConTask)}</div>
-            `;
+        container.innerHTML = `
+            <div id="stats-row-container"></div>
             
-            this.updateStats(this.commesseConTask);
-            this.bindEvents();
+            <div class="search-filters">
+                <div class="row gy-3">
+                    <div class="col-lg-3 col-md-6"><label class="form-label">Cerca</label><input type="text" class="form-control" id="searchCommesseTask" placeholder="Nome, codice, cliente..."></div>
+                    <div class="col-lg-2 col-md-6"><label class="form-label">Commessa</label><select class="form-select" id="filterCommesse"><option value="">Tutte</option>${this.app.commesse.map(c => `<option value="${c.ID_COMMESSA}">${c.Commessa}</option>`).join('')}</select></div>
+                    <div class="col-lg-2 col-md-6"><label class="form-label">Stato</label><select class="form-select" id="filterStatoCommesse"><option value="">Tutti</option><option value="In corso">In corso</option><option value="Chiusa">Chiusa</option><option value="Sospesa">Sospesa</option></select></div>
+                    
+                    <div class="col-lg-1 col-md-3"><label class="form-label">Anno</label>
+                        <div class="dropdown"><button class="btn btn-outline-secondary dropdown-toggle w-100" type="button" id="filterAnnoBtn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">Tutti</button>
+                            <ul class="dropdown-menu" id="filterAnno" aria-labelledby="filterAnnoBtn">
+                                <li><a class="dropdown-item fw-bold" href="#" data-action="toggle-all-filter" data-target-filter="filterAnno">Seleziona/Deseleziona</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                ${yearOptions}
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="col-lg-2 col-md-3"><label class="form-label">Mese</label>
+                        <div class="dropdown"><button class="btn btn-outline-secondary dropdown-toggle w-100" type="button" id="filterMeseBtn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">Tutti</button>
+                            <ul class="dropdown-menu" id="filterMese" aria-labelledby="filterMeseBtn">
+                                <li><a class="dropdown-item fw-bold" href="#" data-action="toggle-all-filter" data-target-filter="filterMese">Seleziona/Deseleziona</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                ${monthOptions}
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="col-lg-2 col-md-6"><label class="form-label">&nbsp;</label><div class="d-flex gap-2"><button class="btn btn-vp-primary" data-action="filter" title="Applica Filtri"><i class="fas fa-search"></i></button><button class="btn btn-outline-primary" data-action="toggle-all-commesse" id="toggleAllBtn" title="Espandi/Comprimi tutto"><i class="fas fa-expand-arrows-alt"></i></button></div></div>
+                </div>
+            </div>
+            <div id="commesseTaskContainer">${this.renderCommesseCards(this.commesseConTask)}</div>
+        `;
+        
+        this.updateStats(this.commesseConTask);
+        this.bindEvents();
     }
 
     bindEvents() {
-            // Listener per la ricerca testuale (con debounce)
-            const searchInput = document.getElementById('searchCommesseTask');
-            if (searchInput) {
-                let debounceTimeout;
-                searchInput.addEventListener('input', () => {
-                    clearTimeout(debounceTimeout);
-                    debounceTimeout = setTimeout(() => this.filterData(), 300);
-                });
-            }
-            
-            // Listener per i filtri select standard
-            document.getElementById('filterCommesse')?.addEventListener('change', () => this.filterData());
-            document.getElementById('filterStatoCommesse')?.addEventListener('change', () => this.filterData());
+        const searchInput = document.getElementById('searchCommesseTask');
+        if (searchInput) {
+            let debounceTimeout;
+            searchInput.addEventListener('input', () => {
+                clearTimeout(debounceTimeout);
+                debounceTimeout = setTimeout(() => this.filterData(), 300);
+            });
+        }
+        
+        document.getElementById('filterCommesse')?.addEventListener('change', () => this.filterData());
+        document.getElementById('filterStatoCommesse')?.addEventListener('change', () => this.filterData());
 
-            // --- NUOVO: Listener per i filtri multiselezione Anno e Mese ---
-            const setupMultiSelectFilter = (filterId, buttonId) => {
-                const filterContainer = document.getElementById(filterId);
-                const filterButton = document.getElementById(buttonId);
-                if (!filterContainer || !filterButton) return;
+        const setupMultiSelectFilter = (filterId, buttonId) => {
+            const filterContainer = document.getElementById(filterId);
+            const filterButton = document.getElementById(buttonId);
+            if (!filterContainer || !filterButton) return;
 
-                filterContainer.addEventListener('change', () => {
-                    const checked = filterContainer.querySelectorAll('input:checked');
-                    if (checked.length === 0) {
-                        filterButton.textContent = 'Tutti';
-                    } else if (checked.length === 1) {
-                        filterButton.textContent = checked[0].parentElement.textContent.trim();
-                    } else {
-                        filterButton.textContent = `${checked.length} selezionati`;
-                    }
-                    this.filterData();
-                });
-            };
+            filterContainer.addEventListener('change', () => {
+                const checked = filterContainer.querySelectorAll('input:checked');
+                if (checked.length === 0) {
+                    filterButton.textContent = 'Tutti';
+                } else if (checked.length === 1) {
+                    filterButton.textContent = checked[0].parentElement.textContent.trim();
+                } else {
+                    filterButton.textContent = `${checked.length} selezionati`;
+                }
+                this.filterData();
+            });
+        };
 
-            setupMultiSelectFilter('filterAnno', 'filterAnnoBtn');
-            setupMultiSelectFilter('filterMese', 'filterMeseBtn');
-            // --- FINE BLOCCO NUOVO ---
+        setupMultiSelectFilter('filterAnno', 'filterAnnoBtn');
+        setupMultiSelectFilter('filterMese', 'filterMeseBtn');
     }
 
     handleAction(action, id, type, targetElement) {
@@ -122,6 +126,11 @@ class CommesseTaskSection extends BaseSection {
             case 'view-giornate': this.showGiornateModal(id); break;
             case 'filter': this.filterData(); break;
             case 'toggle-all-commesse': this.toggleAllCommesse(); break;
+            // NUOVO: Gestione del click per selezionare/deselezionare tutto
+            case 'toggle-all-filter':
+                const targetId = targetElement.dataset.targetFilter;
+                this.toggleAllCheckboxes(targetId);
+                break;
             default: console.warn(`Azione non gestita: ${action}`);
         }
     }
@@ -137,57 +146,41 @@ class CommesseTaskSection extends BaseSection {
     }
 
     createCommessaCard(commessa) {
-            const totalTasks = commessa.tasks.length;
-            const activeTasks = commessa.tasks.filter(t => t.Stato_Task === 'In corso').length;
-            
-            const totalGiornate = commessa.tasks.reduce((sum, task) => sum + (parseFloat(task.gg_effettuate) || 0), 0);
-            
-            const sommaValoreCampo = commessa.tasks.reduce((sum, task) => {
-                if (task.Tipo === 'Campo') {
-                    return sum + (parseFloat(task.valore_gg_maturato) || 0);
-                }
-                return sum;
-            }, 0);
+        const totalTasks = commessa.tasks.length;
+        const activeTasks = commessa.tasks.filter(t => t.Stato_Task === 'In corso').length;
+        const totalGiornate = commessa.tasks.reduce((sum, task) => sum + (parseFloat(task.gg_effettuate) || 0), 0);
+        const sommaValoreCampo = commessa.tasks.reduce((sum, task) => (task.Tipo === 'Campo' ? sum + (parseFloat(task.valore_gg_maturato) || 0) : sum), 0);
+        const sommaValoreMonitoraggio = commessa.tasks.reduce((sum, task) => (task.Tipo === 'Monitoraggio' && parseFloat(task.Valore_gg) > 0 ? sum + (sommaValoreCampo * (parseFloat(task.Valore_gg) || 0)) : sum), 0);
+        const valoreComplessivoLavori = sommaValoreCampo + sommaValoreMonitoraggio;
+        const valoreComplessivoSpese = commessa.tasks.reduce((sum, task) => sum + (parseFloat(task.valore_spese_maturato) || 0), 0);
+        const valoreTotale = valoreComplessivoLavori + valoreComplessivoSpese;
 
-            const sommaValoreMonitoraggio = commessa.tasks.reduce((sum, task) => {
-                if (task.Tipo === 'Monitoraggio' && parseFloat(task.Valore_gg) > 0) {
-                    return sum + (sommaValoreCampo * (parseFloat(task.Valore_gg) || 0));
-                }
-                return sum;
-            }, 0);
-            
-            const valoreComplessivoLavori = sommaValoreCampo + sommaValoreMonitoraggio;
-            const valoreComplessivoSpese = commessa.tasks.reduce((sum, task) => sum + (parseFloat(task.valore_spese_maturato) || 0), 0);
-            
-            // NUOVO: Calcolo del valore totale per il badge
-            const valoreTotale = valoreComplessivoLavori + valoreComplessivoSpese;
-
-            return `
-                <div class="management-card mb-4">
-                    <div class="management-card-header" data-action="toggle-commessa" data-id="${commessa.ID_COMMESSA}">
-                        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
-                            <h5 class="management-card-title mb-0 me-2"><i class="fas fa-briefcase me-2"></i>${commessa.Commessa}</h5>
-                            <div class="d-flex align-items-center gap-2">
-                                <span class="badge bg-dark" title="Valore TOTALE">${this.app.utils.formatCurrency(valoreTotale)}</span>
-                                <span class="badge bg-warning text-dark" title="Valore Lavori">${this.app.utils.formatCurrency(valoreComplessivoLavori)}</span>
-                                <span class="badge bg-danger" title="Valore Spese">${this.app.utils.formatCurrency(valoreComplessivoSpese)}</span>
-                                <span class="badge bg-primary">${totalTasks} Task</span>
-                                <span class="badge bg-success">${totalGiornate.toFixed(1)} Giorni</span>
-                                <button class="btn btn-sm btn-outline-light" data-action="edit-commessa" data-id="${commessa.ID_COMMESSA}" title="Modifica Commessa"><i class="fas fa-pencil-alt"></i></button>
-                                <button class="btn btn-vp-primary btn-sm" data-action="add-task" data-id="${commessa.ID_COMMESSA}" title="Aggiungi nuovo task"><i class="fas fa-plus me-1"></i>Nuovo Task</button>
-                                <button class="commessa-toggle-btn" id="toggleBtn-${commessa.ID_COMMESSA}"><i class="fas fa-chevron-down"></i></button>
-                            </div>
-                        </div>
-                        <div class="mt-2 text-light small">
-                            <i class="fas fa-building me-1"></i> ${commessa.Tipo_Commessa === 'Interna' ? 'Interna' : `Cliente: ${commessa.cliente_nome}`} |
-                            <i class="fas fa-user me-1"></i> Responsabile: ${commessa.responsabile_nome} |
-                            <i class="fas fa-tasks me-1"></i> Task attivi: ${activeTasks}
+        return `
+            <div class="management-card mb-4">
+                <div class="management-card-header" data-action="toggle-commessa" data-id="${commessa.ID_COMMESSA}">
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                        <h5 class="management-card-title mb-0 me-2"><i class="fas fa-briefcase me-2"></i>${commessa.Commessa}</h5>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge bg-dark" title="Valore TOTALE">${this.app.utils.formatCurrency(valoreTotale)}</span>
+                            <span class="badge bg-warning text-dark" title="Valore Lavori">${this.app.utils.formatCurrency(valoreComplessivoLavori)}</span>
+                            <span class="badge bg-danger" title="Valore Spese">${this.app.utils.formatCurrency(valoreComplessivoSpese)}</span>
+                            <span class="badge bg-primary">${totalTasks} Task</span>
+                            <span class="badge bg-success">${totalGiornate.toFixed(1)} Giorni</span>
+                            <button class="btn btn-sm btn-outline-light" data-action="edit-commessa" data-id="${commessa.ID_COMMESSA}" title="Modifica Commessa"><i class="fas fa-pencil-alt"></i></button>
+                            <button class="btn btn-vp-primary btn-sm" data-action="add-task" data-id="${commessa.ID_COMMESSA}" title="Aggiungi nuovo task"><i class="fas fa-plus me-1"></i>Nuovo Task</button>
+                            <button class="commessa-toggle-btn" id="toggleBtn-${commessa.ID_COMMESSA}"><i class="fas fa-chevron-down"></i></button>
                         </div>
                     </div>
-                    <div class="collapse" id="commessa-${commessa.ID_COMMESSA}">
-                        <div class="management-card-body"><div class="row">${commessa.tasks.length > 0 ? commessa.tasks.map(task => this.createTaskCard(task, commessa)).join('') : '<p class="text-muted">Nessun task associato a questa commessa.</p>'}</div></div>
+                    <div class="mt-2 text-light small">
+                        <i class="fas fa-building me-1"></i> ${commessa.Tipo_Commessa === 'Interna' ? 'Interna' : `Cliente: ${commessa.cliente_nome}`} |
+                        <i class="fas fa-user me-1"></i> Responsabile: ${commessa.responsabile_nome} |
+                        <i class="fas fa-tasks me-1"></i> Task attivi: ${activeTasks}
                     </div>
-                </div>`;
+                </div>
+                <div class="collapse" id="commessa-${commessa.ID_COMMESSA}">
+                    <div class="management-card-body"><div class="row">${commessa.tasks.length > 0 ? commessa.tasks.map(task => this.createTaskCard(task, commessa)).join('') : '<p class="text-muted">Nessun task associato a questa commessa.</p>'}</div></div>
+                </div>
+            </div>`;
     }
     
     createTaskCard(task, commessa) {
@@ -245,6 +238,28 @@ class CommesseTaskSection extends BaseSection {
     // SEZIONE: LOGICA DI INTERAZIONE E FILTRI
     // ========================================================================
     
+    /**
+     * NUOVO: Metodo per gestire la selezione/deselezione di tutte le checkbox in un filtro.
+     * @param {string} targetId L'ID del contenitore (ul) del filtro.
+     */
+    toggleAllCheckboxes(targetId) {
+        const container = document.getElementById(targetId);
+        if (!container) return;
+
+        const checkboxes = container.querySelectorAll('li label input[type="checkbox"]');
+        if (checkboxes.length === 0) return;
+
+        const allAreChecked = Array.from(checkboxes).every(cb => cb.checked);
+        const newState = !allAreChecked;
+
+        checkboxes.forEach(cb => {
+            cb.checked = newState;
+        });
+
+        // Simula un evento 'change' per attivare l'aggiornamento dell'interfaccia e dei dati
+        container.dispatchEvent(new Event('change'));
+    }
+
     toggleCommessa(commessaId, forceState = null) {
         const collapseElement = document.getElementById(`commessa-${commessaId}`);
         const toggleBtn = document.getElementById(`toggleBtn-${commessaId}`);
@@ -283,7 +298,6 @@ class CommesseTaskSection extends BaseSection {
     }
 
     filterData() {
-        // 1. Raccogli i valori di tutti i filtri
         const searchText = document.getElementById('searchCommesseTask')?.value.toLowerCase() || '';
         const selectedCommessa = document.getElementById('filterCommesse')?.value || '';
         const selectedStato = document.getElementById('filterStatoCommesse')?.value || '';
@@ -295,7 +309,6 @@ class CommesseTaskSection extends BaseSection {
         const allData = this.groupTasksByCommessa();
         let filteredData = allData;
 
-        // 2. Applica filtri standard
         if (searchText || selectedCommessa || selectedStato) {
             filteredData = allData.filter(commessa => {
                 const matchCommessaId = !selectedCommessa || commessa.ID_COMMESSA === selectedCommessa;
@@ -308,7 +321,6 @@ class CommesseTaskSection extends BaseSection {
             });
         }
 
-        // 3. Se sono attivi filtri di data, ricalcola i valori
         if (this.activeDateFilter) {
             const finalData = [];
             filteredData.forEach(commessa => {
@@ -330,7 +342,6 @@ class CommesseTaskSection extends BaseSection {
 
                         activeTasksInPeriod.push({
                             ...task,
-                            // --- MODIFICA CHIAVE: Sovrascrivi l'array delle giornate con quello filtrato ---
                             giornate: giornateNelPeriodo,
                             gg_effettuate,
                             valore_gg_maturato,
@@ -352,10 +363,11 @@ class CommesseTaskSection extends BaseSection {
             filteredData = finalData;
         }
 
-        // 4. Renderizza il risultato e aggiorna le statistiche
         document.getElementById('commesseTaskContainer').innerHTML = this.renderCommesseCards(filteredData);
         this.updateStats(filteredData);
     }
+    
+
 
     // ========================================================================
     // SEZIONE: GESTIONE MODALI
