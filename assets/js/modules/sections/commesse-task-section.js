@@ -19,43 +19,93 @@ class CommesseTaskSection extends BaseSection {
     }
 
     render() {
-        this.updatePageTitle('Situazione Commesse e Task', 'Visualizza e gestisci commesse e task');
-        this.updateTopbarActions(`
-            <button class="btn btn-vp-primary" data-action="add-commessa">
-                <i class="fas fa-plus me-2"></i>Nuova Commessa
-            </button>
-        `);
-        const container = this.getContainer();
+            this.updatePageTitle('Situazione Commesse e Task', 'Visualizza e gestisci commesse e task');
+            this.updateTopbarActions(`
+                <button class="btn btn-vp-primary" data-action="add-commessa">
+                    <i class="fas fa-plus me-2"></i>Nuova Commessa
+                </button>
+            `);
+            const container = this.getContainer();
 
-        container.innerHTML = `
-            <div id="stats-row-container"></div>
-            
-            <div class="search-filters">
-                <div class="row">
-                    <div class="col-md-4"><label class="form-label">Cerca commessa/task</label><input type="text" class="form-control" id="searchCommesseTask" placeholder="Nome, codice, cliente..."></div>
-                    <div class="col-md-3"><label class="form-label">Commessa</label><select class="form-select" id="filterCommesse"><option value="">Tutte le commesse</option>${this.app.commesse.map(c => `<option value="${c.ID_COMMESSA}">${c.Commessa}</option>`).join('')}</select></div>
-                    <div class="col-md-3"><label class="form-label">Stato Commessa</label><select class="form-select" id="filterStatoCommesse"><option value="">Tutti gli stati</option><option value="In corso">In corso</option><option value="Chiusa">Chiusa</option><option value="Sospesa">Sospesa</option></select></div>
-                    <div class="col-md-2"><label class="form-label">&nbsp;</label><div class="d-flex gap-2"><button class="btn btn-vp-primary" data-action="filter" title="Applica Filtri"><i class="fas fa-search"></i></button><button class="btn btn-outline-primary" data-action="toggle-all-commesse" id="toggleAllBtn" title="Espandi/Comprimi tutto"><i class="fas fa-expand-arrows-alt"></i></button></div></div>
+            // --- NUOVO: Logica per generare le opzioni dei filtri Anno e Mese ---
+            const currentYear = new Date().getFullYear();
+            let yearOptions = '';
+            for (let y = 2024; y <= currentYear + 1; y++) {
+                yearOptions += `<li><label class="dropdown-item"><input type="checkbox" class="form-check-input me-2" value="${y}">${y}</label></li>`;
+            }
+
+            const months = ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"];
+            let monthOptions = months.map((month, index) => 
+                `<li><label class="dropdown-item"><input type="checkbox" class="form-check-input me-2" value="${index + 1}">${month}</label></li>`
+            ).join('');
+            // --- FINE BLOCCO NUOVO ---
+
+            container.innerHTML = `
+                <div id="stats-row-container"></div>
+                
+                <div class="search-filters">
+                    <div class="row gy-3">
+                        <div class="col-lg-3 col-md-6"><label class="form-label">Cerca</label><input type="text" class="form-control" id="searchCommesseTask" placeholder="Nome, codice, cliente..."></div>
+                        <div class="col-lg-2 col-md-6"><label class="form-label">Commessa</label><select class="form-select" id="filterCommesse"><option value="">Tutte</option>${this.app.commesse.map(c => `<option value="${c.ID_COMMESSA}">${c.Commessa}</option>`).join('')}</select></div>
+                        <div class="col-lg-2 col-md-6"><label class="form-label">Stato</label><select class="form-select" id="filterStatoCommesse"><option value="">Tutti</option><option value="In corso">In corso</option><option value="Chiusa">Chiusa</option><option value="Sospesa">Sospesa</option></select></div>
+                        
+                        <div class="col-lg-1 col-md-3"><label class="form-label">Anno</label>
+                            <div class="dropdown"><button class="btn btn-outline-secondary dropdown-toggle w-100" type="button" id="filterAnnoBtn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">Tutti</button>
+                                <ul class="dropdown-menu" id="filterAnno" aria-labelledby="filterAnnoBtn">${yearOptions}</ul>
+                            </div>
+                        </div>
+                        <div class="col-lg-2 col-md-3"><label class="form-label">Mese</label>
+                            <div class="dropdown"><button class="btn btn-outline-secondary dropdown-toggle w-100" type="button" id="filterMeseBtn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">Tutti</button>
+                                <ul class="dropdown-menu" id="filterMese" aria-labelledby="filterMeseBtn">${monthOptions}</ul>
+                            </div>
+                        </div>
+                        <div class="col-lg-2 col-md-6"><label class="form-label">&nbsp;</label><div class="d-flex gap-2"><button class="btn btn-vp-primary" data-action="filter" title="Applica Filtri"><i class="fas fa-search"></i></button><button class="btn btn-outline-primary" data-action="toggle-all-commesse" id="toggleAllBtn" title="Espandi/Comprimi tutto"><i class="fas fa-expand-arrows-alt"></i></button></div></div>
+                    </div>
                 </div>
-            </div>
-            <div id="commesseTaskContainer">${this.renderCommesseCards(this.commesseConTask)}</div>
-        `;
-        
-        this.updateStats(this.commesseConTask);
-        this.bindEvents();
+                <div id="commesseTaskContainer">${this.renderCommesseCards(this.commesseConTask)}</div>
+            `;
+            
+            this.updateStats(this.commesseConTask);
+            this.bindEvents();
     }
 
     bindEvents() {
-        const searchInput = document.getElementById('searchCommesseTask');
-        if (searchInput) {
-            let debounceTimeout;
-            searchInput.addEventListener('input', () => {
-                clearTimeout(debounceTimeout);
-                debounceTimeout = setTimeout(() => this.filterData(), 300);
-            });
-        }
-        document.getElementById('filterCommesse')?.addEventListener('change', () => this.filterData());
-        document.getElementById('filterStatoCommesse')?.addEventListener('change', () => this.filterData());
+            // Listener per la ricerca testuale (con debounce)
+            const searchInput = document.getElementById('searchCommesseTask');
+            if (searchInput) {
+                let debounceTimeout;
+                searchInput.addEventListener('input', () => {
+                    clearTimeout(debounceTimeout);
+                    debounceTimeout = setTimeout(() => this.filterData(), 300);
+                });
+            }
+            
+            // Listener per i filtri select standard
+            document.getElementById('filterCommesse')?.addEventListener('change', () => this.filterData());
+            document.getElementById('filterStatoCommesse')?.addEventListener('change', () => this.filterData());
+
+            // --- NUOVO: Listener per i filtri multiselezione Anno e Mese ---
+            const setupMultiSelectFilter = (filterId, buttonId) => {
+                const filterContainer = document.getElementById(filterId);
+                const filterButton = document.getElementById(buttonId);
+                if (!filterContainer || !filterButton) return;
+
+                filterContainer.addEventListener('change', () => {
+                    const checked = filterContainer.querySelectorAll('input:checked');
+                    if (checked.length === 0) {
+                        filterButton.textContent = 'Tutti';
+                    } else if (checked.length === 1) {
+                        filterButton.textContent = checked[0].parentElement.textContent.trim();
+                    } else {
+                        filterButton.textContent = `${checked.length} selezionati`;
+                    }
+                    this.filterData();
+                });
+            };
+
+            setupMultiSelectFilter('filterAnno', 'filterAnnoBtn');
+            setupMultiSelectFilter('filterMese', 'filterMeseBtn');
+            // --- FINE BLOCCO NUOVO ---
     }
 
     handleAction(action, id, type, targetElement) {
@@ -233,21 +283,76 @@ class CommesseTaskSection extends BaseSection {
     }
 
     filterData() {
+        // 1. Raccogli i valori di tutti i filtri
         const searchText = document.getElementById('searchCommesseTask')?.value.toLowerCase() || '';
         const selectedCommessa = document.getElementById('filterCommesse')?.value || '';
         const selectedStato = document.getElementById('filterStatoCommesse')?.value || '';
+        const selectedYears = Array.from(document.querySelectorAll('#filterAnno input:checked')).map(el => parseInt(el.value));
+        const selectedMonths = Array.from(document.querySelectorAll('#filterMese input:checked')).map(el => parseInt(el.value));
+
+        this.activeDateFilter = (selectedYears.length > 0 || selectedMonths.length > 0) ? { years: selectedYears, months: selectedMonths } : null;
+
         const allData = this.groupTasksByCommessa();
+        let filteredData = allData;
 
-        const filteredData = allData.filter(commessa => {
-            const matchCommessaId = !selectedCommessa || commessa.ID_COMMESSA === selectedCommessa;
-            const matchStato = !selectedStato || commessa.Stato_Commessa === selectedStato;
-            const matchSearch = !searchText ||
-                (commessa.Commessa || '').toLowerCase().includes(searchText) ||
-                (commessa.cliente_nome || '').toLowerCase().includes(searchText) ||
-                commessa.tasks.some(task => (task.Task || '').toLowerCase().includes(searchText));
-            return matchCommessaId && matchStato && matchSearch;
-        });
+        // 2. Applica filtri standard
+        if (searchText || selectedCommessa || selectedStato) {
+            filteredData = allData.filter(commessa => {
+                const matchCommessaId = !selectedCommessa || commessa.ID_COMMESSA === selectedCommessa;
+                const matchStato = !selectedStato || commessa.Stato_Commessa === selectedStato;
+                const matchSearch = !searchText ||
+                    (commessa.Commessa || '').toLowerCase().includes(searchText) ||
+                    (commessa.cliente_nome || '').toLowerCase().includes(searchText) ||
+                    commessa.tasks.some(task => (task.Task || '').toLowerCase().includes(searchText));
+                return matchCommessaId && matchStato && matchSearch;
+            });
+        }
 
+        // 3. Se sono attivi filtri di data, ricalcola i valori
+        if (this.activeDateFilter) {
+            const finalData = [];
+            filteredData.forEach(commessa => {
+                const activeTasksInPeriod = [];
+                
+                commessa.tasks.forEach(task => {
+                    const giornateNelPeriodo = task.giornate.filter(g => {
+                        const dataGiornata = new Date(g.Data);
+                        const yearMatch = selectedYears.length === 0 || selectedYears.includes(dataGiornata.getFullYear());
+                        const monthMatch = selectedMonths.length === 0 || selectedMonths.includes(dataGiornata.getMonth() + 1);
+                        return yearMatch && monthMatch;
+                    });
+
+                    if (giornateNelPeriodo.length > 0) {
+                        const giornateCampoNelPeriodo = giornateNelPeriodo.filter(g => g.Tipo === 'Campo');
+                        const gg_effettuate = giornateNelPeriodo.reduce((sum, g) => sum + (parseFloat(g.gg) || 0), 0);
+                        const valore_gg_maturato = giornateCampoNelPeriodo.reduce((sum, g) => sum + (parseFloat(g.valore_calcolato) || 0), 0);
+                        const valore_spese_maturato = giornateCampoNelPeriodo.reduce((sum, g) => sum + (parseFloat(g.spese_totali) || 0), 0);
+
+                        activeTasksInPeriod.push({
+                            ...task,
+                            // --- MODIFICA CHIAVE: Sovrascrivi l'array delle giornate con quello filtrato ---
+                            giornate: giornateNelPeriodo,
+                            gg_effettuate,
+                            valore_gg_maturato,
+                            valore_spese_maturato,
+                        });
+                    }
+                });
+
+                if (activeTasksInPeriod.length > 0) {
+                    const tasksToShow = [...activeTasksInPeriod];
+                    commessa.tasks.forEach(task => {
+                        if (task.Tipo === 'Monitoraggio' && !tasksToShow.some(t => t.ID_TASK === task.ID_TASK)) {
+                            tasksToShow.push(task);
+                        }
+                    });
+                    finalData.push({ ...commessa, tasks: tasksToShow });
+                }
+            });
+            filteredData = finalData;
+        }
+
+        // 4. Renderizza il risultato e aggiorna le statistiche
         document.getElementById('commesseTaskContainer').innerHTML = this.renderCommesseCards(filteredData);
         this.updateStats(filteredData);
     }
@@ -340,19 +445,36 @@ class CommesseTaskSection extends BaseSection {
      * MODIFICATO: Mostra i dettagli del task con un layout personalizzato in base al tipo.
      * @param {string} taskId L'ID del task da visualizzare.
      */
+
     showTaskDetailsModal(taskId) {
-            const task = this.app.tasks.find(t => t.ID_TASK === taskId);
+            // MODIFICATO: Cerca il task nella struttura dati corretta e completa.
+            const task = this.commesseConTask.flatMap(c => c.tasks).find(t => t.ID_TASK === taskId);
+            console.log('Dettagli Task:', task);
             if (!task) {
                 this.ui.showToast('Task non trovato.', 'error');
                 return;
             }
 
-            const commessa = this.commesseConTask.find(c => c.ID_COMMESSA === task.ID_COMMESSA);
+            // Se è attivo un filtro data, usa le giornate filtrate per i calcoli, altrimenti tutte
+            let giornateDaConsiderare = task.giornate;
+            if (this.activeDateFilter) {
+                giornateDaConsiderare = task.giornate.filter(g => {
+                    const dataGiornata = new Date(g.Data);
+                    const yearMatch = this.activeDateFilter.years.length === 0 || this.activeDateFilter.years.includes(dataGiornata.getFullYear());
+                    const monthMatch = this.activeDateFilter.months.length === 0 || this.activeDateFilter.months.includes(dataGiornata.getMonth() + 1);
+                    return yearMatch && monthMatch;
+                });
+            }
             
+            // Ricalcola i totali in base alle giornate considerate
+            const gg_effettuate = giornateDaConsiderare.reduce((sum, g) => sum + (parseFloat(g.gg) || 0), 0);
+            const valore_gg_maturato = giornateDaConsiderare.reduce((sum, g) => sum + (parseFloat(g.valore_calcolato) || 0), 0);
+            const valore_spese_maturato = giornateDaConsiderare.reduce((sum, g) => sum + (parseFloat(g.spese_totali) || 0), 0);
+
+            const commessa = this.commesseConTask.find(c => c.ID_COMMESSA === task.ID_COMMESSA);
             let modalBody = '';
             const modalTitle = `Dettagli Task: ${task.Task}`;
 
-            // Blocco HTML di base (comune a tutti i tipi, include Commessa e Cliente)
             const baseDetails = `
                 <dl class="row">
                     <dt class="col-sm-4">ID Task</dt><dd class="col-sm-8">${task.ID_TASK}</dd>
@@ -363,7 +485,6 @@ class CommesseTaskSection extends BaseSection {
                 </dl>
             `;
 
-            // Logica di visualizzazione basata sul tipo di task
             switch (task.Tipo) {
                 case 'Monitoraggio': {
                     const tariffaPercentuale = (parseFloat(task.Valore_gg) * 100).toFixed(0) + '%';
@@ -377,60 +498,18 @@ class CommesseTaskSection extends BaseSection {
                         }, 0);
                         valoreCalcolato = sommaValoreCampo * (parseFloat(task.Valore_gg) || 0);
                     }
-
-                    modalBody = `
-                        ${baseDetails}
-                        <hr>
-                        <h5>Dettagli Economici</h5>
-                        <dl class="row">
-                            <dt class="col-sm-4">Tariffa Monitoraggio</dt><dd class="col-sm-8">${tariffaPercentuale}</dd>
-                            <dt class="col-sm-4">Valore Monitoraggio</dt><dd class="col-sm-8"><strong>${this.app.utils.formatCurrency(valoreCalcolato)}</strong></dd>
-                        </dl>
-                    `;
+                    modalBody = `${baseDetails}<hr><h5>Dettagli Economici</h5><dl class="row"><dt class="col-sm-4">Tariffa Monitoraggio</dt><dd class="col-sm-8">${tariffaPercentuale}</dd><dt class="col-sm-4">Valore Monitoraggio</dt><dd class="col-sm-8"><strong>${this.app.utils.formatCurrency(valoreCalcolato)}</strong></dd></dl>`;
                     break;
                 }
-
                 case 'Campo': {
                     const showSpeseStd = task.Spese_Comprese === 'No' && parseFloat(task.Valore_Spese_std) > 0;
-                    
-                    modalBody = `
-                        ${baseDetails}
-                        <hr>
-                        <h5>Dettagli Economici</h5>
-                        <dl class="row">
-                            <dt class="col-sm-4">Valore Giorno (€)</dt><dd class="col-sm-8">${this.app.utils.formatCurrency(task.Valore_gg)}</dd>
-                            <dt class="col-sm-4">Valore Maturato (€)</dt><dd class="col-sm-8"><strong>${this.app.utils.formatCurrency(task.valore_gg_maturato)}</strong></dd>
-                            <dt class="col-sm-4">Spese Comprese</dt><dd class="col-sm-8">${task.Spese_Comprese}</dd>
-                            ${showSpeseStd ? `
-                                <dt class="col-sm-4">Valore Spese Standard (€)</dt><dd class="col-sm-8">${this.app.utils.formatCurrency(task.Valore_Spese_std)}</dd>
-                            ` : ''}
-                            <dt class="col-sm-4">Spese Maturate (€)</dt><dd class="col-sm-8"><strong>${this.app.utils.formatCurrency(task.valore_spese_maturato)}</strong></dd>
-                        </dl>
-                        <hr>
-                        <h5>Dettagli Giornate</h5>
-                        <dl class="row">
-                            <dt class="col-sm-4">Giorni Previsti</dt><dd class="col-sm-8">${task.gg_previste || 'Non specificato'}</dd>
-                            <dt class="col-sm-4">Giorni Effettuati</dt><dd class="col-sm-8">${task.gg_effettuate || 0}</dd>
-                        </dl>
-                    `;
+                    modalBody = `${baseDetails}<hr><h5>Dettagli Economici</h5><dl class="row"><dt class="col-sm-4">Valore Giorno (€)</dt><dd class="col-sm-8">${this.app.utils.formatCurrency(task.Valore_gg)}</dd><dt class="col-sm-4">Valore Maturato (€)</dt><dd class="col-sm-8"><strong>${this.app.utils.formatCurrency(valore_gg_maturato)}</strong></dd><dt class="col-sm-4">Spese Comprese</dt><dd class="col-sm-8">${task.Spese_Comprese}</dd>${showSpeseStd ? `<dt class="col-sm-4">Valore Spese Standard (€)</dt><dd class="col-sm-8">${this.app.utils.formatCurrency(task.Valore_Spese_std)}</dd>` : ''}<dt class="col-sm-4">Spese Maturate (€)</dt><dd class="col-sm-8"><strong>${this.app.utils.formatCurrency(valore_spese_maturato)}</strong></dd></dl><hr><h5>Dettagli Giornate</h5><dl class="row"><dt class="col-sm-4">Giorni Previsti</dt><dd class="col-sm-8">${task.gg_previste || 'Non specificato'}</dd><dt class="col-sm-4">Giorni Effettuati</dt><dd class="col-sm-8">${gg_effettuate.toFixed(1)}</dd></dl>`;
                     break;
                 }
-
-                case 'Promo':
-                case 'Sviluppo':
-                case 'Formazione': {
-                    modalBody = `
-                        ${baseDetails}
-                        <hr>
-                        <h5>Dettagli Giornate</h5>
-                        <dl class="row">
-                            <dt class="col-sm-4">Giorni Previsti</dt><dd class="col-sm-8">${task.gg_previste || 'Non specificato'}</dd>
-                            <dt class="col-sm-4">Giorni Effettuati</dt><dd class="col-sm-8">${task.gg_effettuate || 0}</dd>
-                        </dl>
-                    `;
+                case 'Promo': case 'Sviluppo': case 'Formazione': {
+                    modalBody = `${baseDetails}<hr><h5>Dettagli Giornate</h5><dl class="row"><dt class="col-sm-4">Giorni Previsti</dt><dd class="col-sm-8">${task.gg_previste || 'Non specificato'}</dd><dt class="col-sm-4">Giorni Effettuati</dt><dd class="col-sm-8">${gg_effettuate.toFixed(1)}</dd></dl>`;
                     break;
                 }
-
                 default:
                     modalBody = `${baseDetails}`;
                     break;
@@ -442,43 +521,54 @@ class CommesseTaskSection extends BaseSection {
     }
 
     showGiornateModal(taskId) {
-        const task = this.app.tasks.find(t => t.ID_TASK === taskId);
-        if (!task) {
-            this.ui.showToast('Task non trovato.', 'error');
-            return;
-        }
+            // MODIFICATO: Cerca il task nella struttura dati corretta e completa.
+            const task = this.commesseConTask.flatMap(c => c.tasks).find(t => t.ID_TASK === taskId);
+            
+            if (!task) {
+                this.ui.showToast('Task non trovato.', 'error');
+                return;
+            }
 
-        const giornateTask = this.app.giornate.filter(g => String(g.ID_TASK) === String(taskId));
-        const modalTitle = `<i class="fas fa-calendar-day me-2"></i>Giornate - ${task.Task}`;
+            let giornateTask = task.giornate;
 
-        const modalBody = giornateTask.length === 0
-            ? '<p class="text-muted">Nessuna giornata registrata per questo task.</p>'
-            : `<div class="table-responsive">
-                <table class="table table-sm table-hover">
-                    <thead><tr><th>Data</th><th>Collaboratore</th><th>gg</th><th>Tipo</th><th>Note</th><th>Valore (€)</th><th>Valore Spese (€)</th></tr></thead>
-                    <tbody>
-                        ${giornateTask.map(g => {
-                            const collab = this.app.collaboratori.find(c => c.ID_COLLABORATORE === g.ID_COLLABORATORE);
-                            
-                            const valoreGiornata = this.app.utils.formatCurrency(g.valore_calcolato || 0);
-                            const valoreSpese = this.app.utils.formatCurrency(g.spese_totali || 0);
+            // Applica i filtri di data attivi alla lista delle giornate
+            if (this.activeDateFilter) {
+                giornateTask = giornateTask.filter(g => {
+                    const dataGiornata = new Date(g.Data);
+                    const yearMatch = this.activeDateFilter.years.length === 0 || this.activeDateFilter.years.includes(dataGiornata.getFullYear());
+                    const monthMatch = this.activeDateFilter.months.length === 0 || this.activeDateFilter.months.includes(dataGiornata.getMonth() + 1);
+                    return yearMatch && monthMatch;
+                });
+            }
 
-                            return `<tr>
-                                <td>${new Date(g.Data).toLocaleDateString('it-IT')}</td>
-                                <td>${collab?.Collaboratore || 'N/A'}</td>
-                                <td><span class="badge bg-primary">${g.gg}g</span></td>
-                                <td>${g.Tipo}</td>
-                                <td>${g.Note || '-'}</td>
-                                <td class="text-end fw-bold">${valoreGiornata}</td>
-                                <td class="text-end fw-bold text-danger">${valoreSpese}</td>
-                            </tr>`;
-                        }).join('')}
-                    </tbody>
-                </table>
-            </div>`;
+            const modalTitle = `<i class="fas fa-calendar-day me-2"></i>Giornate - ${task.Task}`;
 
-        const modalActions = [{ html: '<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Chiudi</button>' }];
-        this.ui.createModal(`giornateModal_${taskId}`, modalTitle, modalBody, modalActions, { size: 'modal-xl' });
+            const modalBody = giornateTask.length === 0
+                ? '<p class="text-muted">Nessuna giornata registrata per questo task nel periodo selezionato.</p>'
+                : `<div class="table-responsive">
+                    <table class="table table-sm table-hover">
+                        <thead><tr><th>Data</th><th>Collaboratore</th><th>gg</th><th>Tipo</th><th>Note</th><th>Valore (€)</th><th>Valore Spese (€)</th></tr></thead>
+                        <tbody>
+                            ${giornateTask.map(g => {
+                                const collab = this.app.collaboratori.find(c => c.ID_COLLABORATORE === g.ID_COLLABORATORE);
+                                const valoreGiornata = this.app.utils.formatCurrency(g.valore_calcolato || 0);
+                                const valoreSpese = this.app.utils.formatCurrency(g.spese_totali || 0);
+                                return `<tr>
+                                    <td>${new Date(g.Data).toLocaleDateString('it-IT')}</td>
+                                    <td>${collab?.Collaboratore || 'N/A'}</td>
+                                    <td><span class="badge bg-primary">${g.gg}g</span></td>
+                                    <td>${g.Tipo}</td>
+                                    <td>${g.Note || '-'}</td>
+                                    <td class="text-end fw-bold">${valoreGiornata}</td>
+                                    <td class="text-end fw-bold text-danger">${valoreSpese}</td>
+                                </tr>`;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                </div>`;
+
+            const modalActions = [{ html: '<button type-button" class="btn btn-secondary" data-bs-dismiss="modal">Chiudi</button>' }];
+            this.ui.createModal(`giornateModal_${taskId}`, modalTitle, modalBody, modalActions, { size: 'modal-xl' });
     }
         
     // ========================================================================
