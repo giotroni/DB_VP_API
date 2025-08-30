@@ -20,6 +20,7 @@ class ManagementApp {
         this.api = new APIClient();
         this.ui = UIComponents;
         this.utils = Utils;
+
         // --- Cache dei Dati Globali ---
         this.commesse = [];
         this.tasks = [];
@@ -140,11 +141,7 @@ class ManagementApp {
             <div class="management-content" id="managementContent">
                 <div class="management-topbar">
                     <div class="topbar-left">
-                        
-                        <button class="sidebar-toggle" data-action="toggle-sidebar">
-                            <i class="fas fa-bars"></i>
-                        </button>
-                        
+                        <button class="sidebar-toggle" data-action="toggle-sidebar"><i class="fas fa-bars"></i></button>
                         <div>
                             <h1 class="page-title" id="pageTitle"></h1>
                             <p class="page-subtitle" id="pageSubtitle"></p>
@@ -154,7 +151,6 @@ class ManagementApp {
                         <div class="topbar-actions" id="topbarActions"></div>
                     </div>
                 </div>
-                
                 <div class="management-section" id="contentArea"></div>
             </div>`;
         this.updateSidebarState();
@@ -231,8 +227,6 @@ class ManagementApp {
                 this.showSection(section);
                 break;
             case 'toggle-sidebar':
-                document.body.classList.toggle('sidebar-expanded');
-            break;
             case 'close-sidebar':
                 this.toggleSidebar();
                 break;
@@ -295,22 +289,23 @@ class ManagementApp {
         try {
             const responses = await Promise.all([
                 this.api.getCommesse(),
-                this.api.getTasks({ limit: 1000 }),
+                this.api.getTasks({ limit: 1000 }), // Carica un numero maggiore di task
                 this.api.getAllGiornate(),
                 this.api.getClienti(),
                 this.api.getCollaboratori(),
-                this.api.getTariffe(), // <-- NUOVA CHIAMATA API
+                this.api.getTariffe(),
                 this.api.getFatture()
             ]);
 
-            // Assegna i dati alle proprietà della classe
+            // Assegna i dati alle proprietà della classe in modo sicuro
             [
                 this.commesse, this.tasks, this.giornate, 
-                this.clienti, this.collaboratori, this.tariffe, this.fatture // <-- AGGIUNTO this.tariffe
+                this.clienti, this.collaboratori, this.tariffe, this.fatture
             ] = responses.map(res => (res.success && res.data.data) ? res.data.data : []);
             
-            console.log('✅ Dati iniziali caricati (incluse tariffe).');
+            console.log('✅ Dati iniziali caricati con successo.');
 
+            // Ora che i dati sono pronti, inizializza la sezione di default
             await this.showSection(this.currentSection);
 
         } catch (error) {
