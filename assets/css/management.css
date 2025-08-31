@@ -31,7 +31,7 @@ body {
   color: var(--vp-text-dark);
 }
 
-#appContainer {
+.dashboard-active #appContainer {
   display: flex;
 }
 
@@ -242,6 +242,48 @@ body {
 .card-footer .action-buttons .btn:hover {
     transform: translateY(-2px);
 }
+
+/* NUOVO: Stili per la schermata di login */
+.login-container {
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: linear-gradient(135deg, var(--vp-primary) 0%, var(--vp-secondary) 100%);
+}
+
+.login-card {
+  width: 100%;
+  max-width: 450px;
+  background: var(--vp-card-bg);
+  padding: 2.5rem 3rem;
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+  text-align: center;
+}
+
+.login-header .vp-logo-text {
+  font-size: 3rem;
+  margin-bottom: 0.5rem;
+}
+
+.login-title {
+  font-weight: 600;
+  color: var(--vp-primary);
+}
+
+.login-subtitle {
+  color: #6c757d;
+  margin-bottom: 2rem;
+}
+
+.login-form {
+  text-align: left;
+}
+
+
 
 /* --------------------------------------------------------------------------
    7. Stili Utilità (Schermata di Caricamento, etc.)

@@ -10,10 +10,6 @@ class CommesseTaskSection extends BaseSection {
         this.activeDateFilter = null;
     }
 
-    // ========================================================================
-    // METODI DEL CICLO DI VITA DELLA SEZIONE
-    // ========================================================================
-
     async loadData() {
         this.commesseConTask = this.groupTasksByCommessa();
         this.isLoaded = true;
@@ -21,58 +17,26 @@ class CommesseTaskSection extends BaseSection {
 
     render() {
         this.updatePageTitle('Situazione Commesse e Task', 'Visualizza e gestisci commesse e task');
-        this.updateTopbarActions(`
-            <button class="btn btn-vp-primary" data-action="add-commessa">
-                <i class="fas fa-plus me-2"></i>Nuova Commessa
-            </button>
-        `);
+        this.updateTopbarActions(`<button class="btn btn-vp-primary" data-action="add-commessa"><i class="fas fa-plus me-2"></i>Nuova Commessa</button>`);
         const container = this.getContainer();
-
         const currentYear = new Date().getFullYear();
         let yearOptions = '';
-        for (let y = 2024; y <= currentYear + 1; y++) {
-            yearOptions += `<li><label class="dropdown-item"><input type="checkbox" class="form-check-input me-2" value="${y}">${y}</label></li>`;
-        }
-
+        for (let y = 2024; y <= currentYear + 1; y++) { yearOptions += `<li><label class="dropdown-item"><input type="checkbox" class="form-check-input me-2" value="${y}">${y}</label></li>`; }
         const months = ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"];
-        let monthOptions = months.map((month, index) => 
-            `<li><label class="dropdown-item"><input type="checkbox" class="form-check-input me-2" value="${index + 1}">${month}</label></li>`
-        ).join('');
-
+        let monthOptions = months.map((month, index) => `<li><label class="dropdown-item"><input type="checkbox" class="form-check-input me-2" value="${index + 1}">${month}</label></li>`).join('');
         container.innerHTML = `
             <div id="stats-row-container"></div>
-            
             <div class="search-filters">
                 <div class="row gy-3">
                     <div class="col-lg-3 col-md-6"><label class="form-label">Cerca</label><input type="text" class="form-control" id="searchCommesseTask" placeholder="Nome, codice, cliente..."></div>
                     <div class="col-lg-2 col-md-6"><label class="form-label">Commessa</label><select class="form-select" id="filterCommesse"><option value="">Tutte</option>${this.app.commesse.map(c => `<option value="${c.ID_COMMESSA}">${c.Commessa}</option>`).join('')}</select></div>
                     <div class="col-lg-2 col-md-6"><label class="form-label">Stato</label><select class="form-select" id="filterStatoCommesse"><option value="">Tutti</option><option value="In corso">In corso</option><option value="Chiusa">Chiusa</option><option value="Sospesa">Sospesa</option></select></div>
-                    
-                    <div class="col-lg-1 col-md-3"><label class="form-label">Anno</label>
-                        <div class="dropdown"><button class="btn btn-outline-secondary dropdown-toggle w-100" type="button" id="filterAnnoBtn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">Tutti</button>
-                            <ul class="dropdown-menu" id="filterAnno" aria-labelledby="filterAnnoBtn">
-                                <li><a class="dropdown-item fw-bold" href="#" data-action="toggle-all-filter" data-target-filter="filterAnno">Seleziona/Deseleziona</a></li>
-                                <li><hr class="dropdown-divider"></li>
-                                ${yearOptions}
-                            </ul>
-                        </div>
-                    </div>
-                    <div class="col-lg-2 col-md-3"><label class="form-label">Mese</label>
-                        <div class="dropdown"><button class="btn btn-outline-secondary dropdown-toggle w-100" type="button" id="filterMeseBtn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">Tutti</button>
-                            <ul class="dropdown-menu" id="filterMese" aria-labelledby="filterMeseBtn">
-                                <li><a class="dropdown-item fw-bold" href="#" data-action="toggle-all-filter" data-target-filter="filterMese">Seleziona/Deseleziona</a></li>
-                                <li><hr class="dropdown-divider"></li>
-                                ${monthOptions}
-                            </ul>
-                        </div>
-                    </div>
-
+                    <div class="col-lg-1 col-md-3"><label class="form-label">Anno</label><div class="dropdown"><button class="btn btn-outline-secondary dropdown-toggle w-100" type="button" id="filterAnnoBtn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">Tutti</button><ul class="dropdown-menu" id="filterAnno" aria-labelledby="filterAnnoBtn"><li><a class="dropdown-item fw-bold" href="#" data-action="toggle-all-filter" data-target-filter="filterAnno">Seleziona/Deseleziona</a></li><li><hr class="dropdown-divider"></li>${yearOptions}</ul></div></div>
+                    <div class="col-lg-2 col-md-3"><label class="form-label">Mese</label><div class="dropdown"><button class="btn btn-outline-secondary dropdown-toggle w-100" type="button" id="filterMeseBtn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">Tutti</button><ul class="dropdown-menu" id="filterMese" aria-labelledby="filterMeseBtn"><li><a class="dropdown-item fw-bold" href="#" data-action="toggle-all-filter" data-target-filter="filterMese">Seleziona/Deseleziona</a></li><li><hr class="dropdown-divider"></li>${monthOptions}</ul></div></div>
                     <div class="col-lg-2 col-md-6"><label class="form-label">&nbsp;</label><div class="d-flex gap-2"><button class="btn btn-vp-primary" data-action="filter" title="Applica Filtri"><i class="fas fa-search"></i></button><button class="btn btn-outline-primary" data-action="toggle-all-commesse" id="toggleAllBtn" title="Espandi/Comprimi tutto"><i class="fas fa-expand-arrows-alt"></i></button></div></div>
                 </div>
             </div>
-            <div id="commesseTaskContainer">${this.renderCommesseCards(this.commesseConTask)}</div>
-        `;
-        
+            <div id="commesseTaskContainer">${this.renderCommesseCards(this.commesseConTask)}</div>`;
         this.updateStats(this.commesseConTask);
         this.bindEvents();
     }
@@ -86,35 +50,30 @@ class CommesseTaskSection extends BaseSection {
                 debounceTimeout = setTimeout(() => this.filterData(), 300);
             });
         }
-        
         document.getElementById('filterCommesse')?.addEventListener('change', () => this.filterData());
         document.getElementById('filterStatoCommesse')?.addEventListener('change', () => this.filterData());
-
         const setupMultiSelectFilter = (filterId, buttonId) => {
             const filterContainer = document.getElementById(filterId);
             const filterButton = document.getElementById(buttonId);
             if (!filterContainer || !filterButton) return;
-
             filterContainer.addEventListener('change', () => {
                 const checked = filterContainer.querySelectorAll('input:checked');
-                if (checked.length === 0) {
-                    filterButton.textContent = 'Tutti';
-                } else if (checked.length === 1) {
-                    filterButton.textContent = checked[0].parentElement.textContent.trim();
-                } else {
-                    filterButton.textContent = `${checked.length} selezionati`;
-                }
+                if (checked.length === 0) { filterButton.textContent = 'Tutti'; } 
+                else if (checked.length === 1) { filterButton.textContent = checked[0].parentElement.textContent.trim(); } 
+                else { filterButton.textContent = `${checked.length} selezionati`; }
                 this.filterData();
             });
         };
-
         setupMultiSelectFilter('filterAnno', 'filterAnnoBtn');
         setupMultiSelectFilter('filterMese', 'filterMeseBtn');
     }
 
-    handleAction(action, id, type, targetElement) {
-        if (targetElement && targetElement.closest('.management-card-header') && !['toggle-commessa', 'edit-commessa'].includes(action)) {
-            event.stopPropagation();
+    handleAction(action, id, type, targetElement, e) { // MODIFICATO: Accetta 'e'
+        if (targetElement.closest('.management-card-header') && !['toggle-commessa', 'edit-commessa'].includes(action)) {
+            e.stopPropagation(); // Ora usa l'oggetto 'e' passato
+        }
+        if (action === 'toggle-all-filter') {
+            e.preventDefault();
         }
         switch (action) {
             case 'add-commessa': this.showNewCommessaModal(); break;
@@ -126,7 +85,6 @@ class CommesseTaskSection extends BaseSection {
             case 'view-giornate': this.showGiornateModal(id); break;
             case 'filter': this.filterData(); break;
             case 'toggle-all-commesse': this.toggleAllCommesse(); break;
-            // NUOVO: Gestione del click per selezionare/deselezionare tutto
             case 'toggle-all-filter':
                 const targetId = targetElement.dataset.targetFilter;
                 this.toggleAllCheckboxes(targetId);
@@ -134,6 +92,7 @@ class CommesseTaskSection extends BaseSection {
             default: console.warn(`Azione non gestita: ${action}`);
         }
     }
+    
     // ========================================================================
     // SEZIONE: RENDERING DEI COMPONENTI
     // ========================================================================
@@ -338,8 +297,8 @@ class CommesseTaskSection extends BaseSection {
                         const giornateCampoNelPeriodo = giornateNelPeriodo.filter(g => g.Tipo === 'Campo');
                         const gg_effettuate = giornateNelPeriodo.reduce((sum, g) => sum + (parseFloat(g.gg) || 0), 0);
                         const valore_gg_maturato = giornateCampoNelPeriodo.reduce((sum, g) => sum + (parseFloat(g.valore_calcolato) || 0), 0);
-                        const valore_spese_maturato = giornateCampoNelPeriodo.reduce((sum, g) => sum + (parseFloat(g.spese_totali) || 0), 0);
-
+                        //const valore_spese_maturato = giornateCampoNelPeriodo.reduce((sum, g) => sum + (parseFloat(g.spese_totali) || 0), 0);
+                        const valore_spese_maturato = giornateNelPeriodo.reduce((sum, g) => sum + (parseFloat(g.Valore_spese) || 0), 0);
                         activeTasksInPeriod.push({
                             ...task,
                             giornate: giornateNelPeriodo,
@@ -481,8 +440,8 @@ class CommesseTaskSection extends BaseSection {
             // Ricalcola i totali in base alle giornate considerate
             const gg_effettuate = giornateDaConsiderare.reduce((sum, g) => sum + (parseFloat(g.gg) || 0), 0);
             const valore_gg_maturato = giornateDaConsiderare.reduce((sum, g) => sum + (parseFloat(g.valore_calcolato) || 0), 0);
-            const valore_spese_maturato = giornateDaConsiderare.reduce((sum, g) => sum + (parseFloat(g.spese_totali) || 0), 0);
-
+            //const valore_spese_maturato = giornateDaConsiderare.reduce((sum, g) => sum + (parseFloat(g.spese_totali) || 0), 0);
+            const valore_spese_maturato = giornateDaConsiderare.reduce((sum, g) => sum + (parseFloat(g.Valore_spese) || 0), 0);
             const commessa = this.commesseConTask.find(c => c.ID_COMMESSA === task.ID_COMMESSA);
             let modalBody = '';
             const modalTitle = `Dettagli Task: ${task.Task}`;
@@ -564,7 +523,7 @@ class CommesseTaskSection extends BaseSection {
                             ${giornateTask.map(g => {
                                 const collab = this.app.collaboratori.find(c => c.ID_COLLABORATORE === g.ID_COLLABORATORE);
                                 const valoreGiornata = this.app.utils.formatCurrency(g.valore_calcolato || 0);
-                                const valoreSpese = this.app.utils.formatCurrency(g.spese_totali || 0);
+                                const valoreSpese = this.app.utils.formatCurrency(g.Valore_spese || 0);
                                 return `<tr>
                                     <td>${new Date(g.Data).toLocaleDateString('it-IT')}</td>
                                     <td>${collab?.Collaboratore || 'N/A'}</td>

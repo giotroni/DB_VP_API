@@ -399,6 +399,12 @@ class GiornateAPI extends BaseAPI {
     /**
      * Post-processing del record (aggiunge dati correlati)
      */
+/**
+     * Post-processing del record (aggiunge dati correlati e calcolati)
+     */
+/**
+     * Post-processing del record (aggiunge dati correlati e calcolati)
+     */
     protected function processRecord($record) {
         try {
             // Aggiungi informazioni collaboratore
@@ -408,8 +414,10 @@ class GiornateAPI extends BaseAPI {
             }
             
             // Aggiungi informazioni task e commessa
+            $taskInfo = null;
             if (!empty($record['ID_TASK'])) {
-                $taskInfo = $this->getRelatedData('ANA_TASK', 'ID_TASK', $record['ID_TASK'], ['Task', 'ID_COMMESSA', 'Valore_gg']);
+                $taskFields = ['Task', 'ID_COMMESSA', 'Valore_gg', 'Tipo', 'Spese_Comprese', 'Valore_Spese_std'];
+                $taskInfo = $this->getRelatedData('ANA_TASK', 'ID_TASK', $record['ID_TASK'], $taskFields);
                 $record['task_info'] = $taskInfo;
                 
                 if ($taskInfo && !empty($taskInfo['ID_COMMESSA'])) {
@@ -423,12 +431,27 @@ class GiornateAPI extends BaseAPI {
                 }
             }
             
-            // Calcola totali
             $record['spese_totali'] = floatval($record['Spese_Viaggi']) + floatval($record['Vitto_alloggio']) + floatval($record['Altri_costi']);
             
-            // Calcola valore giornata (se disponibile da task)
-            if (isset($record['task_info']['Valore_gg']) && $record['task_info']['Valore_gg'] > 0) {
-                $record['valore_calcolato'] = floatval($record['task_info']['Valore_gg']) * floatval($record['gg']);
+            $record['valore_calcolato'] = 0;
+            if (isset($taskInfo['Valore_gg']) && $taskInfo['Valore_gg'] > 0) {
+                $record['valore_calcolato'] = floatval($taskInfo['Valore_gg']) * floatval($record['gg']);
+            }
+
+            // Calcolo di 'Valore_spese' secondo le regole di business
+            $record['Valore_spese'] = 0;
+            if ($taskInfo && $record['Tipo'] === 'Campo' && $record['Desk'] !== 'Si') {
+                if (isset($taskInfo['Spese_Comprese']) && $taskInfo['Spese_Comprese'] === 'Si') {
+                    $record['Valore_spese'] = 0;
+                } else {
+                    $speseStd = isset($taskInfo['Valore_Spese_std']) ? floatval($taskInfo['Valore_Spese_std']) : 0;
+                    if ($speseStd > 0) {
+                        // MODIFICATO: Il valore standard è fisso, non viene più moltiplicato per 'gg'.
+                        $record['Valore_spese'] = $speseStd;
+                    } else {
+                        $record['Valore_spese'] = $record['spese_totali'];
+                    }
+                }
             }
             
             return $record;
