@@ -18,217 +18,151 @@ class GiornateAPI extends BaseAPI {
             'ID_TASK' => ['required' => true, 'max_length' => 50],
             'Tipo' => ['enum' => ['Campo', 'Promo', 'Sviluppo', 'Formazione']],
             'Desk' => ['enum' => ['Si', 'No']],
-            'gg' => ['required' => true, 'numeric' => true, 'min' => 0, 'max' => 1],
+            'gg' => ['required' => true, 'numeric' => true, 'min' => 0.5, 'max' => 1],
             'Spese_Viaggi' => ['numeric' => true, 'min' => 0],
             'Vitto_alloggio' => ['numeric' => true, 'min' => 0],
             'Altri_costi' => ['numeric' => true, 'min' => 0],
+            'Spese_Fatturate_VP' => ['numeric' => true, 'min' => 0],
             'Note' => ['max_length' => 65535]
         ];
     }
-    
     /**
-     * Validazione input per giornate
+     * Override del metodo di aggiornamento per gestire correttamente la validazione.
      */
-    protected function validateInput($data, $requireAll = true) {
+    public function update($id) {
+        $data = json_decode(file_get_contents('php://input'), true);
+        if (!$data) {
+            sendErrorResponse('Dati JSON non validi', 400);
+            return;
+        }
+        $data[$this->primaryKey] = $id;
+        $processedData = $this->preprocessData($data);
+        $validation = $this->validateInput($processedData, true);
+        if (!$validation['valid']) {
+            sendErrorResponse('Validazione fallita', 400, $validation['errors']);
+            return;
+        }
+        unset($processedData[$this->primaryKey]);
+        if (empty($processedData)) {
+            sendErrorResponse('Nessun dato da aggiornare.', 400);
+            return;
+        }
+        parent::updateRecord($id, $processedData);
+    }
+    
+    protected function validateInput($data, $isUpdate = false) {
         $errors = [];
-        
-        // Verifica campi richiesti
-        if ($requireAll) {
+        if (!$isUpdate) {
             foreach ($this->requiredFields as $field) {
-                if (!isset($data[$field]) || (is_string($data[$field]) && empty(trim($data[$field])))) {
-                    $errors[] = "Campo '$field' richiesto";
+                if (!isset($data[$field]) || (is_string($data[$field]) && trim($data[$field]) === '')) {
+                    $errors[] = "Il campo '$field' è obbligatorio.";
                 }
             }
         }
-        
-        // Validazione specifiche per ogni campo
         foreach ($data as $field => $value) {
-            if (!isset($this->validationRules[$field]) || $value === null || $value === '') {
-                continue;
-            }
-            
+            if (!isset($this->validationRules[$field]) || $value === null || $value === '') continue;
             $rules = $this->validationRules[$field];
-            
-            // Verifica lunghezza massima
-            if (isset($rules['max_length']) && strlen($value) > $rules['max_length']) {
-                $errors[] = "Campo '$field' troppo lungo (max {$rules['max_length']} caratteri)";
-            }
-            
-            // Verifica enum
-            if (isset($rules['enum']) && !in_array($value, $rules['enum'])) {
-                $errors[] = "Valore '$field' non valido. Valori consentiti: " . implode(', ', $rules['enum']);
-            }
-            
-            // Verifica numerico
-            if (isset($rules['numeric']) && !is_numeric($value)) {
-                $errors[] = "Campo '$field' deve essere numerico";
-            }
-            
-            // Verifica range numerico
-            if (isset($rules['min']) && floatval($value) < $rules['min']) {
-                $errors[] = "Campo '$field' deve essere >= {$rules['min']}";
-            }
-            
-            if (isset($rules['max']) && floatval($value) > $rules['max']) {
-                $errors[] = "Campo '$field' deve essere <= {$rules['max']}";
-            }
-            
-            // Verifica data
-            if (isset($rules['date']) && !$this->isValidDate($value)) {
-                $errors[] = "Formato data '$field' non valido (YYYY-MM-DD)";
+            if (isset($rules['max_length']) && mb_strlen($value) > $rules['max_length']) $errors[] = "Il campo '$field' è troppo lungo (max {$rules['max_length']} caratteri).";
+            if (isset($rules['enum']) && !in_array($value, $rules['enum'])) $errors[] = "Il valore per '$field' non è valido.";
+            if (isset($rules['numeric']) && !is_numeric($value)) $errors[] = "Il campo '$field' deve essere un numero.";
+            if (isset($rules['date']) && !$this->isValidDate($value)) $errors[] = "Formato data per '$field' non valido (YYYY-MM-DD).";
+            if (is_numeric($value)) {
+                if (isset($rules['min']) && floatval($value) < $rules['min']) $errors[] = "Il valore di '$field' deve essere almeno {$rules['min']}.";
+                if (isset($rules['max']) && floatval($value) > $rules['max']) $errors[] = "Il valore di '$field' non può superare {$rules['max']}.";
             }
         }
+        if (!empty($errors)) return ['valid' => false, 'errors' => $errors];
         
-        // Validazioni business logic
-        $businessValidation = $this->validateBusinessRules($data);
+        $businessValidation = $this->validateBusinessRules($data, $isUpdate);
         if (!$businessValidation['valid']) {
             $errors = array_merge($errors, $businessValidation['errors']);
         }
-        
-        return [
-            'valid' => empty($errors),
-            'errors' => $errors
-        ];
+        return ['valid' => empty($errors), 'errors' => $errors];
     }
     
-    /**
-     * Validazioni business logic specifiche
-     */
-    private function validateBusinessRules($data) {
+    public function batchUpdateConfirmation() {
+        $data = json_decode(file_get_contents('php://input'), true);
+        if (!isset($data['ids']) || !is_array($data['ids']) || empty($data['ids'])) { sendErrorResponse("Array 'ids' mancante o vuoto.", 400); return; }
+        if (!isset($data['confermata']) || !in_array($data['confermata'], ['Si', 'No'])) { sendErrorResponse("Stato 'confermata' non valido.", 400); return; }
+        $ids = $data['ids'];
+        $status = $data['confermata'];
+        $sanitized_ids = array_filter($ids, function($id) { return !empty($id) && is_string($id) && strlen($id) < 50; });
+        if (empty($sanitized_ids)) { sendErrorResponse("Nessun ID valido fornito.", 400); return; }
+        try {
+            $placeholders = implode(',', array_fill(0, count($sanitized_ids), '?'));
+            $sql = "UPDATE {$this->table} SET Confermata = ? WHERE {$this->primaryKey} IN ($placeholders)";
+            $stmt = $this->db->prepare($sql);
+            if ($stmt === false) { sendErrorResponse("Errore preparazione query.", 500); return; }
+            $params = array_merge([$status], $sanitized_ids);
+            if (!$stmt->execute($params)) {
+                sendErrorResponse("Errore esecuzione query: " . ($stmt->errorInfo()[2] ?? 'Sconosciuto'), 500);
+                return;
+            }
+            sendSuccessResponse(['updated_rows' => $stmt->rowCount()], "Aggiornamento completato.");
+        } catch (PDOException $e) {
+            sendErrorResponse("Errore database: " . $e->getMessage(), 500);
+        }
+    }
+
+    public function create() {
+        $data = json_decode(file_get_contents('php://input'), true);
+        if (!$data) { sendErrorResponse('Dati JSON non validi', 400); return; }
+        $processedData = $this->preprocessData($data);
+        $validation = $this->validateInput($processedData);
+        if (!$validation['valid']) { sendErrorResponse('Validazione fallita', 400, $validation['errors']); return; }
+        if (empty($processedData[$this->primaryKey])) $processedData[$this->primaryKey] = $this->generateId();
+        parent::createRecord($processedData);
+    }
+
+    private function validateBusinessRules($data, $isUpdate) {
         $errors = [];
-        
-        // Verifica che il collaboratore esista
-        if (isset($data['ID_COLLABORATORE']) && !empty($data['ID_COLLABORATORE'])) {
-            if (!$this->existsInTable('ANA_COLLABORATORI', 'ID_COLLABORATORE', $data['ID_COLLABORATORE'])) {
-                $errors[] = "Collaboratore specificato non esistente";
-            }
-        }
-        
-        // Verifica che il task esista
-        if (isset($data['ID_TASK']) && !empty($data['ID_TASK'])) {
-            if (!$this->existsInTable('ANA_TASK', 'ID_TASK', $data['ID_TASK'])) {
-                $errors[] = "Task specificato non esistente";
-            }
-        }
-        
-        // Verifica che la data non sia futura
-        if (isset($data['Data']) && !empty($data['Data'])) {
-            if ($data['Data'] > date('Y-m-d')) {
-                $errors[] = "Non è possibile registrare giornate future";
-            }
-        }
-        
-        // Verifica duplicati (stesso collaboratore, stesso task, stessa data)
+        $currentId = $isUpdate ? ($data[$this->primaryKey] ?? null) : null;
+        if (isset($data['ID_COLLABORATORE']) && !$this->existsInTable('ANA_COLLABORATORI', 'ID_COLLABORATORE', $data['ID_COLLABORATORE'])) $errors[] = "Collaboratore non esistente.";
+        if (isset($data['ID_TASK']) && !$this->existsInTable('ANA_TASK', 'ID_TASK', $data['ID_TASK'])) $errors[] = "Task non esistente.";
+        if (isset($data['Data']) && $data['Data'] > date('Y-m-d')) $errors[] = "Non è possibile registrare giornate future.";
         if (isset($data['Data'], $data['ID_COLLABORATORE'], $data['ID_TASK'])) {
-            $duplicate = $this->checkDuplicate($data);
-            if (!$duplicate['valid']) {
-                $errors[] = $duplicate['message'];
-            }
+            $duplicate = $this->checkDuplicate($data, $currentId);
+            if (!$duplicate['valid']) $errors[] = $duplicate['message'];
         }
-        
-        // Verifica che il totale giornate per collaboratore/data non superi 1
         if (isset($data['Data'], $data['ID_COLLABORATORE'], $data['gg'])) {
-            $totalCheck = $this->checkDailyTotal($data);
-            if (!$totalCheck['valid']) {
-                $errors[] = $totalCheck['message'];
-            }
+            $totalCheck = $this->checkDailyTotal($data, $currentId);
+            if (!$totalCheck['valid']) $errors[] = $totalCheck['message'];
         }
-        
-        return [
-            'valid' => empty($errors),
-            'errors' => $errors
-        ];
+        return ['valid' => empty($errors), 'errors' => $errors];
     }
     
-    /**
-     * Verifica duplicati per collaboratore/task/data
-     */
-    private function checkDuplicate($data) {
-        try {
-            $sql = "SELECT COUNT(*) as count FROM {$this->table} 
-                    WHERE Data = :data 
-                    AND ID_COLLABORATORE = :collaboratore 
-                    AND ID_TASK = :task";
-            
-            $params = [
-                ':data' => $data['Data'],
-                ':collaboratore' => $data['ID_COLLABORATORE'],
-                ':task' => $data['ID_TASK']
-            ];
-            
-            // Esclude il record corrente se è un aggiornamento
-            if (isset($data['ID_GIORNATA'])) {
-                $sql .= " AND ID_GIORNATA != :current_id";
-                $params[':current_id'] = $data['ID_GIORNATA'];
-            }
-            
-            $stmt = $this->db->prepare($sql);
-            $stmt->execute($params);
-            $count = $stmt->fetchColumn();
-            
-            if ($count > 0) {
-                return [
-                    'valid' => false,
-                    'message' => 'Esiste già una giornata registrata per questo collaboratore/task/data'
-                ];
-            }
-            
-            return ['valid' => true, 'message' => ''];
-            
-        } catch (PDOException $e) {
-            return [
-                'valid' => false,
-                'message' => 'Errore durante la verifica dei duplicati'
-            ];
+    private function checkDuplicate($data, $currentId = null) {
+        $sql = "SELECT COUNT(*) FROM {$this->table} WHERE Data = :data AND ID_COLLABORATORE = :collaboratore AND ID_TASK = :task";
+        $params = [':data' => $data['Data'], ':collaboratore' => $data['ID_COLLABORATORE'], ':task' => $data['ID_TASK']];
+        if ($currentId) {
+            $sql .= " AND {$this->primaryKey} != :current_id";
+            $params[':current_id'] = $currentId;
         }
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        if ($stmt->fetchColumn() > 0) return ['valid' => false, 'message' => 'Esiste già una giornata registrata per questo collaboratore/task/data.'];
+        return ['valid' => true];
     }
     
-    /**
-     * Verifica che il totale giornate per collaboratore/data non superi 1
-     */
-    private function checkDailyTotal($data) {
-        try {
-            $sql = "SELECT SUM(gg) as total FROM {$this->table} 
-                    WHERE Data = :data 
-                    AND ID_COLLABORATORE = :collaboratore";
-            
-            $params = [
-                ':data' => $data['Data'],
-                ':collaboratore' => $data['ID_COLLABORATORE']
-            ];
-            
-            // Esclude il record corrente se è un aggiornamento
-            if (isset($data['ID_GIORNATA'])) {
-                $sql .= " AND ID_GIORNATA != :current_id";
-                $params[':current_id'] = $data['ID_GIORNATA'];
-            }
-            
-            $stmt = $this->db->prepare($sql);
-            $stmt->execute($params);
-            $currentTotal = floatval($stmt->fetchColumn()) ?: 0;
-            
-            $newTotal = $currentTotal + floatval($data['gg']);
-            
-            if ($newTotal > 1) {
-                return [
-                    'valid' => false,
-                    'message' => "Il totale giornate per questa data supererebbe 1 (attuale: $currentTotal + nuovo: {$data['gg']} = $newTotal)"
-                ];
-            }
-            
-            return ['valid' => true, 'message' => ''];
-            
-        } catch (PDOException $e) {
-            return [
-                'valid' => false,
-                'message' => 'Errore durante la verifica del totale giornaliero'
-            ];
+    private function checkDailyTotal($data, $currentId = null) {
+        $sql = "SELECT SUM(gg) FROM {$this->table} WHERE Data = :data AND ID_COLLABORATORE = :collaboratore";
+        $params = [':data' => $data['Data'], ':collaboratore' => $data['ID_COLLABORATORE']];
+        if ($currentId) {
+            $sql .= " AND {$this->primaryKey} != :current_id";
+            $params[':current_id'] = $currentId;
         }
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        $currentTotal = floatval($stmt->fetchColumn());
+        $newGg = isset($data['gg']) ? floatval($data['gg']) : 0;
+        $newTotal = $currentTotal + $newGg;
+        if ($newTotal > 1) return ['valid' => false, 'message' => "Il totale giornate per questa data supererebbe 1 (attuale: {$currentTotal} + nuovo: {$newGg} = {$newTotal})."];
+        return ['valid' => true];
     }
     
     /**
      * Genera nuovo ID giornata
-     */
+     **/
     protected function generateId() {
         try {
             // Genera ID basato su data: DAY + YYYYMMDD + numero progressivo
@@ -252,10 +186,6 @@ class GiornateAPI extends BaseAPI {
             return 'DAY' . date('Ymd') . str_pad(rand(1, 999), 3, '0', STR_PAD_LEFT);
         }
     }
-    
-    /**
-     * Pre-processing dei dati prima dell'inserimento/aggiornamento
-     */
     protected function preprocessData($data) {
         // Valida e formatta la data
         if (isset($data['Data']) && !empty($data['Data'])) {
@@ -399,12 +329,7 @@ class GiornateAPI extends BaseAPI {
     /**
      * Post-processing del record (aggiunge dati correlati)
      */
-/**
-     * Post-processing del record (aggiunge dati correlati e calcolati)
-     */
-/**
-     * Post-processing del record (aggiunge dati correlati e calcolati)
-     */
+
     protected function processRecord($record) {
         try {
             // Aggiungi informazioni collaboratore

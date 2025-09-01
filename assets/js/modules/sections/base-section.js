@@ -8,6 +8,7 @@ class BaseSection {
         this.app = appInstance; // Riferimento all'istanza di ManagementApp
         this.api = appInstance.api;
         this.ui = appInstance.ui;
+        this.utils = appInstance.utils;
         
         this.isLoaded = false;
         this.data = []; // Dati specifici della sezione
@@ -16,10 +17,8 @@ class BaseSection {
 
     async initialize() {
         this.showLoading();
-        if (!this.isLoaded) {
-            await this.loadData();
-            this.isLoaded = true;
-        }
+        // Carica sempre i dati freschi quando si visualizza una sezione
+        await this.loadData();
         this.render();
         this.bindEvents();
     }
@@ -35,13 +34,24 @@ class BaseSection {
     }
     
     bindEvents() {
-        // Opzionale, da implementare nelle sottoclassi se necessario per eventi specifici
+        // Aggiunge un listener generico per i bottoni con data-action all'interno della sezione
+        const container = this.getContainer();
+        if(container) {
+            container.addEventListener('click', (e) => {
+                const actionTarget = e.target.closest('[data-action]');
+                if (actionTarget && container.contains(actionTarget)) {
+                    if (e.defaultPrevented) return;
+                    
+                    const { action, id, type } = actionTarget.dataset;
+                    this.handleAction(action, id, type, actionTarget, e);
+                }
+            });
+        }
     }
 
-    handleAction(action, id, type, targetElement) {
+    handleAction(action, id, type, targetElement, event) {
         // Gestore di azioni generico, può essere esteso
-        console.log(`Azione '${action}' gestita da BaseSection per l'elemento`, { id, type, targetElement });
-        this.ui.showToast(`Azione '${action}' non ancora implementata.`, 'info');
+        console.warn(`Azione non gestita da BaseSection: ${action}`);
     }
 
     getContainer() {
@@ -61,3 +71,4 @@ class BaseSection {
         document.getElementById('topbarActions').innerHTML = html;
     }
 }
+

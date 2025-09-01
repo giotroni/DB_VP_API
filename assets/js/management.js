@@ -1,6 +1,6 @@
 /**
  * App Management V&P - JavaScript (Refactored)
- * @version 2.3 - Ripristino logica di login
+ * @version 2.5 - Correzione del refresh dei dati
  */
 class ManagementApp {
     
@@ -124,7 +124,6 @@ class ManagementApp {
     // ========================================================================
 
     showDashboard() {
-        // NUOVO: Aggiunge la classe per attivare lo stile della dashboard
         document.body.classList.add('dashboard-active');
 
         const appContainer = document.getElementById('appContainer');
@@ -157,9 +156,7 @@ class ManagementApp {
     }
 
     showLogin() {
-        // NUOVO: Rimuove la classe della dashboard per disattivare lo stile flex
         document.body.classList.remove('dashboard-active');
-
         const appContainer = document.getElementById('appContainer');
         appContainer.innerHTML = `
             <div class="login-container">
@@ -203,7 +200,6 @@ class ManagementApp {
 
     setupEventListeners() {
         document.getElementById('appContainer').addEventListener('click', this.handleAppClick.bind(this));
-        // Aggiungi listener per il submit del form di login
         document.body.addEventListener('submit', (e) => {
             if (e.target.id === 'loginForm') {
                 e.preventDefault();
@@ -236,12 +232,7 @@ class ManagementApp {
                 break;
             
             default:
-                const currentSectionHandler = this.sections[this.currentSection];
-                if (currentSectionHandler && typeof currentSectionHandler.handleAction === 'function') {
-                    currentSectionHandler.handleAction(action, id, type, actionTarget, e);
-                } else {
-                    console.warn(`Nessun gestore per l'azione '${action}' nella sezione '${this.currentSection}'`);
-                }
+                // Lascia che sia il listener della sezione a gestire l'evento
                 break;
         }
     }
@@ -255,12 +246,12 @@ class ManagementApp {
         document.querySelectorAll('.nav-link[data-section]').forEach(link => {
             link.classList.toggle('active', link.dataset.section === sectionName);
         });
-        await this.sections[sectionName].initialize();
+        await this.sections[this.currentSection].initialize();
         if (window.innerWidth < 768) { this.toggleSidebar(true); }
     }
 
     // ========================================================================
-    // SEZIONE 4: CARICAMENTO E GESTIONE DATI
+    // SEZIONE 4: GESTIONE DATI
     // ========================================================================
 
     async loadInitialData() {
@@ -273,6 +264,7 @@ class ManagementApp {
                 this.api.getClienti(), this.api.getCollaboratori(), this.api.getTariffe(), this.api.getFatture()
             ]);
             [ this.commesse, this.tasks, this.giornate, this.clienti, this.collaboratori, this.tariffe, this.fatture ] = responses.map(res => (res.success && res.data.data) ? res.data.data : []);
+            
             console.log('✅ Dati iniziali caricati.');
             await this.showSection(this.currentSection);
         } catch (error) {
@@ -281,6 +273,30 @@ class ManagementApp {
             if (contentArea) contentArea.innerHTML = this.ui.createEmptyState('fas fa-server', 'Errore di Connessione', 'Non è stato possibile caricare i dati.');
         }
     }
+    
+    /**
+     * Ricarica tutti i dati e aggiorna la vista corrente.
+     */
+    async refreshData() {
+        try {
+            // Mostra un indicatore di caricamento leggero, magari sulla topbar
+            const responses = await Promise.all([
+                this.api.getCommesse(), this.api.getTasks({ limit: 1000 }), this.api.getAllGiornate(),
+                this.api.getClienti(), this.api.getCollaboratori(), this.api.getTariffe(), this.api.getFatture()
+            ]);
+             [ this.commesse, this.tasks, this.giornate, this.clienti, this.collaboratori, this.tariffe, this.fatture ] = responses.map(res => (res.success && res.data.data) ? res.data.data : []);
+
+            console.log('🔄 Dati ricaricati.');
+            // Re-inizializza la sezione corrente per riflettere i nuovi dati
+            if (this.sections[this.currentSection]) {
+                await this.sections[this.currentSection].initialize();
+            }
+        } catch (error) {
+            console.error('Errore durante il ricaricamento dei dati:', error);
+            this.ui.showToast('Impossibile aggiornare i dati.', 'error');
+        }
+    }
 }
 
 document.addEventListener('DOMContentLoaded', () => { window.app = new ManagementApp(); });
+

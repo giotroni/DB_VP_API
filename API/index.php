@@ -124,6 +124,11 @@ try {
             
         case 'giornate':
             $api = new GiornateAPI();
+            // Custom action for batch update
+            if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GET['action'] === 'batchUpdateConfirmation') {
+                $api->batchUpdateConfirmation();
+                exit; // Stop further processing from handleRequest
+            }
             break;
             
         case 'fatture':

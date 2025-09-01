@@ -1,0 +1,91 @@
+/* Stili specifici per la sezione Giornate */
+
+.month-group .management-card-header {
+    cursor: pointer;
+}
+
+.month-toggle-btn {
+    background: none;
+    border: none;
+    color: var(--vp-text-light);
+    padding: 0 0.5rem;
+    transition: transform 0.2s ease-in-out;
+}
+
+.month-toggle-btn.expanded {
+    transform: rotate(180deg);
+}
+
+.consultant-group .consultant-title {
+    font-size: 1.1rem;
+    font-weight: 500;
+    color: var(--vp-secondary);
+    margin-bottom: 1rem;
+}
+
+.giornate-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1rem;
+}
+
+.giornata-card {
+    background: #fff;
+    border-radius: 8px;
+    border: 1px solid var(--vp-border);
+    box-shadow: 0 2px 8px var(--vp-shadow);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+}
+
+.giornata-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 6px 15px rgba(0,0,0,0.08);
+}
+
+.giornata-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    background-color: #f8f9fa;
+    border-bottom: 1px solid var(--vp-border);
+    font-weight: 500;
+}
+
+.giornata-card-body {
+    padding: 1rem;
+    flex-grow: 1;
+}
+
+.giornata-card-body p {
+    margin-bottom: 0.25rem;
+}
+
+.giornata-card-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    background-color: #f8f9fa;
+    border-top: 1px solid var(--vp-border);
+    font-weight: bold;
+    font-size: 0.9rem;
+}
+
+/* Stili per badge "soft" */
+.bg-success-soft {
+    background-color: rgba(46, 204, 113, 0.15);
+}
+.text-success {
+    color: #27ae60 !important;
+}
+.bg-warning-soft {
+    background-color: rgba(241, 196, 15, 0.15);
+}
+.text-warning {
+    color: #f39c12 !important;
+}
+

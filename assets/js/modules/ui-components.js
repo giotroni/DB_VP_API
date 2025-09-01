@@ -3,7 +3,7 @@
 // ============================================================================
 class UIComponents {
 
-        static createModal(id, title, content, actions = [], options = {}) {
+    static createModal(id, title, content, actions = [], options = {}) {
         const modalId = id || `modal_${Date.now()}`;
         const modalSize = options.size || 'modal-lg'; // es. 'modal-xl', 'modal-sm'
 
@@ -83,6 +83,50 @@ class UIComponents {
         // Auto-remove after hiding
         document.getElementById(toastId).addEventListener('hidden.bs.toast', () => {
             document.getElementById(toastId)?.remove();
+        });
+    }
+
+    static showConfirmModal(title, message) {
+        return new Promise(resolve => {
+            const modalId = `confirmModalDynamic_${Date.now()}`;
+            
+            const modalHTML = `
+                <div class="modal fade" id="${modalId}" tabindex="-1">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">${title}</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body"><p>${message}</p></div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                                <button type="button" class="btn btn-primary" id="${modalId}_confirm">Conferma</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
+            const modalElement = document.getElementById(modalId);
+            const modal = new bootstrap.Modal(modalElement);
+            const confirmBtn = document.getElementById(`${modalId}_confirm`);
+
+            const cleanup = (result) => {
+                modal.hide();
+                // Allow modal to fade out before removing
+                setTimeout(() => {
+                    modalElement.remove();
+                    resolve(result);
+                }, 500);
+            };
+
+            confirmBtn.addEventListener('click', () => cleanup(true), { once: true });
+            
+            modalElement.addEventListener('hidden.bs.modal', () => cleanup(false), { once: true });
+
+            modal.show();
         });
     }
 

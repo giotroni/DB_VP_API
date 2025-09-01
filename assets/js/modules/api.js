@@ -24,9 +24,7 @@ class APIClient {
 
         const config = {
             method,
-            headers: {
-                'Content-Type': 'application/json'
-            }
+            headers: { 'Content-Type': 'application/json' }
         };
 
         if (data && (method === 'POST' || method === 'PUT')) {
@@ -37,14 +35,15 @@ class APIClient {
             const response = await fetch(url, config);
             
             if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+                const errorBody = await response.json().catch(() => null);
+                const errorMessage = errorBody?.errors?.join(', ') || errorBody?.error || `HTTP error! status: ${response.status}`;
+                throw new Error(errorMessage);
             }
 
             const responseText = await response.text();
             
             if (!responseText.trim()) {
-                console.warn('Risposta API vuota');
-                return { success: false, message: 'Risposta vuota dal server' };
+                return { success: true, message: 'Operazione completata con successo.', data: null };
             }
 
             return JSON.parse(responseText);
@@ -53,6 +52,7 @@ class APIClient {
             throw error;
         }
     }
+
 
     // Metodo specifico per chiamate di autenticazione
     async authRequest(action, data = {}) {
@@ -180,32 +180,51 @@ class APIClient {
         let allGiornate = [];
         let currentPage = 1;
         let totalPages = 1;
-
-        try {
-            do {
-                const result = await this.getGiornate({ 
-                    limit: 100, 
-                    page: currentPage 
-                });
-                
-                if (!result.success) {
-                    throw new Error(result.message || 'Errore caricamento pagina giornate');
-                }
-
-                allGiornate = allGiornate.concat(result.data.data || []);
-                totalPages = result.data.pagination?.pages || 1;
-                currentPage++;
-
-            } while (currentPage <= totalPages);
-
-            return { success: true, data: { data: allGiornate } };
-
-        } catch (error) {
-            console.error('Errore durante il caricamento paginato delle giornate:', error);
-            return { success: false, message: error.message };
-        }
+        do {
+            const result = await this.request('giornate', 'getAll', { params: { limit: 200, page: currentPage } });
+            if (!result.success) throw new Error(result.message);
+            allGiornate = allGiornate.concat(result.data.data || []);
+            totalPages = result.data.pagination?.pages || 1;
+            currentPage++;
+        } while (currentPage <= totalPages);
+        return { success: true, data: { data: allGiornate } };
     }
 
+    async createGiornata(data) {
+        return this.request('giornate', 'create', {
+            method: 'POST',
+            data
+        });
+    }
+
+    async updateGiornata(id, data) {
+        return this.request('giornate', 'update', {
+            method: 'PUT',
+            data,
+            params: { id }
+        });
+    }
+
+    async updateGiornateConfirmation(ids, status) {
+        return this.request('giornate', 'batchUpdateConfirmation', {
+            method: 'POST',
+            data: {
+                ids: ids,
+                confermata: status
+            }
+        });
+    }
+
+    /**
+     * NUOVO: Metodo per eliminare una giornata.
+     * @param {string} id L'ID della giornata da eliminare.
+     */
+    async deleteGiornata(id) {
+        return this.request('giornate', 'delete', {
+            method: 'DELETE',
+            params: { id }
+        });
+    }
     // Clienti
     async getClienti() {
         return this.request('clienti', 'getAll');
