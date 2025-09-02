@@ -53,7 +53,8 @@ class APIClient {
 
             if (!response.ok) {
                  const errorData = responseText ? JSON.parse(responseText) : { message: `HTTP error! status: ${response.status}` };
-                 throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+                 // MODIFICATO: Cerca la chiave 'error' prima di 'message' per compatibilità con il backend
+                 throw new Error(errorData.error || errorData.message || `HTTP error! status: ${response.status}`);
             }
             
             if (!responseText.trim()) {
@@ -200,3 +201,4 @@ class APIClient {
         }
     }
 }
+

@@ -111,12 +111,7 @@ class GiornateAPI extends BaseAPI {
             }
         }
         
-        // Verifica che la data non sia futura
-        if (isset($data['Data']) && !empty($data['Data'])) {
-            if ($data['Data'] > date('Y-m-d')) {
-                $errors[] = "Non è possibile registrare giornate future";
-            }
-        }
+        // Controllo sulla data futura rimosso per consentire la pianificazione.
         
         // Verifica duplicati (stesso collaboratore, stesso task, stessa data)
         if (isset($data['Data'], $data['ID_COLLABORATORE'], $data['ID_TASK'])) {
@@ -198,9 +193,9 @@ class GiornateAPI extends BaseAPI {
             ];
             
             // Esclude il record corrente se è un aggiornamento
-            if (isset($data['ID_GIORNATA'])) {
-                $sql .= " AND ID_GIORNATA != :current_id";
-                $params[':current_id'] = $data['ID_GIORNATA'];
+            if (isset($data[$this->primaryKey])) {
+                $sql .= " AND {$this->primaryKey} != :current_id";
+                $params[':current_id'] = $data[$this->primaryKey];
             }
             
             $stmt = $this->db->prepare($sql);
@@ -231,25 +226,12 @@ class GiornateAPI extends BaseAPI {
      */
     protected function generateId() {
         try {
-            // Genera ID basato su data: DAY + YYYYMMDD + numero progressivo
-            $today = date('Ymd');
+            // Genera ID basato su data: GIO + YYYYMMDDHHMMSS + 3 cifre random
+            return 'GIO' . date('YmdHis') . rand(100, 999);
             
-            // Trova il prossimo numero disponibile per oggi
-            $sql = "SELECT ID_GIORNATA FROM {$this->table} WHERE ID_GIORNATA LIKE 'DAY{$today}%' ORDER BY ID_GIORNATA DESC LIMIT 1";
-            $stmt = $this->db->prepare($sql);
-            $stmt->execute();
-            $lastId = $stmt->fetchColumn();
-            
-            if ($lastId) {
-                $number = intval(substr($lastId, 11)) + 1; // DAY + 8 cifre data + numero
-            } else {
-                $number = 1;
-            }
-            
-            return 'DAY' . $today . str_pad($number, 3, '0', STR_PAD_LEFT);
-            
-        } catch (PDOException $e) {
-            return 'DAY' . date('Ymd') . str_pad(rand(1, 999), 3, '0', STR_PAD_LEFT);
+        } catch (Exception $e) {
+            // Fallback
+            return 'GIO' . time() . rand(100, 999);
         }
     }
     
@@ -397,12 +379,6 @@ class GiornateAPI extends BaseAPI {
     }
     
     /**
-     * Post-processing del record (aggiunge dati correlati)
-     */
-/**
-     * Post-processing del record (aggiunge dati correlati e calcolati)
-     */
-/**
      * Post-processing del record (aggiunge dati correlati e calcolati)
      */
     protected function processRecord($record) {
@@ -434,7 +410,7 @@ class GiornateAPI extends BaseAPI {
             $record['spese_totali'] = floatval($record['Spese_Viaggi']) + floatval($record['Vitto_alloggio']) + floatval($record['Altri_costi']);
             
             $record['valore_calcolato'] = 0;
-            if (isset($taskInfo['Valore_gg']) && $taskInfo['Valore_gg'] > 0) {
+            if ($record['Tipo'] === 'Campo' && isset($taskInfo['Valore_gg']) && $taskInfo['Valore_gg'] > 0) {
                 $record['valore_calcolato'] = floatval($taskInfo['Valore_gg']) * floatval($record['gg']);
             }
 
@@ -446,7 +422,6 @@ class GiornateAPI extends BaseAPI {
                 } else {
                     $speseStd = isset($taskInfo['Valore_Spese_std']) ? floatval($taskInfo['Valore_Spese_std']) : 0;
                     if ($speseStd > 0) {
-                        // MODIFICATO: Il valore standard è fisso, non viene più moltiplicato per 'gg'.
                         $record['Valore_spese'] = $speseStd;
                     } else {
                         $record['Valore_spese'] = $record['spese_totali'];
@@ -527,3 +502,4 @@ class GiornateAPI extends BaseAPI {
     }
 }
 ?>
+

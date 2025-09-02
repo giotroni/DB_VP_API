@@ -221,6 +221,10 @@ abstract class BaseAPI {
             }
             
             $input = $this->getRequestBody();
+
+            // Aggiungi l'ID primario ai dati di input in modo che sia disponibile per le regole di validazione
+            // che altrimenti rileverebbero il record come un duplicato di se stesso.
+            $input[$this->primaryKey] = $id;
             
             // Validazione input (permette campi parziali per update)
             $validation = $this->validateInput($input, false);

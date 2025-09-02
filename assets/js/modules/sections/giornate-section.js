@@ -67,7 +67,8 @@ class GiornateSection extends BaseSection {
     }
 
     createMeseCard(mese) {
-        const totaleGiornateMese = mese.collaboratori.reduce((sum, coll) => sum + coll.totaleGiornate, 0);
+        const totaleGiornateCampoMese = mese.collaboratori.reduce((sum, coll) => sum + coll.totaleGiornateCampo, 0);
+        const totaleValoreCalcolatoMese = mese.collaboratori.reduce((sum, coll) => sum + coll.totaleValoreCalcolato, 0);
 
         return `
             <div class="management-card mb-4">
@@ -75,7 +76,8 @@ class GiornateSection extends BaseSection {
                     <div class="d-flex justify-content-between align-items-center">
                         <h5 class="management-card-title mb-0"><i class="fas fa-calendar-alt me-2"></i>${mese.month}</h5>
                         <div>
-                            <span class="badge bg-primary me-2">${totaleGiornateMese.toFixed(2)} giorni totali</span>
+                            <span class="badge bg-success me-2">${this.app.utils.formatCurrency(totaleValoreCalcolatoMese)}</span>
+                            <span class="badge bg-primary me-2">${totaleGiornateCampoMese.toFixed(2)} giorni di campo</span>
                             <button class="commessa-toggle-btn" id="toggleBtn-${mese.yearMonth}"><i class="fas fa-chevron-down"></i></button>
                         </div>
                     </div>
@@ -91,18 +93,26 @@ class GiornateSection extends BaseSection {
     createCollaboratoreGroup(collaboratore) {
         return `
             <div class="collaboratore-group border-bottom">
-                <h6 class="bg-light p-3 mb-0 fw-bold"><i class="fas fa-user me-2"></i>${collaboratore.collaboratore_nome} <span class="badge bg-secondary float-end">${collaboratore.totaleGiornate.toFixed(2)} giorni</span></h6>
+                <h6 class="bg-light p-3 mb-0 fw-bold d-flex justify-content-between align-items-center">
+                    <span><i class="fas fa-user me-2"></i>${collaboratore.collaboratore_nome}</span>
+                    <div>
+                        <span class="badge bg-success me-2">${this.app.utils.formatCurrency(collaboratore.totaleValoreCalcolato)}</span>
+                        <span class="badge bg-secondary">${collaboratore.totaleGiornateCampo.toFixed(2)} giorni di campo</span>
+                    </div>
+                </h6>
                 <div class="table-responsive">
                     <table class="table table-hover table-sm mb-0">
                         <thead>
                             <tr>
                                 <th>Data</th>
-                                <th>Cliente</th>
                                 <th>Commessa</th>
                                 <th>Task</th>
                                 <th class="text-center">GG</th>
                                 <th>Tipo</th>
+                                <th class="text-center">Desk</th>
                                 <th>Note</th>
+                                <th class="text-center">Confermata</th>
+                                <th class="text-end">Valore Calc.</th>
                                 <th class="text-end">Spese Tot.</th>
                             </tr>
                         </thead>
@@ -116,19 +126,31 @@ class GiornateSection extends BaseSection {
     }
 
     createGiornataRow(giornata) {
-        const cliente = giornata.cliente_info?.Cliente || 'N/D';
         const commessa = giornata.commessa_info?.Commessa || 'N/D';
         const task = giornata.task_info?.Task || 'N/D';
+        const confermataIcon = giornata.Confermata === 'Si'
+            ? '<i class="fas fa-check-circle text-success" title="Confermata"></i>'
+            : '<i class="fas fa-times-circle text-muted" title="Non Confermata"></i>';
+
+        const tipoHtml = giornata.Tipo === 'Campo'
+            ? `<span class="text-success fw-bold">${giornata.Tipo}</span>`
+            : giornata.Tipo;
+
+        const deskIcon = giornata.Desk === 'Si'
+            ? '<i class="fas fa-desktop text-primary" title="Sì"></i>'
+            : '';
 
         return `
             <tr data-action="edit-giornata" data-id="${giornata.ID_GIORNATA}" style="cursor: pointer;">
                 <td>${this.app.utils.formatDate(giornata.Data)}</td>
-                <td>${cliente}</td>
                 <td>${commessa}</td>
                 <td>${task}</td>
-                <td class="text-center"><span class="badge bg-success">${giornata.gg}</span></td>
-                <td>${giornata.Tipo} ${giornata.Desk === 'Si' ? '(Desk)' : ''}</td>
+                <td class="text-center"><span class="badge bg-primary">${giornata.gg}</span></td>
+                <td>${tipoHtml}</td>
+                <td class="text-center">${deskIcon}</td>
                 <td class="text-truncate" style="max-width: 150px;" title="${giornata.Note || ''}">${giornata.Note || '-'}</td>
+                <td class="text-center">${confermataIcon}</td>
+                <td class="text-end fw-bold">${this.app.utils.formatCurrency(giornata.valore_calcolato)}</td>
                 <td class="text-end text-danger fw-bold">${this.app.utils.formatCurrency(giornata.spese_totali)}</td>
             </tr>
         `;
@@ -192,7 +214,10 @@ class GiornateSection extends BaseSection {
         this.addGiornataFormListeners(`${modalId}_form`);
     }
 
-    getGiornataFormHTML(giornata = {}) {
+    getGiornataFormHTML(giornataParam = {}) {
+        // CORREZIONE: Se viene passato `null`, lo tratta come un oggetto vuoto per evitare l'errore.
+        const giornata = giornataParam || {};
+
         const formId = `giornataModal_${giornata.ID_GIORNATA || 'new'}_form`;
         const collaboratoriOptions = this.app.collaboratori.map(c => `<option value="${c.ID_COLLABORATORE}" ${giornata.ID_COLLABORATORE === c.ID_COLLABORATORE ? 'selected' : ''}>${c.Collaboratore}</option>`).join('');
         
@@ -247,7 +272,7 @@ class GiornateSection extends BaseSection {
                      <div class="col-md-6 mb-3">
                         <label for="Desk" class="form-label">Da Scrivania (Desk)</label>
                         <select class="form-select" id="Desk" name="Desk">
-                            <option value="No" ${giornata.Desk === 'No' ? 'selected' : ''}>No</option>
+                            <option value="No" ${giornata.Desk === 'No' || !giornata.Desk ? 'selected' : ''}>No</option>
                             <option value="Si" ${giornata.Desk === 'Si' ? 'selected' : ''}>Sì</option>
                         </select>
                     </div>
@@ -341,12 +366,18 @@ class GiornateSection extends BaseSection {
         const totalGiornate = giornate.reduce((sum, g) => sum + (parseFloat(g.gg) || 0), 0);
         const totalSpese = giornate.reduce((sum, g) => sum + (parseFloat(g.spese_totali) || 0), 0);
         const collaboratoriUnici = [...new Set(giornate.map(g => g.ID_COLLABORATORE))].length;
+        
+        const giornateCampo = giornate.filter(g => g.Tipo === 'Campo');
+        const totalGiornateCampo = giornateCampo.reduce((sum, g) => sum + (parseFloat(g.gg) || 0), 0);
+        const totalValoreCalcolato = giornate.reduce((sum, g) => sum + (parseFloat(g.valore_calcolato) || 0), 0);
 
         const statsContainer = document.getElementById('stats-row-container');
         if (statsContainer) {
             statsContainer.innerHTML = `
                 <div class="stats-row">
                     ${this.ui.createStatsCard('fas fa-calendar-check', totalGiornate.toFixed(2), 'Giornate Totali')}
+                    ${this.ui.createStatsCard('fas fa-tractor', totalGiornateCampo.toFixed(2), 'Giornate di Campo')}
+                    ${this.ui.createStatsCard('fas fa-euro-sign', this.app.utils.formatCurrency(totalValoreCalcolato), 'Valore Calcolato')}
                     ${this.ui.createStatsCard('fas fa-receipt', this.app.utils.formatCurrency(totalSpese), 'Spese Totali')}
                     ${this.ui.createStatsCard('fas fa-users', collaboratoriUnici, 'Collaboratori Attivi')}
                 </div>
@@ -382,12 +413,18 @@ class GiornateSection extends BaseSection {
                     collaboratore_id: collabId,
                     collaboratore_nome: collaboratore ? collaboratore.Collaboratore : 'Sconosciuto',
                     giornate: [],
-                    totaleGiornate: 0
+                    totaleGiornate: 0,
+                    totaleGiornateCampo: 0,
+                    totaleValoreCalcolato: 0
                 };
             }
             
             grouped[yearMonth].collaboratori[collabId].giornate.push(g);
             grouped[yearMonth].collaboratori[collabId].totaleGiornate += parseFloat(g.gg) || 0;
+            if (g.Tipo === 'Campo') {
+                grouped[yearMonth].collaboratori[collabId].totaleGiornateCampo += parseFloat(g.gg) || 0;
+            }
+            grouped[yearMonth].collaboratori[collabId].totaleValoreCalcolato += parseFloat(g.valore_calcolato) || 0;
         });
 
         // Converte l'oggetto in un array e ordina i collaboratori
@@ -398,3 +435,4 @@ class GiornateSection extends BaseSection {
         });
     }
 }
+
