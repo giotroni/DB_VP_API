@@ -190,6 +190,10 @@ class GiornateSection extends BaseSection {
     // SEZIONE: MODALI E FORM
     // ========================================================================
 
+    // ========================================================================
+    // SEZIONE: MODALI E FORM
+    // ========================================================================
+
     showGiornataModal(giornataId = null) {
         const giornata = giornataId ? this.app.giornate.find(g => g.ID_GIORNATA === giornataId) : null;
         const modalTitle = giornataId ? 'Modifica Giornata' : 'Aggiungi Nuova Giornata';
@@ -211,22 +215,35 @@ class GiornateSection extends BaseSection {
         }
 
         this.ui.createModal(modalId, modalTitle, modalBody, modalActions, { size: 'modal-lg' });
-        this.addGiornataFormListeners(`${modalId}_form`);
+        // MODIFICATO: Passiamo l'ID del form alla funzione che aggiunge i listener
+        this.addGiornataFormListeners(modalId);
     }
 
+    /**
+     * MODIFICATO: Genera l'HTML per il form con il nuovo campo "Commessa"
+     * e la logica per la dipendenza tra Commessa e Task.
+     */
     getGiornataFormHTML(giornataParam = {}) {
-        // CORREZIONE: Se viene passato `null`, lo tratta come un oggetto vuoto per evitare l'errore.
         const giornata = giornataParam || {};
-
         const formId = `giornataModal_${giornata.ID_GIORNATA || 'new'}_form`;
+
+        // --- Logica per pre-selezionare commessa e task in caso di modifica ---
+        const currentCommessaId = giornata.task_info?.ID_COMMESSA;
+        const isEditMode = !!currentCommessaId;
+
+        // Opzioni per le commesse
+        const commesseOptions = this.app.commesse
+            .filter(c => c.Stato_Commessa === 'In corso')
+            .map(c => `<option value="${c.ID_COMMESSA}" ${currentCommessaId === c.ID_COMMESSA ? 'selected' : ''}>${c.Commessa}</option>`)
+            .join('');
+
+        // Opzioni per i task: vengono popolate solo se siamo in modifica, altrimenti saranno caricate dinamicamente
+        const taskOptions = isEditMode ? this.app.tasks
+            .filter(t => t.ID_COMMESSA === currentCommessaId && t.Stato_Task === 'In corso')
+            .map(t => `<option value="${t.ID_TASK}" ${giornata.ID_TASK === t.ID_TASK ? 'selected' : ''}>${t.Task}</option>`)
+            .join('') : '';
+
         const collaboratoriOptions = this.app.collaboratori.map(c => `<option value="${c.ID_COLLABORATORE}" ${giornata.ID_COLLABORATORE === c.ID_COLLABORATORE ? 'selected' : ''}>${c.Collaboratore}</option>`).join('');
-        
-        const taskOptions = this.app.tasks
-            .filter(t => t.Stato_Task === 'In corso')
-            .map(t => {
-                const commessa = this.app.commesse.find(c => c.ID_COMMESSA === t.ID_COMMESSA);
-                return `<option value="${t.ID_TASK}" ${giornata.ID_TASK === t.ID_TASK ? 'selected' : ''}>${commessa?.Commessa || 'N/D'} - ${t.Task}</option>`
-            }).join('');
 
         const oggi = new Date().toISOString().split('T')[0];
         const dataValue = giornata.Data ? giornata.Data.split('T')[0] : oggi;
@@ -244,17 +261,27 @@ class GiornateSection extends BaseSection {
                     </div>
                 </div>
                 <div class="row">
-                    <div class="col-md-6 mb-3">
+                    <div class="col-md-12 mb-3">
                         <label for="ID_COLLABORATORE" class="form-label">Collaboratore</label>
                         <select class="form-select" id="ID_COLLABORATORE" name="ID_COLLABORATORE" required>
                             <option value="">Seleziona...</option>
                             ${collaboratoriOptions}
                         </select>
                     </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="ID_COMMESSA_FORM" class="form-label">Commessa</label>
+                        <select class="form-select" id="ID_COMMESSA_FORM" name="ID_COMMESSA_FORM" required>
+                            <option value="">Seleziona una commessa...</option>
+                            ${commesseOptions}
+                        </select>
+                    </div>
                     <div class="col-md-6 mb-3">
                         <label for="ID_TASK" class="form-label">Task</label>
-                        <select class="form-select" id="ID_TASK" name="ID_TASK" required>
-                            <option value="">Seleziona...</option>
+                        <select class="form-select" id="ID_TASK" name="ID_TASK" required ${!isEditMode ? 'disabled' : ''}>
+                            <option value="">${isEditMode ? 'Seleziona un task...' : 'Seleziona prima una commessa...'}</option>
                             ${taskOptions}
                         </select>
                     </div>
@@ -300,45 +327,88 @@ class GiornateSection extends BaseSection {
             </form>
         `;
     }
+
     
-    addGiornataFormListeners(formId) {
+    /**
+     * MODIFICATO: Aggiunge i listener per il form, inclusa la logica
+     * per aggiornare i task quando cambia la commessa selezionata.
+     */
+    addGiornataFormListeners(modalId) {
+        const formId = `giornataModal_${modalId.split('_').pop()}_form`;
         const form = document.getElementById(formId);
         if (!form) return;
 
-        const giornataId = form.id.includes('giornataModal_') && !form.id.includes('new') 
-            ? form.id.split('_')[1] 
-            : null;
+        const commessaSelect = form.querySelector('#ID_COMMESSA_FORM');
+        const taskSelect = form.querySelector('#ID_TASK');
 
+        // Listener per il cambio della commessa
+        commessaSelect.addEventListener('change', (e) => {
+            const selectedCommessaId = e.target.value;
+            
+            // Svuota e disabilita il select dei task
+            taskSelect.innerHTML = '<option value="">Seleziona prima una commessa...</option>';
+            taskSelect.disabled = true;
+
+            if (selectedCommessaId) {
+                // Filtra i task relativi alla commessa selezionata
+                const filteredTasks = this.app.tasks.filter(
+                    t => t.ID_COMMESSA === selectedCommessaId && t.Stato_Task === 'In corso'
+                );
+
+                if (filteredTasks.length > 0) {
+                    // Popola il menù dei task
+                    taskSelect.innerHTML = '<option value="">Seleziona un task...</option>';
+                    filteredTasks.forEach(task => {
+                        const option = document.createElement('option');
+                        option.value = task.ID_TASK;
+                        option.textContent = task.Task;
+                        taskSelect.appendChild(option);
+                    });
+                    // Abilita il menù
+                    taskSelect.disabled = false;
+                } else {
+                    taskSelect.innerHTML = '<option value="">Nessun task attivo per questa commessa</option>';
+                }
+            }
+        });
+
+        // Listener per il submit del form
+        const giornataId = formId.includes('new') ? null : modalId.split('_').pop();
         form.addEventListener('submit', (e) => this.handleGiornataFormSubmit(e, giornataId));
     }
 
-    async handleGiornataFormSubmit(event, giornataId = null) {
-        event.preventDefault();
-        const form = event.target;
-        const formData = new FormData(form);
-        const data = Object.fromEntries(formData.entries());
+async handleGiornataFormSubmit(event, giornataId = null) {
+    event.preventDefault();
+    const form = event.target;
+    const formData = new FormData(form);
+    const data = Object.fromEntries(formData.entries());
 
-        // Converte i campi numerici vuoti in null per il backend
-        ['Spese_Viaggi', 'Vitto_alloggio', 'Altri_costi'].forEach(key => {
-            if (data[key] === '') data[key] = null;
-        });
+    // SOLUZIONE: Rimuove il campo ausiliario usato solo nel form
+    // prima di inviare i dati al server, perché non esiste nella tabella del database.
+    delete data.ID_COMMESSA_FORM;
 
-        try {
-            const result = giornataId
-                ? await this.api.updateGiornata(giornataId, data)
-                : await this.api.createGiornata(data);
-            
-            if (result.success) {
-                this.ui.showToast(`Giornata ${giornataId ? 'aggiornata' : 'creata'} con successo!`, 'success');
-                bootstrap.Modal.getInstance(form.closest('.modal'))?.hide();
-                await this.app.loadInitialData(); // Ricarica tutto per aggiornare le viste
-            } else {
-                throw new Error(result.message || 'Errore nel salvataggio della giornata.');
-            }
-        } catch (error) {
-            this.ui.showToast(error.message, 'error');
+    // Converte i campi numerici vuoti in null per il backend
+    ['Spese_Viaggi', 'Vitto_alloggio', 'Altri_costi'].forEach(key => {
+        if (data[key] === '') data[key] = null;
+    });
+
+    try {
+        const result = giornataId
+            ? await this.api.updateGiornata(giornataId, data)
+            : await this.api.createGiornata(data);
+        
+        if (result.success) {
+            this.ui.showToast(`Giornata ${giornataId ? 'aggiornata' : 'creata'} con successo!`, 'success');
+            bootstrap.Modal.getInstance(form.closest('.modal'))?.hide();
+            await this.app.loadInitialData(); // Ricarica tutto per aggiornare le viste
+        } else {
+            // MODIFICATO: Usa il messaggio di errore dal backend se esiste, altrimenti mostra un messaggio generico.
+            throw new Error(result.message || 'Errore nel salvataggio della giornata.');
         }
+    } catch (error) {
+        this.ui.showToast(error.message, 'error');
     }
+}
 
     async handleDeleteGiornata(giornataId) {
         if (confirm(`Sei sicuro di voler eliminare questa giornata? L'azione è irreversibile.`)) {

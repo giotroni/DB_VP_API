@@ -16,10 +16,12 @@ class BaseSection {
 
     async initialize() {
         this.showLoading();
-        if (!this.isLoaded) {
-            await this.loadData();
-            this.isLoaded = true;
-        }
+        
+        // MODIFICATO: Chiama sempre loadData() per assicurare che i dati della sezione
+        // (es. raggruppamenti) vengano rielaborati dopo un refresh globale dei dati.
+        await this.loadData();
+        this.isLoaded = true;
+        
         this.render();
         this.bindEvents();
     }
