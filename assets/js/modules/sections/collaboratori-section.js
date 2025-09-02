@@ -1,7 +1,6 @@
 /**
  * @file collaboratori-section.js
  * @description Classe per la gestione della sezione "Collaboratori".
- * @version 1.0
  */
 class CollaboratoriSection extends BaseSection {
     constructor(appInstance) {
@@ -51,7 +50,6 @@ class CollaboratoriSection extends BaseSection {
         const searchInput = document.getElementById('searchCollaboratori');
         const filterRuolo = document.getElementById('filterRuolo');
 
-        // Debounce the search input to avoid filtering on every keystroke
         let debounceTimeout;
         searchInput?.addEventListener('input', () => {
             clearTimeout(debounceTimeout);
@@ -64,10 +62,12 @@ class CollaboratoriSection extends BaseSection {
     handleAction(action, id) {
         switch (action) {
             case 'add-collaboratore':
-                this.showNewCollaboratoreModal();
+                // this.showNewCollaboratoreModal();
+                this.ui.showToast('Funzione non ancora implementata.', 'info');
                 break;
             case 'edit-collaboratore':
-                this.showEditCollaboratoreModal(id);
+                // this.showEditCollaboratoreModal(id);
+                 this.ui.showToast('Funzione non ancora implementata.', 'info');
                 break;
             case 'toggle-collaboratore':
                 this.toggleCollaboratore(id);
@@ -76,10 +76,6 @@ class CollaboratoriSection extends BaseSection {
                 console.warn(`Azione non gestita: ${action}`);
         }
     }
-
-    // ========================================================================
-    // SEZIONE: RENDERING
-    // ========================================================================
 
     renderCollaboratoriCards(collaboratori) {
         if (!collaboratori || collaboratori.length === 0) {
@@ -90,7 +86,14 @@ class CollaboratoriSection extends BaseSection {
 
     createCollaboratoreCard(collaboratore) {
         const stats = collaboratore.statistics || {};
-        const totalGiornate = collaboratore.giornate.length;
+
+        // Calcola il totale delle giornate di tipo 'Campo' (sommando le frazioni)
+        const totalGiornateCampo = collaboratore.giornate
+            .filter(g => g.Tipo === 'Campo')
+            .reduce((sum, g) => sum + (parseFloat(g.gg) || 0), 0);
+
+        // Calcola il costo totale sommando i costi di tutte le giornate
+        const totalCosto = collaboratore.giornate.reduce((sum, g) => sum + (g.costo_calcolato || 0), 0);
 
         return `
             <div class="management-card mb-4">
@@ -100,8 +103,8 @@ class CollaboratoriSection extends BaseSection {
                         <div class="d-flex align-items-center gap-2">
                             <span class="badge bg-primary" title="Ruolo"><i class="fas fa-shield-alt me-1"></i>${collaboratore.Ruolo}</span>
                             <span class="badge bg-info text-dark" title="Commesse Assegnate"><i class="fas fa-briefcase me-1"></i>${stats.commesse_assegnate || 0}</span>
-                            <span class="badge bg-secondary" title="Task Assegnati"><i class="fas fa-tasks me-1"></i>${stats.task_assegnati || 0}</span>
-                             <span class="badge bg-success" title="Totale Giornate Registrate"><i class="fas fa-calendar-check me-1"></i>${totalGiornate}</span>
+                            <span class="badge bg-success" title="Totale Giornate di Campo"><i class="fas fa-tractor me-1"></i>${totalGiornateCampo.toFixed(1)}</span>
+                            <span class="badge bg-danger" title="Costo Totale">${this.app.utils.formatCurrency(totalCosto)}</span>
                             <button class="btn btn-sm btn-outline-light" data-action="edit-collaboratore" data-id="${collaboratore.ID_COLLABORATORE}" title="Modifica Collaboratore"><i class="fas fa-pencil-alt"></i></button>
                             <button class="commessa-toggle-btn" id="toggleBtn-${collaboratore.ID_COLLABORATORE}"><i class="fas fa-chevron-down"></i></button>
                         </div>
@@ -120,7 +123,7 @@ class CollaboratoriSection extends BaseSection {
     }
 
     renderGiornateByMonth(giornateByMonth) {
-        const months = Object.keys(giornateByMonth).sort().reverse(); // Ordina i mesi dal più recente
+        const months = Object.keys(giornateByMonth).sort().reverse();
         if (months.length === 0) {
             return '<p class="text-muted">Nessuna giornata registrata per questo collaboratore.</p>';
         }
@@ -147,7 +150,9 @@ class CollaboratoriSection extends BaseSection {
                                     <th>Task</th>
                                     <th>gg</th>
                                     <th>Tipo</th>
-                                    <th class="text-end">Costo Giornata</th>
+                                    <th class="text-end">Costo Gg (€)</th>
+                                    <th class="text-end">Costo Spese (€)</th>
+                                    <th class="text-end">Costo Totale (€)</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -161,13 +166,13 @@ class CollaboratoriSection extends BaseSection {
     }
     
     renderGiornataRow(giornata) {
-        // 1. Trova il task associato alla giornata (come già avviene)
         const task = this.app.tasks.find(t => String(t.ID_TASK) === String(giornata.ID_TASK));
-        
-        // 2. CORREZIONE: Cerca la commessa usando l'ID_COMMESSA dal task trovato, non dalla giornata
         const commessa = task ? this.app.commesse.find(c => c.ID_COMMESSA === task.ID_COMMESSA) : null;
         
-        const costo = giornata.costo_calcolato || 0;
+        // Estrae i singoli costi e calcola il totale
+        const costoGg = parseFloat(giornata.Costo_gg) || 0;
+        const costoSpese = parseFloat(giornata.Costo_Spese) || 0;
+        const costoTotale = costoGg + costoSpese;
 
         return `
             <tr>
@@ -176,15 +181,13 @@ class CollaboratoriSection extends BaseSection {
                 <td>${task ? task.Task : 'N/D'}</td>
                 <td><span class="badge bg-primary">${giornata.gg}g</span></td>
                 <td>${giornata.Tipo}</td>
-                <td class="text-end fw-bold ${costo > 0 ? 'text-success' : ''}">${this.app.utils.formatCurrency(costo)}</td>
+                <td class="text-end text-success">${this.app.utils.formatCurrency(costoGg)}</td>
+                <td class="text-end text-danger">${this.app.utils.formatCurrency(costoSpese)}</td>
+                <td class="text-end fw-bold">${this.app.utils.formatCurrency(costoTotale)}</td>
             </tr>
         `;
     }
 
-    // ========================================================================
-    // SEZIONE: LOGICA DI INTERAZIONE E FILTRI
-    // ========================================================================
-    
     filterData() {
         const searchText = document.getElementById('searchCollaboratori')?.value.toLowerCase() || '';
         const selectedRuolo = document.getElementById('filterRuolo')?.value || '';
@@ -226,89 +229,6 @@ class CollaboratoriSection extends BaseSection {
             icon.classList.toggle('fa-chevron-up', isShown);
         }
     }
-    
-    // ========================================================================
-    // SEZIONE: GESTIONE MODALI E FORM
-    // ========================================================================
-
-    showNewCollaboratoreModal() {
-        const modalTitle = 'Crea Nuovo Collaboratore';
-        const modalId = 'newCollaboratoreModal';
-        const modalBody = this.getCollaboratoreFormHTML();
-        const modalActions = [
-            { html: '<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>' },
-            { html: `<button type="submit" form="${modalId}_form" class="btn btn-primary">Crea Collaboratore</button>` }
-        ];
-        this.ui.createModal(modalId, modalTitle, modalBody, modalActions, { size: 'modal-lg' });
-    }
-    
-    showEditCollaboratoreModal(collaboratoreId) {
-        const collaboratore = this.app.collaboratori.find(c => c.ID_COLLABORATORE === collaboratoreId);
-        if (!collaboratore) {
-            this.ui.showToast('Collaboratore non trovato.', 'error');
-            return;
-        }
-
-        const modalTitle = `Modifica Collaboratore: ${collaboratore.Collaboratore}`;
-        const modalId = `editCollaboratoreModal_${collaboratoreId}`;
-        const modalBody = this.getCollaboratoreFormHTML(collaboratore);
-        
-        // TODO: Aggiungere logica di eliminazione con controllo dei vincoli
-        const modalActions = [
-            { html: '<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>' },
-            { html: `<button type="submit" form="${modalId}_form" class="btn btn-primary">Salva Modifiche</button>` }
-        ];
-
-        this.ui.createModal(modalId, modalTitle, modalBody, modalActions, { size: 'modal-lg' });
-    }
-    
-    getCollaboratoreFormHTML(collaboratore = {}) {
-        const formId = collaboratore.ID_COLLABORATORE ? `editCollaboratoreModal_${collaboratore.ID_COLLABORATORE}_form` : 'newCollaboratoreModal_form';
-        const isEdit = !!collaboratore.ID_COLLABORATORE;
-        
-        const ruoli = ['User', 'Manager', 'Admin'];
-        const ruoliOptions = ruoli.map(r => `<option value="${r}" ${(collaboratore.Ruolo || 'User') === r ? 'selected' : ''}>${r}</option>`).join('');
-
-        return `
-            <form id="${formId}" novalidate>
-                <div class="row">
-                    <div class="col-md-8 mb-3">
-                        <label for="Collaboratore" class="form-label">Nome e Cognome</label>
-                        <input type="text" class="form-control" id="Collaboratore" name="Collaboratore" value="${collaboratore.Collaboratore || ''}" required>
-                    </div>
-                    <div class="col-md-4 mb-3">
-                         <label for="Ruolo" class="form-label">Ruolo</label>
-                         <select class="form-select" id="Ruolo" name="Ruolo" required>${ruoliOptions}</select>
-                    </div>
-                </div>
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <label for="Email" class="form-label">Email</label>
-                        <input type="email" class="form-control" id="Email" name="Email" value="${collaboratore.Email || ''}" required>
-                    </div>
-                    <div class="col-md-6 mb-3">
-                        <label for="User" class="form-label">Username</label>
-                        <input type="text" class="form-control" id="User" name="User" value="${collaboratore.User || ''}" required>
-                    </div>
-                </div>
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <label for="PWD" class="form-label">${isEdit ? 'Nuova Password (lascia vuoto per non cambiare)' : 'Password'}</label>
-                        <input type="password" class="form-control" id="PWD" name="PWD" ${isEdit ? '' : 'required'}>
-                    </div>
-                    <div class="col-md-6 mb-3">
-                        <label for="PIVA" class="form-label">Partita IVA (opzionale)</label>
-                        <input type="text" class="form-control" id="PIVA" name="PIVA" value="${collaboratore.PIVA || ''}">
-                    </div>
-                </div>
-                ${!isEdit ? `<div class="form-text">La password verrà inviata via email al nuovo collaboratore.</div>` : ''}
-            </form>
-        `;
-    }
-
-    // ========================================================================
-    // SEZIONE: CALCOLI E GROUPING
-    // ========================================================================
 
     groupGiornateByCollaboratore() {
         return this.app.collaboratori.map(collaboratore => {
@@ -318,7 +238,7 @@ class CollaboratoriSection extends BaseSection {
                     ...g,
                     costo_calcolato: this.calculateGiornataCost(g)
                 }))
-                .sort((a, b) => new Date(b.Data) - new Date(a.Data)); // Ordina per data decrescente
+                .sort((a, b) => new Date(b.Data) - new Date(a.Data));
 
             const giornateByMonth = giornate.reduce((acc, g) => {
                 const monthKey = g.Data.substring(0, 7); // "YYYY-MM"
@@ -338,38 +258,34 @@ class CollaboratoriSection extends BaseSection {
     }
     
     calculateGiornataCost(giornata) {
-        if (giornata.Tipo !== 'Campo') {
-            return 0;
+        if (giornata.Tipo !== 'Campo') return 0;
+        
+        // Usa i costi pre-calcolati dall'API se disponibili
+        if (typeof giornata.Costo_gg !== 'undefined' && typeof giornata.Costo_Spese !== 'undefined') {
+            return (parseFloat(giornata.Costo_gg) || 0) + (parseFloat(giornata.Costo_Spese) || 0);
         }
 
+        // Fallback nel caso i campi non siano presenti (logica precedente)
         const tariffa = this.findTariffa(giornata.ID_COLLABORATORE, giornata.Data);
         const tariffaGiornaliera = tariffa ? parseFloat(tariffa.Tariffa_gg) : 0;
         const giorniLavorati = parseFloat(giornata.gg) || 0;
         const valoreSpese = parseFloat(giornata.Valore_spese) || 0;
-
-        const costoLavoro = tariffaGiornaliera * giorniLavorati;
-        
-        return costoLavoro + valoreSpese;
+        return (tariffaGiornaliera * giorniLavorati) + valoreSpese;
     }
 
     findTariffa(collaboratoreId, data) {
         const dataGiornata = new Date(data);
-        
         const tariffeValide = this.app.tariffe
             .filter(t => t.ID_COLLABORATORE === collaboratoreId && new Date(t.Data_Inizio_Validita) <= dataGiornata)
             .sort((a, b) => new Date(b.Data_Inizio_Validita) - new Date(a.Data_Inizio_Validita));
-
         return tariffeValide.length > 0 ? tariffeValide[0] : null;
     }
     
     updateStats(data) {
         const collaboratoriCount = data.length;
-        
         const totalGiornate = data.reduce((sum, c) => sum + c.giornate.length, 0);
-        
         const totalCosto = data.reduce((sum, c) => {
-            const costoCollaboratore = c.giornate.reduce((s, g) => s + (g.costo_calcolato || 0), 0);
-            return sum + costoCollaboratore;
+            return sum + c.giornate.reduce((s, g) => s + (g.costo_calcolato || 0), 0);
         }, 0);
         
         const statsContainer = document.getElementById('stats-row-container');

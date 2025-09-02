@@ -398,12 +398,14 @@ class GiornateAPI extends BaseAPI {
             
             // Aggiungi informazioni task e commessa
             $taskInfo = null;
+            $commessaId = null; // Inizializza ID commessa per uso successivo
             if (!empty($record['ID_TASK'])) {
                 $taskFields = ['Task', 'ID_COMMESSA', 'Valore_gg', 'Tipo', 'Spese_Comprese', 'Valore_Spese_std'];
                 $taskInfo = $this->getRelatedData('ANA_TASK', 'ID_TASK', $record['ID_TASK'], $taskFields);
                 $record['task_info'] = $taskInfo;
                 
                 if ($taskInfo && !empty($taskInfo['ID_COMMESSA'])) {
+                    $commessaId = $taskInfo['ID_COMMESSA']; // Salva l'ID della commessa
                     $commessaInfo = $this->getRelatedData('ANA_COMMESSE', 'ID_COMMESSA', $taskInfo['ID_COMMESSA'], ['Commessa', 'ID_CLIENTE']);
                     $record['commessa_info'] = $commessaInfo;
                     
@@ -435,6 +437,32 @@ class GiornateAPI extends BaseAPI {
                     }
                 }
             }
+
+            // --- INIZIO NUOVO CODICE ---
+            // --- INIZIO CODICE AGGIORNATO ---
+
+            // Calcolo 'Costo_gg'
+            // Il costo viene calcolato solo per le giornate di tipo 'Campo'.
+            if (isset($record['Tipo']) && $record['Tipo'] === 'Campo') {
+                $tariffaGg = 0;
+                if (!empty($record['ID_COLLABORATORE']) && !empty($record['Data'])) {
+                    // Recupera la tariffa attiva per il collaboratore alla data della giornata,
+                    // considerando la commessa specifica se presente.
+                    $tariffaGg = $this->getTariffaAttiva($record['ID_COLLABORATORE'], $record['Data'], $commessaId);
+                }
+                // Calcola il costo totale per la frazione di giornata lavorata
+                $record['Costo_gg'] = $tariffaGg * floatval($record['gg']);
+            } else {
+                // Per tutti gli altri tipi di giornata, il costo è zero.
+                $record['Costo_gg'] = 0;
+            }
+
+            // Calcolo 'Costo_Spese'
+            // Somma delle spese sostenute meno la quota già fatturata a VP
+            $costoSpese = (floatval($record['Spese_Viaggi']) + floatval($record['Vitto_alloggio']) + floatval($record['Altri_costi'])) - floatval($record['Spese_Fatturate_VP']);
+            $record['Costo_Spese'] = $costoSpese;
+            
+            // --- FINE CODICE AGGIORNATO ---
             
             return $record;
         } catch (Exception $e) {
@@ -507,6 +535,43 @@ class GiornateAPI extends BaseAPI {
             return null;
         }
     }
+
+    /**
+     * Recupera la tariffa attiva per un collaboratore a una data specifica, 
+     * dando priorità a tariffe per commessa.
+     */
+    private function getTariffaAttiva($collaboratoreId, $data, $commessaId = null) {
+        try {
+            // La query cerca la tariffa più appropriata:
+            // 1. Deve appartenere al collaboratore.
+            // 2. La data di inizio validità (Dal) deve essere precedente o uguale alla data della giornata.
+            // 3. Se una commessa è specificata, cerca una tariffa per quella commessa O una tariffa generale (ID_COMMESSA IS NULL).
+            // 4. L'ordinamento `ID_COMMESSA DESC` dà priorità a una tariffa specifica (non-NULL) rispetto a una generale (NULL).
+            // 5. L'ordinamento `Dal DESC` assicura di prendere la tariffa più recente tra quelle valide.
+            $sql = "SELECT Tariffa_gg FROM ANA_TARIFFE_COLLABORATORI
+                    WHERE ID_COLLABORATORE = :collaboratore
+                    AND Dal <= :data
+                    AND (ID_COMMESSA = :commessa OR ID_COMMESSA IS NULL)
+                    ORDER BY ID_COMMESSA DESC, Dal DESC
+                    LIMIT 1";
+
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([
+                ':collaboratore' => $collaboratoreId,
+                ':data' => $data,
+                ':commessa' => $commessaId
+            ]);
+
+            $result = $stmt->fetchColumn();
+            // Restituisce il valore della tariffa come numero, o 0 se non viene trovata.
+            return $result !== false ? floatval($result) : 0;
+
+        } catch (PDOException $e) {
+            // In caso di errore del database, restituisce 0 per evitare di bloccare il flusso.
+            // Si potrebbe aggiungere un log dell'errore per il debug.
+            error_log("Errore in getTariffaAttiva: " . $e->getMessage());
+            return 0;
+        }
+    }
 }
 ?>
-
