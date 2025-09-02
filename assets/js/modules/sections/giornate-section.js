@@ -6,28 +6,57 @@ class GiornateSection extends BaseSection {
     constructor(appInstance) {
         super('Giornate', appInstance);
         this.giornateAggregate = [];
+        this.filteredGiornateAggregate = []; // NUOVO: Array per i dati filtrati
         this.mesiItaliani = ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"];
     }
 
     async loadData() {
         // I dati sono già caricati in this.app.giornate, dobbiamo solo raggrupparli
         this.giornateAggregate = this.groupGiornateByMonthAndCollaboratore();
+        // Inizialmente, i dati filtrati sono tutti i dati
+        this.filteredGiornateAggregate = this.giornateAggregate;
         this.isLoaded = true;
     }
 
+    /**
+     * MODIFICATO: Aggiunge l'HTML per la barra dei filtri.
+     */
     render() {
         this.updatePageTitle('Riepilogo Giornate', 'Visualizza, aggiungi e modifica le giornate lavorative');
         this.updateTopbarActions(`<button class="btn btn-vp-primary" data-action="add-giornata"><i class="fas fa-plus me-2"></i>Aggiungi Giornata</button>`);
         
         const container = this.getContainer();
+        
+        // Prepara le opzioni per i menu a tendina dei filtri
+        const collaboratoriOptions = this.app.collaboratori.map(c => `<option value="${c.ID_COLLABORATORE}">${c.Collaboratore}</option>`).join('');
+        const commesseOptions = this.app.commesse.map(c => `<option value="${c.ID_COMMESSA}">${c.Commessa}</option>`).join('');
+
         container.innerHTML = `
             <div id="stats-row-container"></div>
+            <!-- NUOVO: Blocco filtri -->
             <div class="search-filters">
-                <!-- Qui possono essere aggiunti filtri se necessario -->
-                 <p class="text-muted mb-0">Riepilogo delle giornate registrate, raggruppate per mese e collaboratore.</p>
+                <div class="row gy-3 align-items-end">
+                    <div class="col-lg-4 col-md-6">
+                        <label for="filterCollaboratore" class="form-label">Filtra per Collaboratore</label>
+                        <select class="form-select" id="filterCollaboratore">
+                            <option value="">Tutti i collaboratori</option>
+                            ${collaboratoriOptions}
+                        </select>
+                    </div>
+                    <div class="col-lg-4 col-md-6">
+                        <label for="filterCommessa" class="form-label">Filtra per Commessa</label>
+                        <select class="form-select" id="filterCommessa">
+                            <option value="">Tutte le commesse</option>
+                            ${commesseOptions}
+                        </select>
+                    </div>
+                    <div class="col-lg-2 col-md-12">
+                         <p class="text-muted small mb-0 mt-3">I filtri vengono applicati automaticamente.</p>
+                    </div>
+                </div>
             </div>
             <div id="giornateContainer">
-                ${this.renderGiornateAggregate(this.giornateAggregate)}
+                ${this.renderGiornateAggregate(this.filteredGiornateAggregate)}
             </div>
         `;
 
@@ -35,42 +64,85 @@ class GiornateSection extends BaseSection {
         this.bindEvents();
     }
     
+    /**
+     * MODIFICATO: Aggiunge gli event listener per i nuovi filtri.
+     * La logica di filtraggio si attiva al cambio di selezione.
+     */
     bindEvents() {
-        // Aggiungi qui event listener specifici per la sezione se necessario
+        document.getElementById('filterCollaboratore')?.addEventListener('change', () => this.filterData());
+        document.getElementById('filterCommessa')?.addEventListener('change', () => this.filterData());
     }
 
     handleAction(action, id, type, targetElement, e) {
-        // NUOVO: Interrompe la propagazione per evitare che il click sul pulsante apra/chiuda il mese
         if (action === 'toggle-conferma-mese') {
             e.stopPropagation();
         }
         
         switch (action) {
-            case 'add-giornata':
-                this.showGiornataModal();
-                break;
-            case 'edit-giornata':
-                this.showGiornataModal(id);
-                break;
-            case 'toggle-mese':
-                this.toggleMese(id);
-                break;
-            // NUOVA AZIONE
-            case 'toggle-conferma-mese':
-                this.handleToggleConfermaMese(id);
-                break;
-            default:
-                console.warn(`Azione non gestita: ${action}`);
+            case 'add-giornata': this.showGiornataModal(); break;
+            case 'edit-giornata': this.showGiornataModal(id); break;
+            case 'toggle-mese': this.toggleMese(id); break;
+            case 'toggle-conferma-mese': this.handleToggleConfermaMese(id); break;
+            default: console.warn(`Azione non gestita: ${action}`);
         }
     }
     
     // ========================================================================
-    // SEZIONE: RENDERING
+    // SEZIONE: NUOVA LOGICA DI FILTRAGGIO
+    // ========================================================================
+    
+    /**
+     * NUOVA FUNZIONE: Filtra i dati delle giornate in base ai valori
+     * selezionati nei menù a tendina e aggiorna la vista.
+     */
+    filterData() {
+        const selectedCollaboratore = document.getElementById('filterCollaboratore').value;
+        const selectedCommessa = document.getElementById('filterCommessa').value;
+
+        // Parti da una copia profonda dei dati originali non filtrati
+        let data = JSON.parse(JSON.stringify(this.giornateAggregate));
+
+        // Applica i filtri se almeno uno è stato selezionato
+        if (selectedCollaboratore || selectedCommessa) {
+            data = data.map(mese => {
+                // 1. Filtra i collaboratori (se il filtro è attivo)
+                if (selectedCollaboratore) {
+                    mese.collaboratori = mese.collaboratori.filter(c => c.collaboratore_id === selectedCollaboratore);
+                }
+
+                // 2. Filtra le giornate per commessa all'interno di ogni collaboratore rimasto
+                if (selectedCommessa) {
+                    mese.collaboratori.forEach(collaboratore => {
+                        // CORREZIONE: Il riferimento corretto all'ID commessa è dentro 'task_info'
+                        collaboratore.giornate = collaboratore.giornate.filter(g => g.task_info?.ID_COMMESSA === selectedCommessa);
+                    });
+                }
+                
+                // 3. Pulisci: rimuovi i collaboratori che non hanno più giornate dopo il filtro per commessa
+                mese.collaboratori = mese.collaboratori.filter(c => c.giornate.length > 0);
+
+                return mese;
+            }).filter(mese => mese.collaboratori.length > 0); // 4. Pulisci: rimuovi i mesi che non hanno più collaboratori
+        }
+
+        this.filteredGiornateAggregate = data;
+        
+        // Aggiorna la vista con i dati filtrati
+        const container = document.getElementById('giornateContainer');
+        container.innerHTML = this.renderGiornateAggregate(this.filteredGiornateAggregate);
+        
+        // Aggiorna le statistiche con le sole giornate filtrate
+        const giornateFiltrate = this.filteredGiornateAggregate.flatMap(m => m.collaboratori.flatMap(c => c.giornate));
+        this.updateStats(giornateFiltrate);
+    }
+
+    // ========================================================================
+    // SEZIONE: RENDERING (invariata ma ora usa i dati filtrati)
     // ========================================================================
 
     renderGiornateAggregate(data) {
         if (!data || data.length === 0) {
-            return this.ui.createEmptyState('fas fa-calendar-times', 'Nessuna Giornata Trovata', 'Non sono state ancora registrate giornate.');
+            return this.ui.createEmptyState('fas fa-calendar-times', 'Nessuna Giornata Trovata', 'Nessuna giornata corrisponde ai filtri selezionati.');
         }
         return data.map(mese => this.createMeseCard(mese)).join('');
     }
@@ -79,7 +151,6 @@ class GiornateSection extends BaseSection {
         const totaleGiornateCampoMese = mese.collaboratori.reduce((sum, coll) => sum + coll.totaleGiornateCampo, 0);
         const totaleValoreCalcolatoMese = mese.collaboratori.reduce((sum, coll) => sum + coll.totaleValoreCalcolato, 0);
 
-        // NUOVO: Determina se ci sono giornate non confermate per decidere l'azione del pulsante
         const hasUnconfirmed = mese.collaboratori.some(coll => coll.giornate.some(g => g.Confermata !== 'Si'));
         const toggleConfirmTitle = hasUnconfirmed ? 'Conferma tutte le giornate del mese' : 'Rimuovi conferma da tutte le giornate';
         const toggleConfirmIcon = hasUnconfirmed ? 'fa-check-circle' : 'fa-times-circle';
@@ -92,11 +163,9 @@ class GiornateSection extends BaseSection {
                         <div class="d-flex align-items-center gap-2">
                             <span class="badge bg-success">${this.app.utils.formatCurrency(totaleValoreCalcolatoMese)}</span>
                             <span class="badge bg-primary">${totaleGiornateCampoMese.toFixed(2)} giorni di campo</span>
-                            
                             <button class="btn btn-sm btn-outline-light" data-action="toggle-conferma-mese" data-id="${mese.yearMonth}" title="${toggleConfirmTitle}">
                                 <i class="fas ${toggleConfirmIcon}"></i>
                             </button>
-
                             <button class="commessa-toggle-btn" id="toggleBtn-${mese.yearMonth}"><i class="fas fa-chevron-down"></i></button>
                         </div>
                     </div>
@@ -204,61 +273,7 @@ class GiornateSection extends BaseSection {
             icon.classList.toggle('fa-chevron-up', isShown);
         }
     }
-
-    /**
-     * NUOVA FUNZIONE: Gestisce la conferma/deconferma di tutte le giornate di un mese.
-     * @param {string} yearMonth - L'identificativo del mese (es. "2025-09").
-     */
-    async handleToggleConfermaMese(yearMonth) {
-        // Trova tutte le giornate per il mese specificato
-        const giornateDelMese = this.app.giornate.filter(g => {
-            const dataGiornata = g.Data.substring(0, 7); // Estrae YYYY-MM
-            return dataGiornata === yearMonth;
-        });
-
-        if (giornateDelMese.length === 0) {
-            this.ui.showToast('Nessuna giornata da aggiornare per questo mese.', 'info');
-            return;
-        }
-
-        // Determina lo stato target: se anche solo una non è confermata, le conferma tutte.
-        // Altrimenti, le "deconferma" tutte.
-        const targetState = giornateDelMese.some(g => g.Confermata !== 'Si') ? 'Si' : 'No';
-        const actionText = targetState === 'Si' ? 'confermare' : 'rimuovere la conferma da';
-
-        if (confirm(`Sei sicuro di voler ${actionText} ${giornateDelMese.length} giornate per questo mese?`)) {
-            this.ui.showToast('Aggiornamento in corso...', 'info');
-
-            // Crea un array di promesse per tutte le chiamate API
-            const updatePromises = giornateDelMese.map(giornata => 
-                this.api.updateGiornata(giornata.ID_GIORNATA, { Confermata: targetState })
-            );
-
-            try {
-                // Attende che tutte le chiamate API siano completate
-                const results = await Promise.all(updatePromises);
-                
-                const successCount = results.filter(r => r.success).length;
-                const errorCount = results.length - successCount;
-
-                if (errorCount > 0) {
-                    this.ui.showToast(`${successCount} giornate aggiornate, ${errorCount} fallite.`, 'warning');
-                } else {
-                    this.ui.showToast(`${successCount} giornate aggiornate con successo!`, 'success');
-                }
-
-                // Ricarica i dati per riflettere le modifiche
-                await this.app.loadInitialData();
-
-            } catch (error) {
-                this.ui.showToast(`Si è verificato un errore durante l'aggiornamento: ${error.message}`, 'error');
-            }
-        }
-    }
-    // ========================================================================
-    // SEZIONE: MODALI E FORM
-    // ========================================================================
-
+    
     // ========================================================================
     // SEZIONE: MODALI E FORM
     // ========================================================================
@@ -284,22 +299,15 @@ class GiornateSection extends BaseSection {
         }
 
         this.ui.createModal(modalId, modalTitle, modalBody, modalActions, { size: 'modal-lg' });
-        // MODIFICATO: Passiamo l'ID del form alla funzione che aggiunge i listener
         this.addGiornataFormListeners(modalId);
     }
 
-    /**
-     * MODIFICATO: Genera l'HTML per il form con il nuovo campo "Commessa"
-     * e la logica per la dipendenza tra Commessa e Task.
-     */
     getGiornataFormHTML(giornataParam = {}) {
-        // CORREZIONE: Se viene passato `null`, lo tratta come un oggetto vuoto per evitare l'errore.
         const giornata = giornataParam || {};
 
         const formId = `giornataModal_${giornata.ID_GIORNATA || 'new'}_form`;
         const collaboratoriOptions = this.app.collaboratori.map(c => `<option value="${c.ID_COLLABORATORE}" ${giornata.ID_COLLABORATORE === c.ID_COLLABORATORE ? 'selected' : ''}>${c.Collaboratore}</option>`).join('');
         
-        // Logica per pre-selezionare commessa e task in caso di modifica
         const currentCommessaId = giornata.task_info?.ID_COMMESSA;
         const isEditMode = !!currentCommessaId;
 
@@ -353,7 +361,7 @@ class GiornateSection extends BaseSection {
                         </select>
                     </div>
                 </div>
-                <div class="row">
+                 <div class="row">
                     <div class="col-md-4 mb-3">
                         <label for="Tipo" class="form-label">Tipo Attività</label>
                         <select class="form-select" id="Tipo" name="Tipo">
@@ -363,8 +371,8 @@ class GiornateSection extends BaseSection {
                             <option value="Formazione" ${giornata.Tipo === 'Formazione' ? 'selected' : ''}>Formazione</option>
                         </select>
                     </div>
-                    <div class="col-md-4 mb-3">
-                        <label for="Desk" class="form-label">Desk</label>
+                     <div class="col-md-4 mb-3">
+                        <label for="Desk" class="form-label">Da Scrivania (Desk)</label>
                         <select class="form-select" id="Desk" name="Desk">
                             <option value="No" ${giornata.Desk === 'No' || !giornata.Desk ? 'selected' : ''}>No</option>
                             <option value="Si" ${giornata.Desk === 'Si' ? 'selected' : ''}>Sì</option>
@@ -380,12 +388,12 @@ class GiornateSection extends BaseSection {
                 </div>
                 <hr>
                 <h5>Spese e Costi (Opzionale)</h5>
-                <div class="row">
+                 <div class="row">
                     <div class="col-md-3 mb-3">
                         <label for="Spese_Viaggi" class="form-label">Spese Viaggio (€)</label>
                         <input type="number" class="form-control" id="Spese_Viaggi" name="Spese_Viaggi" min="0" step="0.01" value="${giornata.Spese_Viaggi || ''}">
                     </div>
-                    <div class="col-md-3 mb-3">
+                     <div class="col-md-3 mb-3">
                         <label for="Vitto_alloggio" class="form-label">Vitto e Alloggio (€)</label>
                         <input type="number" class="form-control" id="Vitto_alloggio" name="Vitto_alloggio" min="0" step="0.01" value="${giornata.Vitto_alloggio || ''}">
                     </div>
@@ -405,11 +413,7 @@ class GiornateSection extends BaseSection {
             </form>
         `;
     }
-
-    /**
-     * MODIFICATO: Aggiunge i listener per il form, inclusa la logica
-     * per aggiornare i task quando cambia la commessa selezionata.
-     */
+    
     addGiornataFormListeners(modalId) {
         const formId = `giornataModal_${modalId.split('_').pop()}_form`;
         const form = document.getElementById(formId);
@@ -418,22 +422,18 @@ class GiornateSection extends BaseSection {
         const commessaSelect = form.querySelector('#ID_COMMESSA_FORM');
         const taskSelect = form.querySelector('#ID_TASK');
 
-        // Listener per il cambio della commessa
         commessaSelect.addEventListener('change', (e) => {
             const selectedCommessaId = e.target.value;
             
-            // Svuota e disabilita il select dei task
             taskSelect.innerHTML = '<option value="">Seleziona prima una commessa...</option>';
             taskSelect.disabled = true;
 
             if (selectedCommessaId) {
-                // Filtra i task relativi alla commessa selezionata
                 const filteredTasks = this.app.tasks.filter(
                     t => t.ID_COMMESSA === selectedCommessaId && t.Stato_Task === 'In corso'
                 );
 
                 if (filteredTasks.length > 0) {
-                    // Popola il menù dei task
                     taskSelect.innerHTML = '<option value="">Seleziona un task...</option>';
                     filteredTasks.forEach(task => {
                         const option = document.createElement('option');
@@ -441,7 +441,6 @@ class GiornateSection extends BaseSection {
                         option.textContent = task.Task;
                         taskSelect.appendChild(option);
                     });
-                    // Abilita il menù
                     taskSelect.disabled = false;
                 } else {
                     taskSelect.innerHTML = '<option value="">Nessun task attivo per questa commessa</option>';
@@ -449,43 +448,38 @@ class GiornateSection extends BaseSection {
             }
         });
 
-        // Listener per il submit del form
         const giornataId = formId.includes('new') ? null : modalId.split('_').pop();
         form.addEventListener('submit', (e) => this.handleGiornataFormSubmit(e, giornataId));
     }
 
-async handleGiornataFormSubmit(event, giornataId = null) {
-    event.preventDefault();
-    const form = event.target;
-    const formData = new FormData(form);
-    const data = Object.fromEntries(formData.entries());
-
-    // SOLUZIONE: Rimuove il campo ausiliario usato solo nel form
-    // prima di inviare i dati al server, perché non esiste nella tabella del database.
-    delete data.ID_COMMESSA_FORM;
-
-    // Converte i campi numerici vuoti in null per il backend
-    ['Spese_Viaggi', 'Vitto_alloggio', 'Altri_costi'].forEach(key => {
-        if (data[key] === '') data[key] = null;
-    });
-
-    try {
-        const result = giornataId
-            ? await this.api.updateGiornata(giornataId, data)
-            : await this.api.createGiornata(data);
+    async handleGiornataFormSubmit(event, giornataId = null) {
+        event.preventDefault();
+        const form = event.target;
+        const formData = new FormData(form);
+        const data = Object.fromEntries(formData.entries());
         
-        if (result.success) {
-            this.ui.showToast(`Giornata ${giornataId ? 'aggiornata' : 'creata'} con successo!`, 'success');
-            bootstrap.Modal.getInstance(form.closest('.modal'))?.hide();
-            await this.app.loadInitialData(); // Ricarica tutto per aggiornare le viste
-        } else {
-            // MODIFICATO: Usa il messaggio di errore dal backend se esiste, altrimenti mostra un messaggio generico.
-            throw new Error(result.message || 'Errore nel salvataggio della giornata.');
+        delete data.ID_COMMESSA_FORM;
+
+        ['Spese_Viaggi', 'Vitto_alloggio', 'Altri_costi', 'Spese_Fatturate_VP'].forEach(key => {
+            if (data[key] === '') data[key] = null;
+        });
+
+        try {
+            const result = giornataId
+                ? await this.api.updateGiornata(giornataId, data)
+                : await this.api.createGiornata(data);
+            
+            if (result.success) {
+                this.ui.showToast(`Giornata ${giornataId ? 'aggiornata' : 'creata'} con successo!`, 'success');
+                bootstrap.Modal.getInstance(form.closest('.modal'))?.hide();
+                await this.app.loadInitialData();
+            } else {
+                throw new Error(result.message || 'Errore nel salvataggio della giornata.');
+            }
+        } catch (error) {
+            this.ui.showToast(error.message, 'error');
         }
-    } catch (error) {
-        this.ui.showToast(error.message, 'error');
     }
-}
 
     async handleDeleteGiornata(giornataId) {
         if (confirm(`Sei sicuro di voler eliminare questa giornata? L'azione è irreversibile.`)) {
@@ -504,11 +498,55 @@ async handleGiornataFormSubmit(event, giornataId = null) {
         }
     }
 
+    async handleToggleConfermaMese(yearMonth) {
+        const giornateDelMese = this.app.giornate.filter(g => {
+            const dataGiornata = g.Data.substring(0, 7);
+            return dataGiornata === yearMonth;
+        });
+
+        if (giornateDelMese.length === 0) {
+            this.ui.showToast('Nessuna giornata da aggiornare per questo mese.', 'info');
+            return;
+        }
+
+        const targetState = giornateDelMese.some(g => g.Confermata !== 'Si') ? 'Si' : 'No';
+        const actionText = targetState === 'Si' ? 'confermare' : 'rimuovere la conferma da';
+
+        if (confirm(`Sei sicuro di voler ${actionText} ${giornateDelMese.length} giornate per questo mese?`)) {
+            this.ui.showToast('Aggiornamento in corso...', 'info');
+
+            const updatePromises = giornateDelMese.map(giornata => 
+                this.api.updateGiornata(giornata.ID_GIORNATA, { Confermata: targetState })
+            );
+
+            try {
+                const results = await Promise.all(updatePromises);
+                
+                const successCount = results.filter(r => r.success).length;
+                const errorCount = results.length - successCount;
+
+                if (errorCount > 0) {
+                    this.ui.showToast(`${successCount} giornate aggiornate, ${errorCount} fallite.`, 'warning');
+                } else {
+                    this.ui.showToast(`${successCount} giornate aggiornate con successo!`, 'success');
+                }
+
+                await this.app.loadInitialData();
+
+            } catch (error) {
+                this.ui.showToast(`Si è verificato un errore durante l'aggiornamento: ${error.message}`, 'error');
+            }
+        }
+    }
 
     // ========================================================================
     // SEZIONE: UTILITÀ E STATISTICHE
     // ========================================================================
 
+    /**
+     * MODIFICATO: Accetta un array di giornate per calcolare le statistiche
+     * in modo dinamico in base ai filtri.
+     */
     updateStats(giornate) {
         const totalGiornate = giornate.reduce((sum, g) => sum + (parseFloat(g.gg) || 0), 0);
         const totalSpese = giornate.reduce((sum, g) => sum + (parseFloat(g.spese_totali) || 0), 0);
@@ -535,7 +573,6 @@ async handleGiornataFormSubmit(event, giornataId = null) {
     groupGiornateByMonthAndCollaboratore() {
         const grouped = {};
 
-        // Ordina le giornate dalla più recente alla meno recente
         const giornateOrdinate = [...this.app.giornate].sort((a, b) => new Date(b.Data) - new Date(a.Data));
 
         giornateOrdinate.forEach(g => {
@@ -574,7 +611,6 @@ async handleGiornataFormSubmit(event, giornataId = null) {
             grouped[yearMonth].collaboratori[collabId].totaleValoreCalcolato += parseFloat(g.valore_calcolato) || 0;
         });
 
-        // Converte l'oggetto in un array e ordina i collaboratori
         return Object.values(grouped).map(mese => {
             mese.collaboratori = Object.values(mese.collaboratori)
                 .sort((a, b) => a.collaboratore_nome.localeCompare(b.collaboratore_nome));
