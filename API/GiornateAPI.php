@@ -22,7 +22,10 @@ class GiornateAPI extends BaseAPI {
             'Spese_Viaggi' => ['numeric' => true, 'min' => 0],
             'Vitto_alloggio' => ['numeric' => true, 'min' => 0],
             'Altri_costi' => ['numeric' => true, 'min' => 0],
-            'Note' => ['max_length' => 65535]
+            'Note' => ['max_length' => 65535],
+            'Confermata' => ['enum' => ['Si', 'No']],
+            // NUOVA REGOLA DI VALIDAZIONE
+            'Spese_Fatturate_VP' => ['numeric' => true, 'min' => 0] 
         ];
     }
     
@@ -252,9 +255,13 @@ class GiornateAPI extends BaseAPI {
         if (!isset($data['Desk']) || empty($data['Desk'])) {
             $data['Desk'] = 'No';
         }
+
+        if (!isset($data['Confermata']) || empty($data['Confermata'])) {
+            $data['Confermata'] = 'No';
+        }
         
         // Imposta spese a 0 se non specificate
-        $speseFieds = ['Spese_Viaggi', 'Vitto_alloggio', 'Altri_costi'];
+        $speseFieds = ['Spese_Viaggi', 'Vitto_alloggio', 'Altri_costi', 'Spese_Fatturate_VP']; // <-- AGGIUNTO NUOVO CAMPO
         foreach ($speseFieds as $field) {
             if (!isset($data[$field]) || $data[$field] === '') {
                 $data[$field] = 0;

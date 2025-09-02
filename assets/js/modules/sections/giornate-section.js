@@ -40,6 +40,11 @@ class GiornateSection extends BaseSection {
     }
 
     handleAction(action, id, type, targetElement, e) {
+        // NUOVO: Interrompe la propagazione per evitare che il click sul pulsante apra/chiuda il mese
+        if (action === 'toggle-conferma-mese') {
+            e.stopPropagation();
+        }
+        
         switch (action) {
             case 'add-giornata':
                 this.showGiornataModal();
@@ -49,6 +54,10 @@ class GiornateSection extends BaseSection {
                 break;
             case 'toggle-mese':
                 this.toggleMese(id);
+                break;
+            // NUOVA AZIONE
+            case 'toggle-conferma-mese':
+                this.handleToggleConfermaMese(id);
                 break;
             default:
                 console.warn(`Azione non gestita: ${action}`);
@@ -70,14 +79,24 @@ class GiornateSection extends BaseSection {
         const totaleGiornateCampoMese = mese.collaboratori.reduce((sum, coll) => sum + coll.totaleGiornateCampo, 0);
         const totaleValoreCalcolatoMese = mese.collaboratori.reduce((sum, coll) => sum + coll.totaleValoreCalcolato, 0);
 
+        // NUOVO: Determina se ci sono giornate non confermate per decidere l'azione del pulsante
+        const hasUnconfirmed = mese.collaboratori.some(coll => coll.giornate.some(g => g.Confermata !== 'Si'));
+        const toggleConfirmTitle = hasUnconfirmed ? 'Conferma tutte le giornate del mese' : 'Rimuovi conferma da tutte le giornate';
+        const toggleConfirmIcon = hasUnconfirmed ? 'fa-check-circle' : 'fa-times-circle';
+
         return `
             <div class="management-card mb-4">
                 <div class="management-card-header" data-action="toggle-mese" data-id="${mese.yearMonth}">
-                    <div class="d-flex justify-content-between align-items-center">
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
                         <h5 class="management-card-title mb-0"><i class="fas fa-calendar-alt me-2"></i>${mese.month}</h5>
-                        <div>
-                            <span class="badge bg-success me-2">${this.app.utils.formatCurrency(totaleValoreCalcolatoMese)}</span>
-                            <span class="badge bg-primary me-2">${totaleGiornateCampoMese.toFixed(2)} giorni di campo</span>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge bg-success">${this.app.utils.formatCurrency(totaleValoreCalcolatoMese)}</span>
+                            <span class="badge bg-primary">${totaleGiornateCampoMese.toFixed(2)} giorni di campo</span>
+                            
+                            <button class="btn btn-sm btn-outline-light" data-action="toggle-conferma-mese" data-id="${mese.yearMonth}" title="${toggleConfirmTitle}">
+                                <i class="fas ${toggleConfirmIcon}"></i>
+                            </button>
+
                             <button class="commessa-toggle-btn" id="toggleBtn-${mese.yearMonth}"><i class="fas fa-chevron-down"></i></button>
                         </div>
                     </div>
@@ -185,7 +204,57 @@ class GiornateSection extends BaseSection {
             icon.classList.toggle('fa-chevron-up', isShown);
         }
     }
-    
+
+    /**
+     * NUOVA FUNZIONE: Gestisce la conferma/deconferma di tutte le giornate di un mese.
+     * @param {string} yearMonth - L'identificativo del mese (es. "2025-09").
+     */
+    async handleToggleConfermaMese(yearMonth) {
+        // Trova tutte le giornate per il mese specificato
+        const giornateDelMese = this.app.giornate.filter(g => {
+            const dataGiornata = g.Data.substring(0, 7); // Estrae YYYY-MM
+            return dataGiornata === yearMonth;
+        });
+
+        if (giornateDelMese.length === 0) {
+            this.ui.showToast('Nessuna giornata da aggiornare per questo mese.', 'info');
+            return;
+        }
+
+        // Determina lo stato target: se anche solo una non è confermata, le conferma tutte.
+        // Altrimenti, le "deconferma" tutte.
+        const targetState = giornateDelMese.some(g => g.Confermata !== 'Si') ? 'Si' : 'No';
+        const actionText = targetState === 'Si' ? 'confermare' : 'rimuovere la conferma da';
+
+        if (confirm(`Sei sicuro di voler ${actionText} ${giornateDelMese.length} giornate per questo mese?`)) {
+            this.ui.showToast('Aggiornamento in corso...', 'info');
+
+            // Crea un array di promesse per tutte le chiamate API
+            const updatePromises = giornateDelMese.map(giornata => 
+                this.api.updateGiornata(giornata.ID_GIORNATA, { Confermata: targetState })
+            );
+
+            try {
+                // Attende che tutte le chiamate API siano completate
+                const results = await Promise.all(updatePromises);
+                
+                const successCount = results.filter(r => r.success).length;
+                const errorCount = results.length - successCount;
+
+                if (errorCount > 0) {
+                    this.ui.showToast(`${successCount} giornate aggiornate, ${errorCount} fallite.`, 'warning');
+                } else {
+                    this.ui.showToast(`${successCount} giornate aggiornate con successo!`, 'success');
+                }
+
+                // Ricarica i dati per riflettere le modifiche
+                await this.app.loadInitialData();
+
+            } catch (error) {
+                this.ui.showToast(`Si è verificato un errore durante l'aggiornamento: ${error.message}`, 'error');
+            }
+        }
+    }
     // ========================================================================
     // SEZIONE: MODALI E FORM
     // ========================================================================
@@ -224,26 +293,25 @@ class GiornateSection extends BaseSection {
      * e la logica per la dipendenza tra Commessa e Task.
      */
     getGiornataFormHTML(giornataParam = {}) {
+        // CORREZIONE: Se viene passato `null`, lo tratta come un oggetto vuoto per evitare l'errore.
         const giornata = giornataParam || {};
-        const formId = `giornataModal_${giornata.ID_GIORNATA || 'new'}_form`;
 
-        // --- Logica per pre-selezionare commessa e task in caso di modifica ---
+        const formId = `giornataModal_${giornata.ID_GIORNATA || 'new'}_form`;
+        const collaboratoriOptions = this.app.collaboratori.map(c => `<option value="${c.ID_COLLABORATORE}" ${giornata.ID_COLLABORATORE === c.ID_COLLABORATORE ? 'selected' : ''}>${c.Collaboratore}</option>`).join('');
+        
+        // Logica per pre-selezionare commessa e task in caso di modifica
         const currentCommessaId = giornata.task_info?.ID_COMMESSA;
         const isEditMode = !!currentCommessaId;
 
-        // Opzioni per le commesse
         const commesseOptions = this.app.commesse
             .filter(c => c.Stato_Commessa === 'In corso')
             .map(c => `<option value="${c.ID_COMMESSA}" ${currentCommessaId === c.ID_COMMESSA ? 'selected' : ''}>${c.Commessa}</option>`)
             .join('');
 
-        // Opzioni per i task: vengono popolate solo se siamo in modifica, altrimenti saranno caricate dinamicamente
         const taskOptions = isEditMode ? this.app.tasks
             .filter(t => t.ID_COMMESSA === currentCommessaId && t.Stato_Task === 'In corso')
             .map(t => `<option value="${t.ID_TASK}" ${giornata.ID_TASK === t.ID_TASK ? 'selected' : ''}>${t.Task}</option>`)
             .join('') : '';
-
-        const collaboratoriOptions = this.app.collaboratori.map(c => `<option value="${c.ID_COLLABORATORE}" ${giornata.ID_COLLABORATORE === c.ID_COLLABORATORE ? 'selected' : ''}>${c.Collaboratore}</option>`).join('');
 
         const oggi = new Date().toISOString().split('T')[0];
         const dataValue = giornata.Data ? giornata.Data.split('T')[0] : oggi;
@@ -269,7 +337,6 @@ class GiornateSection extends BaseSection {
                         </select>
                     </div>
                 </div>
-                
                 <div class="row">
                     <div class="col-md-6 mb-3">
                         <label for="ID_COMMESSA_FORM" class="form-label">Commessa</label>
@@ -286,8 +353,8 @@ class GiornateSection extends BaseSection {
                         </select>
                     </div>
                 </div>
-                 <div class="row">
-                    <div class="col-md-6 mb-3">
+                <div class="row">
+                    <div class="col-md-4 mb-3">
                         <label for="Tipo" class="form-label">Tipo Attività</label>
                         <select class="form-select" id="Tipo" name="Tipo">
                             <option value="Campo" ${giornata.Tipo === 'Campo' ? 'selected' : ''}>Campo</option>
@@ -296,28 +363,39 @@ class GiornateSection extends BaseSection {
                             <option value="Formazione" ${giornata.Tipo === 'Formazione' ? 'selected' : ''}>Formazione</option>
                         </select>
                     </div>
-                     <div class="col-md-6 mb-3">
-                        <label for="Desk" class="form-label">Da Scrivania (Desk)</label>
+                    <div class="col-md-4 mb-3">
+                        <label for="Desk" class="form-label">Desk</label>
                         <select class="form-select" id="Desk" name="Desk">
                             <option value="No" ${giornata.Desk === 'No' || !giornata.Desk ? 'selected' : ''}>No</option>
                             <option value="Si" ${giornata.Desk === 'Si' ? 'selected' : ''}>Sì</option>
                         </select>
                     </div>
+                    <div class="col-md-4 mb-3">
+                        <label for="Confermata" class="form-label">Confermata</label>
+                        <select class="form-select" id="Confermata" name="Confermata">
+                            <option value="No" ${giornata.Confermata === 'No' || !giornata.Confermata ? 'selected' : ''}>No</option>
+                            <option value="Si" ${giornata.Confermata === 'Si' ? 'selected' : ''}>Sì</option>
+                        </select>
+                    </div>
                 </div>
                 <hr>
                 <h5>Spese e Costi (Opzionale)</h5>
-                 <div class="row">
-                    <div class="col-md-4 mb-3">
+                <div class="row">
+                    <div class="col-md-3 mb-3">
                         <label for="Spese_Viaggi" class="form-label">Spese Viaggio (€)</label>
                         <input type="number" class="form-control" id="Spese_Viaggi" name="Spese_Viaggi" min="0" step="0.01" value="${giornata.Spese_Viaggi || ''}">
                     </div>
-                     <div class="col-md-4 mb-3">
+                    <div class="col-md-3 mb-3">
                         <label for="Vitto_alloggio" class="form-label">Vitto e Alloggio (€)</label>
                         <input type="number" class="form-control" id="Vitto_alloggio" name="Vitto_alloggio" min="0" step="0.01" value="${giornata.Vitto_alloggio || ''}">
                     </div>
-                    <div class="col-md-4 mb-3">
+                    <div class="col-md-3 mb-3">
                         <label for="Altri_costi" class="form-label">Altri Costi (€)</label>
                         <input type="number" class="form-control" id="Altri_costi" name="Altri_costi" min="0" step="0.01" value="${giornata.Altri_costi || ''}">
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label for="Spese_Fatturate_VP" class="form-label">Spese Fatturate V&P (€)</label>
+                        <input type="number" class="form-control" id="Spese_Fatturate_VP" name="Spese_Fatturate_VP" min="0" step="0.01" value="${giornata.Spese_Fatturate_VP || ''}">
                     </div>
                 </div>
                 <div class="mb-3">
@@ -328,7 +406,6 @@ class GiornateSection extends BaseSection {
         `;
     }
 
-    
     /**
      * MODIFICATO: Aggiunge i listener per il form, inclusa la logica
      * per aggiornare i task quando cambia la commessa selezionata.
