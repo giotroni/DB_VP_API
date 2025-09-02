@@ -1,6 +1,6 @@
 /**
  * App Management V&P - JavaScript (Refactored)
- * @version 2.3 - Ripristino logica di login
+ * @version 2.4 - Aggiunta gestione password dimenticata
  */
 class ManagementApp {
     
@@ -106,6 +106,64 @@ class ManagementApp {
             errorDiv.classList.remove('d-none');
         }
     }
+    
+    // NUOVO: Metodo per gestire la richiesta di recupero password
+    handleForgotPasswordClick() {
+        const modalId = 'forgotPasswordModal';
+        const content = `
+            <p>Inserisci il tuo indirizzo email per ricevere una nuova password temporanea. Ti verrà richiesto di cambiarla al primo accesso.</p>
+            <form id="forgotPasswordForm" onsubmit="return false;">
+                <div class="mb-3">
+                    <label for="forgotEmail" class="form-label">Indirizzo Email</label>
+                    <input type="email" class="form-control" id="forgotEmail" required placeholder="mario.rossi@example.com">
+                </div>
+            </form>
+        `;
+
+        const actions = [{
+            html: '<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>'
+        }, {
+            html: `<button type="button" class="btn btn-vp-primary" id="sendResetEmailBtn">Invia Istruzioni</button>`,
+            selector: '#sendResetEmailBtn',
+            handler: async () => {
+                const emailInput = document.getElementById('forgotEmail');
+                const email = emailInput.value.trim();
+                const modalInstance = bootstrap.Modal.getInstance(document.getElementById(modalId));
+
+                if (!this.utils.validateEmail(email)) {
+                    this.ui.showToast('Per favore, inserisci un indirizzo email valido.', 'warning');
+                    return;
+                }
+
+                const sendButton = document.getElementById('sendResetEmailBtn');
+                sendButton.disabled = true;
+                sendButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Invio...';
+
+                try {
+                    const result = await this.api.forgotPassword(email);
+
+                    if (result.success) {
+                        this.ui.showToast(result.message, 'success');
+                        if (modalInstance) modalInstance.hide();
+                    } else {
+                        // Per sicurezza, mostra un messaggio generico per non confermare se un'email esiste o meno.
+                        this.ui.showToast('Se l\'indirizzo email è corretto, riceverai a breve le istruzioni.', 'info');
+                        if (modalInstance) modalInstance.hide();
+                    }
+                } catch (error) {
+                    console.error("Errore richiesta reset password:", error);
+                    this.ui.showToast('Si è verificato un errore. Riprova più tardi.', 'error');
+                } finally {
+                    if (sendButton) {
+                        sendButton.disabled = false;
+                        sendButton.innerHTML = 'Invia Istruzioni';
+                    }
+                }
+            }
+        }];
+
+        this.ui.createModal(modalId, 'Recupero Password', content, actions);
+    }
 
     async handleLogout() {
         try {
@@ -161,6 +219,7 @@ class ManagementApp {
         document.body.classList.remove('dashboard-active');
 
         const appContainer = document.getElementById('appContainer');
+        // MODIFICATO: Aggiunto link per password dimenticata
         appContainer.innerHTML = `
             <div class="login-container">
                 <div class="login-card">
@@ -172,7 +231,7 @@ class ManagementApp {
                     <form id="loginForm" class="login-form">
                         <div id="loginError" class="alert alert-danger d-none" role="alert"></div>
                         <div class="mb-3">
-                            <label for="username" class="form-label">Username</label>
+                            <label for="username" class="form-label">Username o Email</label>
                             <input type="text" class="form-control" id="username" required>
                         </div>
                         <div class="mb-3">
@@ -181,6 +240,9 @@ class ManagementApp {
                         </div>
                         <button type="submit" class="btn btn-vp-primary w-100">Accedi</button>
                     </form>
+                    <div class="text-center mt-3">
+                        <a href="#" class="forgot-password-link" data-action="forgot-password">Password dimenticata?</a>
+                    </div>
                 </div>
             </div>
         `;
@@ -233,6 +295,11 @@ class ManagementApp {
             case 'logout':
                 e.preventDefault();
                 this.handleLogout();
+                break;
+            // NUOVO: Gestione del click sul link "Password dimenticata"
+            case 'forgot-password':
+                e.preventDefault();
+                this.handleForgotPasswordClick();
                 break;
             
             default:

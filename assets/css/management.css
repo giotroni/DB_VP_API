@@ -283,6 +283,18 @@ body {
   text-align: left;
 }
 
+/* NUOVO: Stile per il link di recupero password */
+.forgot-password-link {
+  font-size: 0.9rem;
+  color: #6c757d;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.forgot-password-link:hover {
+  color: var(--vp-primary);
+  text-decoration: underline;
+}
 
 
 /* --------------------------------------------------------------------------

@@ -122,7 +122,9 @@ class APIClient {
         });
     }
 
-    async resetPassword(email) {
+    // MODIFICATO: Rinominato da resetPassword a forgotPassword per coerenza
+    async forgotPassword(email) {
+        // L'azione 'reset_password' è quella corretta che il backend si aspetta
         return this.authRequest('reset_password', { email });
     }
 
@@ -201,4 +203,3 @@ class APIClient {
         }
     }
 }
-
