@@ -7,19 +7,33 @@ class APIClient {
 
     // Metodo generico per chiamate API normali
     async request(resource, action, options = {}) {
-        const { method = 'GET', data, params } = options;
+        // Usa PUT per 'update' e DELETE per 'delete', altrimenti POST se ci sono dati, altrimenti GET
+        const { data, params } = options;
+        const method = options.method || 
+                       (action === 'update' ? 'PUT' : 
+                       (action === 'delete' ? 'DELETE' : 
+                       (data ? 'POST' : 'GET')));
         
-        let url = `${this.baseURL}?resource=${resource}&action=${action}`;
-        if (params) {
-            const searchParams = new URLSearchParams();
-            Object.keys(params).forEach(key => {
-                if (params[key] !== null && params[key] !== undefined) {
-                    searchParams.append(key, params[key]);
+        let url = `${this.baseURL}?resource=${resource}`;
+        
+        // Se l'ID è nei parametri, costruisci un URL RESTful tipo /resource/id
+        let finalParams = { ...params };
+        if (finalParams && finalParams.id) {
+            url += `&id=${finalParams.id}`;
+            delete finalParams.id; // Rimuovi l'id dai parametri di query
+        }
+
+        const searchParams = new URLSearchParams();
+        if(finalParams) {
+             Object.keys(finalParams).forEach(key => {
+                if (finalParams[key] !== null && finalParams[key] !== undefined) {
+                    searchParams.append(key, finalParams[key]);
                 }
             });
-            if (searchParams.toString()) {
-                url += '&' + searchParams.toString();
-            }
+        }
+       
+        if (searchParams.toString()) {
+            url += '&' + searchParams.toString();
         }
 
         const config = {
@@ -35,22 +49,24 @@ class APIClient {
 
         try {
             const response = await fetch(url, config);
-            
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
             const responseText = await response.text();
+
+            if (!response.ok) {
+                 const errorData = responseText ? JSON.parse(responseText) : { message: `HTTP error! status: ${response.status}` };
+                 throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+            }
             
             if (!responseText.trim()) {
                 console.warn('Risposta API vuota');
-                return { success: false, message: 'Risposta vuota dal server' };
+                // Per le DELETE, una risposta vuota può essere un successo
+                return { success: method === 'DELETE', message: method === 'DELETE' ? 'Eliminazione completata' : 'Risposta vuota dal server' };
             }
 
             return JSON.parse(responseText);
         } catch (error) {
             console.error(`Errore API ${resource}/${action}:`, error);
-            throw error;
+            // Rilancia l'errore per gestirlo a livello superiore
+            return { success: false, message: error.message };
         }
     }
 
@@ -109,70 +125,48 @@ class APIClient {
         return this.authRequest('reset_password', { email });
     }
 
-    // Commesse - usano request normale
-    async getCommesse() {
-        return this.request('commesse', 'getAll');
-    }
-
-    async createCommessa(data) {
-        return this.request('commesse', 'create', {
-            method: 'POST',
-            data
-        });
-    }
-
-    async updateCommessa(id, data) {
-        return this.request('commesse', 'update', {
-            method: 'PUT',
-            data,
-            params: { id }
-        });
-    }
-
-    async deleteCommessa(id) {
-        return this.request('commesse', 'delete', {
-            method: 'DELETE',
-            params: { id }
-        });
-    }
+    // Commesse
+    async getCommesse(params = {}) { return this.request('commesse', 'getAll', { params }); }
+    async createCommessa(data) { return this.request('commesse', 'create', { data }); }
+    async updateCommessa(id, data) { return this.request('commesse', 'update', { data, params: { id } }); }
+    async deleteCommessa(id) { return this.request('commesse', 'delete', { params: { id } }); }
 
     // Task
-    async getTasks(options = {}) {
-        const { limit = 100, page } = options;
-        const params = { limit };
-        if (page) params.page = page;
-        
-        return this.request('task', 'getAll', { params });
-    }
+    async getTasks(params = {}) { return this.request('task', 'getAll', { params }); }
+    async createTask(data) { return this.request('task', 'create', { data }); }
+    async updateTask(id, data) { return this.request('task', 'update', { data, params: { id } }); }
+    async deleteTask(id) { return this.request('task', 'delete', { params: { id } }); }
 
-    async createTask(data) {
-        return this.request('task', 'create', {
-            method: 'POST',
-            data
-        });
-    }
+    // Clienti
+    async getClienti(params = {}) { return this.request('clienti', 'getAll', { params }); }
+    
+    // Collaboratori
+    async getCollaboratori(params = {}) { return this.request('collaboratori', 'getAll', { params }); }
 
-    async updateTask(id, data) {
-        return this.request('task', 'update', {
-            method: 'PUT',
-            data,
-            params: { id }
-        });
-    }
+    // Tariffe
+    async getTariffe(params = {}) { return this.request('tariffe', 'getAll', { params }); }
 
-    async deleteTask(id) {
-        return this.request('task', 'delete', {
-            method: 'DELETE',
-            params: { id }
-        });
-    }
-
+    // Fatture
+    async getFatture(params = {}) { return this.request('fatture', 'getAll', { params }); }
+    
     // Giornate
     async getGiornate(options = {}) {
-        const { limit = 100, page = 1 } = options;
+        const { limit = 100, page = 1, ...otherParams } = options;
         return this.request('giornate', 'getAll', {
-            params: { limit, page }
+            params: { limit, page, ...otherParams }
         });
+    }
+
+    async createGiornata(data) {
+        return this.request('giornate', 'create', { data });
+    }
+
+    async updateGiornata(id, data) {
+        return this.request('giornate', 'update', { data, params: { id } });
+    }
+
+    async deleteGiornata(id) {
+        return this.request('giornate', 'delete', { params: { id } });
     }
 
     // Metodo per caricare tutte le giornate paginando
@@ -205,27 +199,4 @@ class APIClient {
             return { success: false, message: error.message };
         }
     }
-
-    // Clienti
-    async getClienti() {
-        return this.request('clienti', 'getAll');
-    }
-
-    // Collaboratori
-    async getCollaboratori() {
-        return this.request('collaboratori', 'getAll');
-    }
-
-    // Tariffe
-    async getTariffe() {
-        return this.request('tariffe', 'getAll');
-    }
-
-    // Fatture
-    async getFatture() {
-        return this.request('fatture', 'getAll');
-    }
 }
-
-// Esporta per uso globale
-window.APIClient = APIClient;
