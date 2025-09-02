@@ -87,13 +87,13 @@ class CollaboratoriSection extends BaseSection {
     createCollaboratoreCard(collaboratore) {
         const stats = collaboratore.statistics || {};
 
-        // Calcola il totale delle giornate di tipo 'Campo' (sommando le frazioni)
         const totalGiornateCampo = collaboratore.giornate
             .filter(g => g.Tipo === 'Campo')
             .reduce((sum, g) => sum + (parseFloat(g.gg) || 0), 0);
 
-        // Calcola il costo totale sommando i costi di tutte le giornate
         const totalCosto = collaboratore.giornate.reduce((sum, g) => sum + (g.costo_calcolato || 0), 0);
+
+        const accordionId = `accordion-${collaboratore.ID_COLLABORATORE}`;
 
         return `
             <div class="management-card mb-4">
@@ -114,9 +114,51 @@ class CollaboratoriSection extends BaseSection {
                         <i class="fas fa-user me-1"></i> User: ${collaboratore.User}
                     </div>
                 </div>
+                
                 <div class="collapse" id="collaboratore-${collaboratore.ID_COLLABORATORE}">
-                    <div class="management-card-body">
-                        ${this.renderGiornateByMonth(collaboratore.giornateByMonth)}
+                    <div class="accordion" id="${accordionId}">
+
+                        <div class="accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-giornate-${collaboratore.ID_COLLABORATORE}" aria-expanded="false">
+                                    <i class="fas fa-calendar-alt me-2"></i> Riepilogo Giornate
+                                </button>
+                            </h2>
+                            <div id="collapse-giornate-${collaboratore.ID_COLLABORATORE}" class="accordion-collapse collapse" data-bs-parent="#${accordionId}">
+                                <div class="accordion-body p-0">
+                                    <div class="management-card-body">
+                                        ${this.renderGiornateByMonth(collaboratore.giornateByMonth)}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-monitoraggio-${collaboratore.ID_COLLABORATORE}" aria-expanded="false">
+                                    <i class="fas fa-chart-line me-2"></i> Monitoraggio
+                                </button>
+                            </h2>
+                            <div id="collapse-monitoraggio-${collaboratore.ID_COLLABORATORE}" class="accordion-collapse collapse" data-bs-parent="#${accordionId}">
+                                <div class="accordion-body">
+                                    <p class="text-muted fst-italic">Sezione in fase di sviluppo.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-accounting-${collaboratore.ID_COLLABORATORE}" aria-expanded="false">
+                                    <i class="fas fa-file-invoice-dollar me-2"></i> Accounting
+                                </button>
+                            </h2>
+                            <div id="collapse-accounting-${collaboratore.ID_COLLABORATORE}" class="accordion-collapse collapse" data-bs-parent="#${accordionId}">
+                                <div class="accordion-body">
+                                    <p class="text-muted fst-italic">Sezione in fase di sviluppo.</p>
+                                </div>
+                            </div>
+                        </div>
+
                     </div>
                 </div>
             </div>`;
