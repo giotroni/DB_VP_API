@@ -372,19 +372,23 @@ class GiornateSection extends BaseSection {
                         </select>
                     </div>
                      <div class="col-md-4 mb-3">
-                        <label for="Desk" class="form-label">Da Scrivania (Desk)</label>
-                        <select class="form-select" id="Desk" name="Desk">
-                            <option value="No" ${giornata.Desk === 'No' || !giornata.Desk ? 'selected' : ''}>No</option>
-                            <option value="Si" ${giornata.Desk === 'Si' ? 'selected' : ''}>Sì</option>
-                        </select>
+                        <label class="form-label">Desk</label>
+                        <div class="d-flex align-items-center">
+                            <div class="form-check form-switch me-2">
+                                <input class="form-check-input" type="checkbox" id="Desk_toggle" name="Desk" ${giornata.Desk === 'Si' ? 'checked' : ''}>
+                                <label class="form-check-label" for="Desk_toggle" id="Desk_toggle_label">${giornata.Desk === 'Si' ? 'Sì' : 'No'}</label>
+                            </div>
+                        </div>
                     </div>
-                    <div class="col-md-4 mb-3">
-                        <label for="Confermata" class="form-label">Confermata</label>
-                        <select class="form-select" id="Confermata" name="Confermata">
-                            <option value="No" ${giornata.Confermata === 'No' || !giornata.Confermata ? 'selected' : ''}>No</option>
-                            <option value="Si" ${giornata.Confermata === 'Si' ? 'selected' : ''}>Sì</option>
-                        </select>
-                    </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Confermata</label>
+                            <div class="d-flex align-items-center">
+                                <div class="form-check form-switch me-2">
+                                    <input class="form-check-input" type="checkbox" id="Confermata_toggle" name="Confermata" ${giornata.Confermata === 'Si' ? 'checked' : ''}>
+                                    <label class="form-check-label" for="Confermata_toggle" id="Confermata_toggle_label">${giornata.Confermata === 'Si' ? 'Sì' : 'No'}</label>
+                                </div>
+                            </div>
+                        </div>
                 </div>
                 <hr>
                 <h5>Spese e Costi (Opzionale)</h5>
@@ -449,14 +453,51 @@ class GiornateSection extends BaseSection {
         });
 
         const giornataId = formId.includes('new') ? null : modalId.split('_').pop();
+        // Aggancio submit del form
         form.addEventListener('submit', (e) => this.handleGiornataFormSubmit(e, giornataId));
+
+        // Listener per il toggle Confermata: aggiorna l'etichetta per migliorare la UX
+        const confermataToggle = form.querySelector('#Confermata_toggle');
+        const confermataLabel = form.querySelector('#Confermata_toggle_label');
+        if (confermataToggle && confermataLabel) {
+            const updateLabel = () => { confermataLabel.textContent = confermataToggle.checked ? 'Sì' : 'No'; };
+            confermataToggle.addEventListener('change', updateLabel);
+            updateLabel();
+        }
+
+        // Listener per il toggle Desk: aggiorna l'etichetta
+        const deskToggle = form.querySelector('#Desk_toggle');
+        const deskLabel = form.querySelector('#Desk_toggle_label');
+        if (deskToggle && deskLabel) {
+            const updateDeskLabel = () => { deskLabel.textContent = deskToggle.checked ? 'Sì' : 'No'; };
+            deskToggle.addEventListener('change', updateDeskLabel);
+            updateDeskLabel();
+        }
     }
 
     async handleGiornataFormSubmit(event, giornataId = null) {
         event.preventDefault();
         const form = event.target;
         const formData = new FormData(form);
+        // Convert FormData to object
         const data = Object.fromEntries(formData.entries());
+
+        // Il toggle checkbox produce un valore 'on' quando checked nella FormData;
+        // leggiamo lo stato reale del checkbox e forziamo 'Si'/'No' per compatibilità col backend
+        const confermataEl = form.querySelector('#Confermata_toggle');
+        if (confermataEl) {
+            data.Confermata = confermataEl.checked ? 'Si' : 'No';
+        } else if (data.Confermata === 'on') {
+            data.Confermata = 'Si';
+        }
+
+        // Gestione del toggle Desk: converti in 'Si'/'No'
+        const deskEl = form.querySelector('#Desk_toggle');
+        if (deskEl) {
+            data.Desk = deskEl.checked ? 'Si' : 'No';
+        } else if (data.Desk === 'on') {
+            data.Desk = 'Si';
+        }
         
         delete data.ID_COMMESSA_FORM;
 
