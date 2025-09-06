@@ -242,37 +242,59 @@ class GiornateAPI extends BaseAPI {
      * Pre-processing dei dati prima dell'inserimento/aggiornamento
      */
     protected function preprocessData($data) {
-        // Valida e formatta la data
+        // Determina se siamo in fase di update (ID presente)
+        $isUpdate = isset($data[$this->primaryKey]) && !empty($data[$this->primaryKey]);
+
+        // Valida e formatta la data se fornita
         if (isset($data['Data']) && !empty($data['Data'])) {
             $data['Data'] = date('Y-m-d', strtotime($data['Data']));
         }
-        
-        // Imposta valori predefiniti
-        if (!isset($data['Tipo']) || empty($data['Tipo'])) {
-            $data['Tipo'] = 'Campo';
-        }
-        
-        if (!isset($data['Desk']) || empty($data['Desk'])) {
-            $data['Desk'] = 'No';
-        }
 
-        if (!isset($data['Confermata']) || empty($data['Confermata'])) {
-            $data['Confermata'] = 'No';
-        }
-        
-        // Imposta spese a 0 se non specificate
-        $speseFieds = ['Spese_Viaggi', 'Vitto_alloggio', 'Altri_costi', 'Spese_Fatturate_VP']; // <-- AGGIUNTO NUOVO CAMPO
-        foreach ($speseFieds as $field) {
-            if (!isset($data[$field]) || $data[$field] === '') {
-                $data[$field] = 0;
+        // Se NON è update (cioè create), impostiamo valori di default per i campi mancanti
+        if (!$isUpdate) {
+            if (!isset($data['Tipo']) || $data['Tipo'] === '') {
+                $data['Tipo'] = 'Campo';
+            }
+
+            if (!isset($data['Desk']) || $data['Desk'] === '') {
+                $data['Desk'] = 'No';
+            }
+
+            if (!isset($data['Confermata']) || $data['Confermata'] === '') {
+                $data['Confermata'] = 'No';
+            }
+
+            // Imposta spese a 0 se non specificate (solo in create)
+            $speseFieds = ['Spese_Viaggi', 'Vitto_alloggio', 'Altri_costi', 'Spese_Fatturate_VP'];
+            foreach ($speseFieds as $field) {
+                if (!isset($data[$field]) || $data[$field] === '') {
+                    $data[$field] = 0;
+                }
+            }
+        } else {
+            // In update NON impostare valori di default sui campi mancanti per evitare di sovrascrivere dati esistenti.
+            // Normalizza solo se il client ha passato esplicitamente valori vuoti/null
+            $speseFieds = ['Spese_Viaggi', 'Vitto_alloggio', 'Altri_costi', 'Spese_Fatturate_VP'];
+            foreach ($speseFieds as $field) {
+                if (array_key_exists($field, $data) && ($data[$field] === '' || is_null($data[$field]))) {
+                    $data[$field] = 0;
+                }
+            }
+
+            if (array_key_exists('Desk', $data) && $data['Desk'] === '') {
+                $data['Desk'] = 'No';
+            }
+
+            if (array_key_exists('Confermata', $data) && $data['Confermata'] === '') {
+                $data['Confermata'] = 'No';
             }
         }
-        
-        // Normalizza le note
+
+        // Normalizza le note (se fornite)
         if (isset($data['Note'])) {
             $data['Note'] = trim($data['Note']);
         }
-        
+
         return $data;
     }
     

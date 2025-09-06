@@ -540,20 +540,19 @@ class GiornateSection extends BaseSection {
     }
 
     async handleToggleConfermaMese(yearMonth) {
-        const giornateDelMese = this.app.giornate.filter(g => {
-            const dataGiornata = g.Data.substring(0, 7);
-            return dataGiornata === yearMonth;
-        });
+        // Prendi solo le giornate visibili per il mese corrente (rispettando i filtri)
+        const meseObj = (this.filteredGiornateAggregate || []).find(m => m.yearMonth === yearMonth);
+        const giornateDelMese = meseObj ? meseObj.collaboratori.flatMap(c => c.giornate) : [];
 
-        if (giornateDelMese.length === 0) {
-            this.ui.showToast('Nessuna giornata da aggiornare per questo mese.', 'info');
+        if (!meseObj || giornateDelMese.length === 0) {
+            this.ui.showToast('Nessuna giornata visibile da aggiornare per questo mese (controlla i filtri).', 'info');
             return;
         }
 
         const targetState = giornateDelMese.some(g => g.Confermata !== 'Si') ? 'Si' : 'No';
         const actionText = targetState === 'Si' ? 'confermare' : 'rimuovere la conferma da';
 
-        if (confirm(`Sei sicuro di voler ${actionText} ${giornateDelMese.length} giornate per questo mese?`)) {
+        if (confirm(`Sei sicuro di voler ${actionText} ${giornateDelMese.length} giornate visibili per questo mese?`)) {
             this.ui.showToast('Aggiornamento in corso...', 'info');
 
             const updatePromises = giornateDelMese.map(giornata => 
@@ -572,6 +571,7 @@ class GiornateSection extends BaseSection {
                     this.ui.showToast(`${successCount} giornate aggiornate con successo!`, 'success');
                 }
 
+                // Ricarica i dati iniziali per riflettere i cambiamenti
                 await this.app.loadInitialData();
 
             } catch (error) {
