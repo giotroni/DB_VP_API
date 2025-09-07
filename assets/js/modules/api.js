@@ -151,6 +151,9 @@ class APIClient {
 
     // Tariffe
     async getTariffe(params = {}) { return this.request('tariffe', 'getAll', { params }); }
+    async createTariffa(data) { return this.request('tariffe', 'create', { data }); }
+    async updateTariffa(id, data) { return this.request('tariffe', 'update', { data, params: { id } }); }
+    async deleteTariffa(id) { return this.request('tariffe', 'delete', { params: { id } }); }
 
     // Fatture
     async getFatture(params = {}) { return this.request('fatture', 'getAll', { params }); }

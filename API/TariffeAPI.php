@@ -121,43 +121,46 @@ class TariffeAPI extends BaseAPI {
      */
     private function checkDateOverlap($data) {
         try {
+            // Allow multiple tariffs for the same collaborator/commessa as long as the start date (Dal)
+            // is different. Only prevent insertion/update when there is already a tariff with the
+            // same collaborator, same commessa (or both null) and the exact same Dal.
             $sql = "SELECT COUNT(*) as count FROM {$this->table} 
                     WHERE ID_COLLABORATORE = :collaboratore 
-                    AND Dal <= :dal";
-            
+                    AND Dal = :dal";
+
             $params = [
                 ':collaboratore' => $data['ID_COLLABORATORE'],
                 ':dal' => $data['Dal']
             ];
-            
-            // Se è specificata una commessa, verifica solo per quella commessa
+
             if (!empty($data['ID_COMMESSA'])) {
-                $sql .= " AND (ID_COMMESSA = :commessa OR ID_COMMESSA IS NULL)";
+                // check only the same commessa
+                $sql .= " AND ID_COMMESSA = :commessa";
                 $params[':commessa'] = $data['ID_COMMESSA'];
             } else {
-                // Se non è specificata una commessa, verifica solo tariffe generali
+                // check only general tariffs (ID_COMMESSA IS NULL)
                 $sql .= " AND ID_COMMESSA IS NULL";
             }
-            
-            // Esclude il record corrente se è un aggiornamento
-            if (isset($data['ID_TARIFFA'])) {
+
+            // Exclude current record when updating
+            if (isset($data['ID_TARIFFA']) && !empty($data['ID_TARIFFA'])) {
                 $sql .= " AND ID_TARIFFA != :current_id";
                 $params[':current_id'] = $data['ID_TARIFFA'];
             }
-            
+
             $stmt = $this->db->prepare($sql);
             $stmt->execute($params);
             $count = $stmt->fetchColumn();
-            
+
             if ($count > 0) {
                 return [
                     'valid' => false,
                     'message' => 'Esiste già una tariffa per questo collaboratore/commessa alla data specificata'
                 ];
             }
-            
+
             return ['valid' => true, 'message' => ''];
-            
+
         } catch (PDOException $e) {
             return [
                 'valid' => false,

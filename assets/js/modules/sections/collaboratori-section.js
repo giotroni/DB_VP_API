@@ -8,6 +8,21 @@ class CollaboratoriSection extends BaseSection {
         this.collaboratoriConGiornate = [];
     }
 
+    // Return date displayed as dd/mm/yy (or empty string if invalid)
+    formatDateShort(dateString) {
+        if (!dateString) return '';
+        try {
+            const d = new Date(dateString);
+            if (isNaN(d.getTime())) return '';
+            const dd = String(d.getDate()).padStart(2, '0');
+            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            const yy = String(d.getFullYear()).slice(-2);
+            return `${dd}/${mm}/${yy}`;
+        } catch (e) {
+            return '';
+        }
+    }
+
     async loadData() {
         this.collaboratoriConGiornate = this.groupGiornateByCollaboratore();
         this.isLoaded = true;
@@ -87,7 +102,7 @@ class CollaboratoriSection extends BaseSection {
             { html: '<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>' },
             { html: `<button type="submit" form="${modalId}_form" class="btn btn-primary">Crea Collaboratore</button>` }
         ];
-        this.ui.createModal(modalId, modalTitle, modalBody, modalActions, { size: 'modal-md' });
+        this.ui.createModal(modalId, modalTitle, modalBody, modalActions, { size: 'modal-lg' });
         this.addCollaboratoreFormListeners(`${modalId}_form`);
     }
 
@@ -101,7 +116,7 @@ class CollaboratoriSection extends BaseSection {
             { html: '<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>' },
             { html: `<button type="submit" form="${modalId}_form" class="btn btn-primary">Salva Modifiche</button>` }
         ];
-        this.ui.createModal(modalId, modalTitle, modalBody, modalActions, { size: 'modal-md' });
+        this.ui.createModal(modalId, modalTitle, modalBody, modalActions, { size: 'modal-lg' });
         this.addCollaboratoreFormListeners(`${modalId}_form`);
     }
 
@@ -109,6 +124,57 @@ class CollaboratoriSection extends BaseSection {
         const formId = collaboratore.ID_COLLABORATORE ? `editCollaboratoreModal_${collaboratore.ID_COLLABORATORE}_form` : 'newCollaboratoreModal_form';
         const ruoloOptions = ['Admin', 'Manager', 'User'];
         const ruoliHtml = ruoloOptions.map(r => `<option value="${r}" ${(collaboratore.Ruolo === r) ? 'selected' : ''}>${r}</option>`).join('');
+        // Costruisci tabella tariffe basandoci su this.app.tariffe
+        const allTariffe = Array.isArray(this.app.tariffe) ? this.app.tariffe.filter(t => String(t.ID_COLLABORATORE) === String(collaboratore.ID_COLLABORATORE)) : [];
+        const tariffeStandard = allTariffe.filter(t => !t.ID_COMMESSA || t.ID_COMMESSA === null || t.ID_COMMESSA === '');
+        const tariffePerCommessa = allTariffe.filter(t => t.ID_COMMESSA && t.ID_COMMESSA !== null && t.ID_COMMESSA !== '');
+
+        const commessaNameById = (id) => {
+            const c = this.app.commesse?.find(cm => String(cm.ID_COMMESSA) === String(id));
+            return c ? c.Commessa : id;
+        };
+
+        // Unify standard and per-commessa tariffs into a single combined dataset
+        const unifiedTariffe = [];
+        // Add standard (Commessa = 'Standard')
+        tariffeStandard.forEach(t => {
+            unifiedTariffe.push({
+                ID_TARIFFA: t.ID_TARIFFA || '',
+                Dal: t.Dal || t.Data_Inizio_Validita || '',
+                Commessa: 'Standard',
+                Tariffa_gg: parseFloat(t.Tariffa_gg) || 0,
+                Spese_comprese: t.Spese_comprese || ''
+            });
+        });
+        // Add per-commessa (resolve commessa name)
+        tariffePerCommessa.forEach(t => {
+            unifiedTariffe.push({
+                ID_TARIFFA: t.ID_TARIFFA || '',
+                Dal: t.Dal || t.Data_Inizio_Validita || '',
+                Commessa: commessaNameById(t.ID_COMMESSA),
+                Tariffa_gg: parseFloat(t.Tariffa_gg) || 0,
+                Spese_comprese: t.Spese_comprese || ''
+            });
+        });
+
+        // If none, show a single empty-row message
+        const unifiedRows = unifiedTariffe.length > 0 ? unifiedTariffe.map(t => {
+            const speseBadge = (String(t.Spese_comprese).trim().toLowerCase() === 'si')
+                ? `<span class="badge bg-success text-white">Si</span>`
+                : `<span class="badge bg-secondary text-white">No</span>`;
+            return `
+            <tr data-id="${t.ID_TARIFFA}" data-collaboratore="${collaboratore.ID_COLLABORATORE}">
+                <td class="tariffa-dal-cell" data-dal="${t.Dal || ''}">${this.formatDateShort(t.Dal)}</td>
+                <td class="tariffa-commessa-cell">${t.Commessa}</td>
+                <td class="tariffa-val-cell text-end">${this.app.utils.formatCurrency(t.Tariffa_gg)}</td>
+                <td class="tariffa-spese-cell">${speseBadge}</td>
+                <td class="text-center tariffa-actions-cell">
+                    <button type="button" class="btn btn-sm btn-outline-primary tariffa-edit" title="Modifica"><i class="fas fa-edit"></i></button>
+                    <button type="button" class="btn btn-sm btn-outline-danger tariffa-delete" title="Elimina"><i class="fas fa-trash"></i></button>
+                </td>
+            </tr>
+        `}).join('') : `<tr><td colspan="5" class="text-muted">Nessuna tariffa configurata per questo collaboratore</td></tr>`;
+
         return `
             <form id="${formId}" novalidate>
                 <div class="row">
@@ -124,6 +190,24 @@ class CollaboratoriSection extends BaseSection {
                     <div class="col-md-6 mb-3"><label for="Password" class="form-label">Password <small class="text-muted">(facoltativa: lascia vuoto per non inviare)</small></label><input type="password" class="form-control" id="Password" name="PWD" value=""></div>
                     <div class="col-md-6 mb-3 align-self-end"><div class="form-text text-muted">Password e Partita IVA sono facoltativi: se lasci vuoti, non verranno inviati al server (la password esistente non verrà sovrascritta durante la modifica).</div></div>
                 </div>
+
+                <hr>
+                <div class="d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0">Tariffe</h6>
+                    <button type="button" class="btn btn-sm btn-outline-primary" id="addTariffaBtn_${collaboratore.ID_COLLABORATORE}">Aggiungi Tariffa</button>
+                </div>
+                <div class="row">
+                    <div class="col-12 mb-3">
+                        <div class="table-responsive">
+                            <table class="table table-sm table-striped table-bordered">
+                                <thead class="table-light"><tr><th>Dal</th><th>Commessa</th><th class="text-end">Tariffa/gg</th><th>Spese Incluse</th></tr></thead>
+                                <tbody>
+                                    ${unifiedRows}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
             </form>
         `;
     }
@@ -133,6 +217,316 @@ class CollaboratoriSection extends BaseSection {
         if (!form) return;
         const collId = form.id.includes('editCollaboratoreModal') ? form.id.split('_')[1] : null;
         form.addEventListener('submit', (e) => this.handleCollaboratoreFormSubmit(e, collId));
+
+        // Event delegation for tariff actions (edit/delete) inside this form's modal
+        form.addEventListener('click', (e) => {
+            const editBtn = e.target.closest('.tariffa-edit');
+            const deleteBtn = e.target.closest('.tariffa-delete');
+            if (editBtn) {
+                const row = editBtn.closest('tr');
+                this.startEditTariffaRow(row);
+            } else if (deleteBtn) {
+                const row = deleteBtn.closest('tr');
+                this.confirmDeleteTariffa(row);
+            }
+        });
+
+        // Add tariffa button (if present)
+        const addBtn = document.getElementById(`addTariffaBtn_${collId}`);
+        if (addBtn) {
+            addBtn.addEventListener('click', () => this.insertEmptyTariffaRow(collId));
+        }
+    }
+
+    // Insert an empty editable row at the top of the tariffs table for the collaborator
+    insertEmptyTariffaRow(collaboratoreId) {
+        const modalForm = document.getElementById(`editCollaboratoreModal_${collaboratoreId}_form`);
+        if (!modalForm) return;
+        const tbody = modalForm.querySelector('tbody');
+        if (!tbody) return;
+
+        // Create a new temporary row with empty fields
+        const tr = document.createElement('tr');
+        tr.setAttribute('data-id', '');
+        tr.setAttribute('data-collaboratore', collaboratoreId);
+        tr.classList.add('editing');
+
+        tr.innerHTML = `
+            <td class="tariffa-dal-cell"><input type="date" class="form-control form-control-sm tariffa-edit-dal" value=""></td>
+            <td class="tariffa-commessa-cell">
+                <select class="form-select form-select-sm tariffa-edit-commessa"><option value="">Standard</option>$
+            </td>
+            <td class="tariffa-val-cell text-end"><input type="number" step="0.01" class="form-control form-control-sm tariffa-edit-val" value="0"></td>
+            <td class="tariffa-spese-cell">
+                <select class="form-select form-select-sm tariffa-edit-spese"><option value="Si">Si</option><option value="No" selected>No</option></select>
+            </td>
+            <td class="text-center tariffa-actions-cell">
+                <button type="button" class="btn btn-sm btn-success tariffa-save me-1"><i class="fas fa-check"></i></button>
+                <button type="button" class="btn btn-sm btn-secondary tariffa-cancel"><i class="fas fa-times"></i></button>
+            </td>
+        `;
+
+        // Populate commessa select options
+        const select = tr.querySelector('.tariffa-edit-commessa');
+        if (this.app && Array.isArray(this.app.commesse)) {
+            this.app.commesse.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c.ID_COMMESSA;
+                opt.textContent = c.Commessa;
+                select.appendChild(opt);
+            });
+        }
+
+        // Attach handlers to save/cancel
+        tr.querySelector('.tariffa-save').addEventListener('click', async () => {
+            await this.createTariffaFromRow(tr);
+        });
+        tr.querySelector('.tariffa-cancel').addEventListener('click', () => tr.remove());
+
+        // Insert at top
+        tbody.prepend(tr);
+    }
+
+    async createTariffaFromRow(row) {
+        const collId = row.getAttribute('data-collaboratore');
+        const dal = row.querySelector('.tariffa-edit-dal')?.value || null;
+        const idCommessa = row.querySelector('.tariffa-edit-commessa')?.value || null;
+        const tariffa = parseFloat(row.querySelector('.tariffa-edit-val')?.value || '0') || 0;
+        const spese = row.querySelector('.tariffa-edit-spese')?.value || 'No';
+
+        // Build payload for create
+        const payload = {
+            ID_COLLABORATORE: collId,
+            Dal: dal,
+            ID_COMMESSA: idCommessa || null,
+            Tariffa_gg: tariffa,
+            Spese_comprese: spese
+        };
+
+        if (!(this.api && typeof this.api.createTariffa === 'function')) {
+            this.ui.showToast('Endpoint API per creare tariffa non disponibile.', 'error');
+            return;
+        }
+
+        try {
+            const res = await this.api.createTariffa(payload);
+            if (!res || !res.success) throw new Error(res?.message || 'Errore creazione tariffa');
+            this.ui.showToast('Tariffa creata', 'success');
+            await this.app.loadInitialData();
+            // Re-open modal to refresh rows
+            this.showEditCollaboratoreModal(collId);
+        } catch (err) {
+            this.ui.showToast(err.message, 'error');
+        }
+    }
+
+    // Inline edit: replace cells with inputs and show save/cancel
+    startEditTariffaRow(row) {
+        if (!row) return;
+        // Prevent multiple editors
+        if (row.classList.contains('editing')) return;
+        row.classList.add('editing');
+
+        const dalCell = row.querySelector('.tariffa-dal-cell');
+        const commessaCell = row.querySelector('.tariffa-commessa-cell');
+        const valCell = row.querySelector('.tariffa-val-cell');
+        const speseCell = row.querySelector('.tariffa-spese-cell');
+        const actionsCell = row.querySelector('.tariffa-actions-cell');
+
+        const dalVal = dalCell.textContent.trim();
+        const commessaVal = commessaCell.textContent.trim();
+        const valVal = valCell.textContent.trim().replace(/[€\s\.]/g, '').replace(',', '.');
+        const speseVal = speseCell.textContent.trim();
+
+    // dalVal may be a display string; prefer ISO stored in data-dal for the input value
+    let isoDal = dalCell.getAttribute('data-dal') || dalVal;
+    // helper: if isoDal is in display format dd/mm/yy or dd/mm/yyyy convert to ISO yyyy-mm-dd
+    const normalizeToISO = (s) => {
+        if (!s) return '';
+        // already ISO?
+        if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+        const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+        if (!m) return s;
+        let [ , dd, mm, yy ] = m;
+        if (yy.length === 2) {
+            // assume 20xx for two-digit years
+            yy = '20' + yy;
+        }
+        dd = String(Number(dd)).padStart(2, '0');
+        mm = String(Number(mm)).padStart(2, '0');
+        return `${yy}-${mm}-${dd}`;
+    };
+    isoDal = normalizeToISO(isoDal);
+    dalCell.innerHTML = `<input type="date" class="form-control form-control-sm tariffa-edit-dal" value="${isoDal}">`;
+        // Build a select for commessa: include a 'Standard' option (empty value) + existing commesse
+        let commessaSelect = `<select class="form-select form-select-sm tariffa-edit-commessa">`;
+        commessaSelect += `<option value="">Standard</option>`;
+        if (this.app && Array.isArray(this.app.commesse)) {
+            this.app.commesse.forEach(c => {
+                const selected = (String(c.Commessa).trim() === String(commessaVal).trim() || String(c.ID_COMMESSA) === String(commessaVal)) ? 'selected' : '';
+                commessaSelect += `<option value="${c.ID_COMMESSA}" ${selected}>${this.app.utils.escapeHtml(c.Commessa)}</option>`;
+            });
+        }
+        commessaSelect += `</select>`;
+        commessaCell.innerHTML = commessaSelect;
+        valCell.innerHTML = `<input type="number" step="0.01" class="form-control form-control-sm tariffa-edit-val" value="${valVal}">`;
+        // store original values on the row so save can fall back if only one field changed
+    row.dataset.origDal = isoDal || '';
+        row.dataset.origCommessa = commessaVal || '';
+        row.dataset.origVal = valVal || '';
+        row.dataset.origSpese = speseVal || '';
+
+        // Spese incluse should be a select between 'Si' and 'No'
+        const speseSelect = `
+            <select class="form-select form-select-sm tariffa-edit-spese">
+                <option value="Si" ${speseVal === 'Si' ? 'selected' : ''}>Si</option>
+                <option value="No" ${speseVal !== 'Si' ? 'selected' : ''}>No</option>
+            </select>
+        `;
+        speseCell.innerHTML = speseSelect;
+
+        actionsCell.innerHTML = `
+            <button type="button" class="btn btn-sm btn-success tariffa-save me-1"><i class="fas fa-check"></i></button>
+            <button type="button" class="btn btn-sm btn-secondary tariffa-cancel"><i class="fas fa-times"></i></button>
+        `;
+
+        // wire save/cancel
+        actionsCell.querySelector('.tariffa-save').addEventListener('click', () => this.saveEditedTariffaRow(row));
+        actionsCell.querySelector('.tariffa-cancel').addEventListener('click', () => this.cancelEditTariffaRow(row));
+    }
+
+    cancelEditTariffaRow(row) {
+        if (!row) return;
+        row.classList.remove('editing');
+        // Re-render modal to restore original state (simpler than reconstructing row)
+        const collId = row.getAttribute('data-collaboratore');
+        const modalForm = document.getElementById(`editCollaboratoreModal_${collId}_form`);
+        if (modalForm) {
+            // Close and re-open modal content by reloading app data and re-creating modal
+            // Simpler: re-create modal content from current collaborator data
+            const coll = this.app.collaboratori.find(c => String(c.ID_COLLABORATORE) === String(collId));
+            if (coll) {
+                const modal = modalForm.closest('.modal');
+                if (modal) {
+                    const body = modal.querySelector('.modal-body');
+                    if (body) body.innerHTML = this.getCollaboratoreFormHTML(coll);
+                }
+            }
+        }
+    }
+
+    async saveEditedTariffaRow(row) {
+        const id = row.getAttribute('data-id');
+        const collId = row.getAttribute('data-collaboratore');
+        // Read inputs defensively so editing only one field (e.g. Spese) won't clear others
+        const dalInput = row.querySelector('.tariffa-edit-dal');
+        const dal = dalInput ? dalInput.value : '';
+        const commessaInput = row.querySelector('.tariffa-edit-commessa');
+        const commessa = commessaInput ? commessaInput.value : '';
+        const valInput = row.querySelector('.tariffa-edit-val');
+        const valRaw = valInput ? String(valInput.value).trim() : '';
+        const val = valRaw !== '' ? (parseFloat(valRaw.replace(',', '.')) || 0) : null;
+        const speseInput = row.querySelector('.tariffa-edit-spese');
+        const spese = speseInput ? speseInput.value : '';
+
+        // Resolve commessa to ID_COMMESSA; if user didn't change it use original displayed value
+        let idCommessa = null;
+        const effectiveCommessa = (commessa !== '') ? commessa : (row.dataset.origCommessa || '');
+        if (effectiveCommessa) {
+            const commessaTrim = String(effectiveCommessa).trim();
+            const commessaLower = commessaTrim.toLowerCase();
+            if (commessaTrim === '' || commessaLower === 'null' || commessaLower === 'generale' || commessaLower.startsWith('stand')) {
+                idCommessa = null;
+            } else {
+                const found = (this.app && Array.isArray(this.app.commesse))
+                    ? this.app.commesse.find(c => String(c.ID_COMMESSA) === commessaTrim || String(c.Commessa).trim() === commessaTrim)
+                    : null;
+                idCommessa = found ? found.ID_COMMESSA : null;
+            }
+        }
+
+        // Fallback to original values if inputs left blank
+        const finalDal = dal || row.dataset.origDal || null;
+        const parsedOrigVal = parseFloat(String(row.dataset.origVal || '0').replace(',', '.')) || 0;
+        const finalVal = (val !== null) ? val : parsedOrigVal;
+        const finalSpese = (spese && String(spese).trim() !== '') ? spese : (row.dataset.origSpese || 'No');
+
+        const payload = {
+            ID_TARIFFA: id,
+            ID_COLLABORATORE: collId,
+            Dal: finalDal || null,
+            ID_COMMESSA: idCommessa || null,
+            Tariffa_gg: finalVal,
+            Spese_comprese: finalSpese
+        };
+
+        // Ensure API method exists; otherwise alert the user that changes won't be persisted
+        if (!(this.api && typeof this.api.updateTariffa === 'function')) {
+            this.ui.showToast('Operazione non eseguita: endpoint API updateTariffa non disponibile.', 'error');
+            return;
+        }
+
+        try {
+            const res = await this.api.updateTariffa(id, payload);
+            if (!res || !res.success) throw new Error(res?.message || 'Errore nell aggiornamento della tariffa');
+            this.ui.showToast('Tariffa aggiornata', 'success');
+            // Refresh modal content to show updated values
+            await this.app.loadInitialData();
+            const modal = document.getElementById(`editCollaboratoreModal_${collId}`);
+            if (modal) {
+                const bsModal = bootstrap.Modal.getInstance(modal) || new bootstrap.Modal(modal);
+                bsModal.hide();
+                // reopen
+                this.showEditCollaboratoreModal(collId);
+            }
+        } catch (err) {
+            this.ui.showToast(err.message, 'error');
+        }
+    }
+
+    // Confirm delete with strong confirmation (type 'ELIMINA')
+    confirmDeleteTariffa(row) {
+        if (!row) return;
+        const id = row.getAttribute('data-id');
+        const collId = row.getAttribute('data-collaboratore');
+        const modalId = `confirmDeleteTariffa_${id}`;
+        const modalHtml = `
+            <div class="modal-body">
+                <p>Sei sicuro di voler eliminare la tariffa <strong>${id}</strong>?</p>
+                <p>Questa operazione è irreversibile. Per confermare, digita <strong>ELIMINA</strong> nella casella sottostante.</p>
+                <input type="text" id="confirmInput_${id}" class="form-control mb-2" placeholder="Digita ELIMINA per confermare">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                <button type="button" id="confirmBtn_${id}" class="btn btn-danger" disabled>Elimina</button>
+            </div>
+        `;
+        this.ui.createModal(modalId, 'Conferma Eliminazione', modalHtml, [], { size: 'modal-sm' });
+
+        // Wire up input listener
+        const input = document.getElementById(`confirmInput_${id}`);
+        const btn = document.getElementById(`confirmBtn_${id}`);
+        input?.addEventListener('input', () => {
+            btn.disabled = input.value.trim().toUpperCase() !== 'ELIMINA';
+        });
+        btn?.addEventListener('click', async () => {
+            try {
+                if (!(this.api && typeof this.api.deleteTariffa === 'function')) {
+                    this.ui.showToast('Operazione non eseguita: endpoint API deleteTariffa non disponibile.', 'error');
+                    return;
+                }
+                const res = await this.api.deleteTariffa(id);
+                if (!res || !res.success) throw new Error(res?.message || 'Errore nella cancellazione');
+                this.ui.showToast('Tariffa eliminata', 'success');
+                bootstrap.Modal.getInstance(document.getElementById(modalId))?.hide();
+                await this.app.loadInitialData();
+                // Re-open collaborator edit modal if it was open
+                const editModal = document.getElementById(`editCollaboratoreModal_${collId}`);
+                if (editModal) this.showEditCollaboratoreModal(collId);
+            } catch (err) {
+                this.ui.showToast(err.message, 'error');
+            }
+        });
     }
 
     async handleCollaboratoreFormSubmit(event, collaboratoreId = null) {
