@@ -29,7 +29,6 @@ class ManagementApp {
             'commesse-task': new CommesseTaskSection(this),
             'clienti': new ClientiSection(this),
             'collaboratori': new CollaboratoriSection(this),
-            'tariffe': new TariffeSection(this),
             'fatture': new FattureSection(this),
             'giornate': new GiornateSection(this),
             'statistiche': new StatisticheSection(this),
@@ -193,7 +192,6 @@ class ManagementApp {
                     <div class="nav-item"><button class="nav-link active" data-action="navigate" data-section="commesse-task"><i class="fas fa-tasks"></i>Commesse & Task</button></div>
                     <div class="nav-item"><button class="nav-link" data-action="navigate" data-section="clienti"><i class="fas fa-building"></i>Clienti</button></div>
                     <div class="nav-item"><button class="nav-link" data-action="navigate" data-section="collaboratori"><i class="fas fa-users"></i>Collaboratori</button></div>
-                    <div class="nav-item"><button class="nav-link" data-action="navigate" data-section="tariffe"><i class="fas fa-euro-sign"></i>Tariffe</button></div>
                     <div class="nav-item"><button class="nav-link" data-action="navigate" data-section="fatture"><i class="fas fa-file-invoice"></i>Fatture</button></div>
                     <div class="nav-item"><button class="nav-link" data-action="navigate" data-section="giornate"><i class="fas fa-calendar-alt"></i>Giornate</button></div>
                     <div class="nav-item"><button class="nav-link" data-action="navigate" data-section="statistiche"><i class="fas fa-chart-bar"></i>Statistiche</button></div>

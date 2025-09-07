@@ -154,6 +154,9 @@ class APIClient {
 
     // Fatture
     async getFatture(params = {}) { return this.request('fatture', 'getAll', { params }); }
+    async createFattura(data) { return this.request('fatture', 'create', { data }); }
+    async updateFattura(id, data) { return this.request('fatture', 'update', { data, params: { id } }); }
+    async deleteFattura(id) { return this.request('fatture', 'delete', { params: { id } }); }
     
     // Giornate
     async getGiornate(options = {}) {

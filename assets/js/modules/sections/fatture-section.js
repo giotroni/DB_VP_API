@@ -1,6 +1,8 @@
 /**
  * @file FattureSection.js
  * @description Classe per la gestione della sezione "Fatture".
+ * NOTE: Aggiornamento 2025-09-07 - Raggruppamenti header ora vengono effettuati
+ * usando il campo `Cliente` come etichetta principale (fallback a `Ragione_Sociale`).
  */
 class FattureSection extends BaseSection {
     constructor(appInstance) {
@@ -16,7 +18,7 @@ class FattureSection extends BaseSection {
 
     render() {
         this.updatePageTitle('Gestione Fatture', 'Visualizza e gestisci le fatture emesse');
-        this.updateTopbarActions(`<button class="btn btn-vp-primary" data-action="add-fattura"><i class="fas fa-plus me-2"></i>Nuova Fattura</button>`);
+    this.updateTopbarActions(`<div class="d-flex gap-2"><button class="btn btn-outline-success" data-action="export-fatture" title="Esporta elenco fatture in Excel"><i class="fas fa-file-excel me-2"></i>Esporta Excel</button><button class="btn btn-vp-primary" data-action="add-fattura"><i class="fas fa-plus me-2"></i>Nuova Fattura</button></div>`);
         const container = this.getContainer();
         const currentYear = new Date().getFullYear();
         let yearOptions = '';
@@ -83,6 +85,7 @@ class FattureSection extends BaseSection {
             case 'toggle-fattura': this.toggleFattura(id); break;
             case 'filter': this.filterData(); break;
             case 'toggle-all-fatture': this.toggleAllFatture(); break;
+            case 'export-fatture': this.exportFattureToExcel(); break;
             case 'toggle-all-filter':
                 const targetId = targetElement.dataset.targetFilter;
                 this.toggleAllCheckboxes(targetId);
@@ -118,8 +121,7 @@ class FattureSection extends BaseSection {
                         </div>
                     </div>
                     <div class="mt-2 text-light small">
-                        <i class="fas fa-user me-1"></i> Contatto: ${clientData.contatto || 'N/D'} |
-                        <i class="fas fa-map-marker-alt me-1"></i> Città: ${clientData.citta || 'N/D'}
+                        <i class="fas fa-id-badge me-1"></i> Ragione Sociale: ${clientData.ragione_sociale || clientData.cliente_nome || 'N/D'}
                     </div>
                 </div>
                 <div class="collapse" id="fatture-${clientData.ID_CLIENTE}">
@@ -132,6 +134,8 @@ class FattureSection extends BaseSection {
         const statoClass = this.getStatoClass(fattura.stato_pagamento);
         const scadenzaText = fattura.Scadenza_Pagamento ? this.app.utils.formatDate(fattura.Scadenza_Pagamento) : 'N/D';
         const statoText = this.getStatoText(fattura.stato_pagamento, fattura.giorni_scadenza);
+        // Nome commessa se disponibile
+        const nomeCommessa = fattura.commessa_info?.Commessa || '';
         
         return `
             <div class="col-12 mb-3">
@@ -144,7 +148,10 @@ class FattureSection extends BaseSection {
                         <div class="row mt-3 small text-muted">
                             <div class="col-md-3"><i class="fas fa-calendar-alt me-1"></i> Data: ${this.app.utils.formatDate(fattura.Data)}</div>
                             <div class="col-md-3"><i class="fas fa-calendar-times me-1"></i> Scadenza: ${scadenzaText}</div>
+                            <div class="col-md-3"><i class="fas fa-briefcase me-1"></i> Commessa: ${nomeCommessa || 'N/D'}</div>
                             <div class="col-md-3"><i class="fas fa-money-bill-wave me-1"></i> Totale: <strong>${this.app.utils.formatCurrency(fattura.Fatturato_TOT)}</strong></div>
+                        </div>
+                        <div class="row small text-muted mt-2">
                             <div class="col-md-3"><i class="fas fa-piggy-bank me-1"></i> Pagato: <strong>${this.app.utils.formatCurrency(fattura.Valore_Pagato)}</strong> (${fattura.percentuale_pagata || 0}%)</div>
                         </div>
                         <div class="action-buttons d-flex justify-content-end gap-2 mt-3">
@@ -222,37 +229,39 @@ class FattureSection extends BaseSection {
 
         this.activeDateFilter = (selectedYears.length > 0 || selectedMonths.length > 0) ? { years: selectedYears, months: selectedMonths } : null;
 
+        // Ricomponi i dati originali raggruppati per cliente (solo clienti con fatture)
         const allData = this.groupFattureByClient();
-        let filteredData = allData;
+        let filteredData = [];
 
-        if (searchText || selectedCliente || selectedStato || this.activeDateFilter) {
-            filteredData = allData.filter(client => {
-                const fattureFiltrate = client.fatture.filter(fattura => {
-                    const matchSearch = !searchText ||
-                        (fattura.NR || '').toLowerCase().includes(searchText) ||
-                        (fattura.cliente_info?.Cliente || '').toLowerCase().includes(searchText);
-                    
-                    const matchStato = !selectedStato || fattura.stato_pagamento === selectedStato;
-                    
-                    const matchDate = !this.activeDateFilter || (fattura.Data && (() => {
-                        const fatturaDate = new Date(fattura.Data);
-                        const yearMatch = this.activeDateFilter.years.length === 0 || this.activeDateFilter.years.includes(fatturaDate.getFullYear());
-                        const monthMatch = this.activeDateFilter.months.length === 0 || this.activeDateFilter.months.includes(fatturaDate.getMonth() + 1);
-                        return yearMatch && monthMatch;
-                    })());
+        // Per ogni cliente, applica i filtri alle singole fatture e includi il cliente
+        // solo se ha almeno una fattura che soddisfa i filtri.
+        allData.forEach(client => {
+            const fattureFiltrate = client.fatture.filter(fattura => {
+                const matchSearch = !searchText ||
+                    (fattura.NR || '').toLowerCase().includes(searchText) ||
+                    (fattura.cliente_info?.Cliente || client.cliente_nome || '').toLowerCase().includes(searchText);
 
-                    return matchSearch && matchStato && matchDate;
-                });
-                // Un cliente viene incluso se ha fatture filtrate o se corrisponde al filtro cliente e non ci sono altri filtri attivi.
-                return fattureFiltrate.length > 0 || (!selectedCliente && !searchText && !selectedStato && fattureFiltrate.length === 0);
+                const matchStato = !selectedStato || fattura.stato_pagamento === selectedStato;
+
+                const matchDate = !this.activeDateFilter || (fattura.Data && (() => {
+                    const fatturaDate = new Date(fattura.Data);
+                    const yearMatch = this.activeDateFilter.years.length === 0 || this.activeDateFilter.years.includes(fatturaDate.getFullYear());
+                    const monthMatch = this.activeDateFilter.months.length === 0 || this.activeDateFilter.months.includes(fatturaDate.getMonth() + 1);
+                    return yearMatch && monthMatch;
+                })());
+
+                const matchClienteFilter = !selectedCliente || String(client.ID_CLIENTE) === String(selectedCliente);
+
+                return matchSearch && matchStato && matchDate && matchClienteFilter;
             });
 
-            // Se è attivo il filtro per cliente, ma il cliente non ha fatture filtrate, non lo mostrare
-            if (selectedCliente && filteredData.length > 0) {
-                filteredData = filteredData.filter(c => c.fatture.length > 0);
+            if (fattureFiltrate.length > 0) {
+                // Clona l'oggetto cliente e sostituisci l'array delle fatture con quelle filtrate
+                filteredData.push({ ...client, fatture: fattureFiltrate });
             }
-        }
+        });
 
+        // Render e stats solo per i clienti con fatture
         document.getElementById('fattureContainer').innerHTML = this.renderFattureCards(filteredData);
         this.updateStats(filteredData);
     }
@@ -402,8 +411,8 @@ class FattureSection extends BaseSection {
         const fattureCount = data.reduce((sum, c) => sum + c.fatture.length, 0);
         const fatturatoTotale = data.reduce((sum, c) => sum + c.fatture.reduce((fSum, f) => fSum + (parseFloat(f.Fatturato_TOT) || 0), 0), 0);
         const incassatoTotale = data.reduce((sum, c) => sum + c.fatture.reduce((fSum, f) => fSum + (parseFloat(f.Valore_Pagato) || 0), 0), 0);
-        const inScadenza = data.reduce((sum, c) => sum + c.fatture.filter(f => f.stato_pagamento === 'in_scadenza').length, 0);
-        const scadute = data.reduce((sum, c) => sum + c.fatture.filter(f => f.stato_pagamento === 'scaduta').length, 0);
+    // Rimosso conteggio 'in_scadenza' su richiesta: rimaniamo con scadute e altri riepiloghi
+    const scadute = data.reduce((sum, c) => sum + c.fatture.filter(f => f.stato_pagamento === 'scaduta').length, 0);
         
         const statsContainer = document.getElementById('stats-row-container');
         if (statsContainer) {
@@ -412,16 +421,115 @@ class FattureSection extends BaseSection {
                     ${this.ui.createStatsCard('fas fa-file-invoice', fattureCount, 'Totale Fatture')}
                     ${this.ui.createStatsCard('fas fa-euro-sign', this.app.utils.formatCurrency(fatturatoTotale), 'Fatturato Totale')}
                     ${this.ui.createStatsCard('fas fa-piggy-bank', this.app.utils.formatCurrency(incassatoTotale), 'Totale Incassato')}
-                    ${this.ui.createStatsCard('fas fa-clock', inScadenza, 'Fatture In Scadenza')}
                     ${this.ui.createStatsCard('fas fa-exclamation-triangle', scadute, 'Fatture Scadute')}
                 </div>
             `;
         }
     }
 
+    // Esporta l'elenco delle fatture visibili in Excel (CSV) rispettando i filtri attivi
+    exportFattureToExcel() {
+        // Ricava i dati correnti applicando gli stessi filtri (ma senza modificare il DOM)
+        const searchText = document.getElementById('searchFatture')?.value.toLowerCase() || '';
+        const selectedCliente = document.getElementById('filterCliente')?.value || '';
+        const selectedStato = document.getElementById('filterStatoPagamento')?.value || '';
+        const selectedYears = Array.from(document.querySelectorAll('#filterAnno input:checked')).map(el => parseInt(el.value));
+        const selectedMonths = Array.from(document.querySelectorAll('#filterMese input:checked')).map(el => parseInt(el.value));
+
+        const activeDateFilter = (selectedYears.length > 0 || selectedMonths.length > 0) ? { years: selectedYears, months: selectedMonths } : null;
+
+        const allData = this.groupFattureByClient();
+        let rows = [];
+
+        allData.forEach(client => {
+            const fattureFiltrate = client.fatture.filter(fattura => {
+                const matchSearch = !searchText ||
+                    (fattura.NR || '').toLowerCase().includes(searchText) ||
+                    (fattura.cliente_info?.Cliente || client.cliente_nome || '').toLowerCase().includes(searchText);
+
+                const matchStato = !selectedStato || fattura.stato_pagamento === selectedStato;
+
+                const matchDate = !activeDateFilter || (fattura.Data && (() => {
+                    const fatturaDate = new Date(fattura.Data);
+                    const yearMatch = activeDateFilter.years.length === 0 || activeDateFilter.years.includes(fatturaDate.getFullYear());
+                    const monthMatch = activeDateFilter.months.length === 0 || activeDateFilter.months.includes(fatturaDate.getMonth() + 1);
+                    return yearMatch && monthMatch;
+                })());
+
+                const matchClienteFilter = !selectedCliente || String(client.ID_CLIENTE) === String(selectedCliente);
+
+                return matchSearch && matchStato && matchDate && matchClienteFilter;
+            });
+
+            fattureFiltrate.forEach(f => {
+                rows.push({
+                    NR: f.NR || '',
+                    Tipo: f.TIPO || '',
+                    Cliente: f.cliente_info?.Cliente || client.cliente_nome || '',
+                    Commessa: f.commessa_info?.Commessa || '',
+                    Data: f.Data || '',
+                    Totale: f.Fatturato_TOT || '',
+                    Scadenza: f.Scadenza_Pagamento || '',
+                    Data_Pagamento: f.Data_Pagamento || '',
+                    Valore_Pagato: f.Valore_Pagato || '',
+                    Note: f.Note || ''
+                });
+            });
+        });
+
+        if (rows.length === 0) {
+            this.ui.showToast('Nessuna fattura da esportare con i filtri attivi.', 'info');
+            return;
+        }
+
+        // Ordina per Data emissione (decrescente)
+        rows.sort((a, b) => new Date(b.Data) - new Date(a.Data));
+
+        // Costruisci CSV (separatore ';' per compatibilità Excel IT)
+    const headers = ['Numero Fattura','Tipo documento','Cliente','Commessa','Data emissione','Importo totale','Scadenza','Data Pagamento','Importo pagato','Note'];
+        const csvLines = [headers.join(';')];
+
+        const formatNumber = (n) => {
+            if (n === null || n === undefined || n === '') return '';
+            const num = typeof n === 'number' ? n : parseFloat(String(n).replace(',', '.'));
+            if (isNaN(num)) return '';
+            // usa la virgola come separatore decimale e punto per migliaia (locale IT)
+            return num.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        };
+
+        rows.forEach(r => {
+            const lineArr = [
+                r.NR,
+                r.Tipo,
+                r.Cliente,
+                r.Commessa,
+                r.Data,
+                formatNumber(r.Totale),
+                r.Scadenza,
+                r.Data_Pagamento,
+                formatNumber(r.Valore_Pagato),
+                r.Note
+            ];
+            const line = lineArr.map(v => typeof v === 'string' ? v.replace(/"/g, '""') : v).map(v => `"${v}"`).join(';');
+            csvLines.push(line);
+        });
+
+        const csvContent = '\uFEFF' + csvLines.join('\n'); // BOM per Excel
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `fatture_export_${new Date().toISOString().slice(0,10)}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+        this.ui.showToast('Esportazione completata.', 'success');
+    }
+
     getFatturaFormHTML(fattura = {}) {
         const formId = fattura.ID_FATTURA ? `editFatturaModal_${fattura.ID_FATTURA}_form` : 'newFatturaModal_form';
-        const clientiOptions = this.app.clienti.map(c => `<option value="${c.ID_CLIENTE}" ${fattura.ID_CLIENTE == c.ID_CLIENTE ? 'selected' : ''}>${c.Ragione_Sociale}</option>`).join('');
+        const clientiOptions = this.app.clienti.map(c => `<option value="${c.ID_CLIENTE}" ${fattura.ID_CLIENTE == c.ID_CLIENTE ? 'selected' : ''}>${c.Ragione_Sociale || c.Cliente}</option>`).join('');
         const commesseOptions = this.app.commesse.map(c => `<option value="${c.ID_COMMESSA}" ${fattura.ID_COMMESSA == c.ID_COMMESSA ? 'selected' : ''}>${c.Commessa}</option>`).join('');
         const tipi = ['Fattura', 'Nota_Accredito'];
         const tipiOptions = tipi.map(t => `<option value="${t}" ${(fattura.TIPO || 'Fattura') === t ? 'selected' : ''}>${t}</option>`).join('');
@@ -463,9 +571,13 @@ class FattureSection extends BaseSection {
         
         // Prima, mappa tutti i clienti in modo da includere anche quelli senza fatture
         this.app.clienti.forEach(cliente => {
+            // Usare il campo 'Cliente' come etichetta principale per i raggruppamenti
+            // (fallback a Ragione_Sociale se Cliente non è presente)
+            const displayName = cliente.Cliente || cliente.Ragione_Sociale || '';
             fattureMap.set(cliente.ID_CLIENTE, { 
                 ID_CLIENTE: cliente.ID_CLIENTE, 
-                cliente_nome: cliente.Ragione_Sociale || cliente.Cliente, 
+                cliente_nome: displayName, 
+                ragione_sociale: cliente.Ragione_Sociale || '',
                 contatto: cliente.Contatto || 'N/D',
                 citta: cliente.Citta || 'N/D',
                 fatture: [] 
@@ -479,14 +591,17 @@ class FattureSection extends BaseSection {
             }
         });
         
-        // Filtra i clienti che hanno almeno una fattura o che non sono stati filtrati
-        const fattureGrouped = Array.from(fattureMap.values());
-        
+        // Raggruppa in array e rimuovi i clienti senza fatture
+        let fattureGrouped = Array.from(fattureMap.values());
+
         // Ordina le fatture di ogni cliente
         fattureGrouped.forEach(client => {
             client.fatture.sort((a, b) => new Date(b.Data) - new Date(a.Data));
         });
-        
+
+        // Mantieni solo i clienti che hanno almeno una fattura
+        fattureGrouped = fattureGrouped.filter(c => c.fatture && c.fatture.length > 0);
+
         // Ordina i clienti per nome
         return fattureGrouped.sort((a, b) => (a.cliente_nome || '').localeCompare(b.cliente_nome || ''));
     }
