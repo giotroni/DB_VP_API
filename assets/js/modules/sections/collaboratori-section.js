@@ -62,12 +62,10 @@ class CollaboratoriSection extends BaseSection {
     handleAction(action, id) {
         switch (action) {
             case 'add-collaboratore':
-                // this.showNewCollaboratoreModal();
-                this.ui.showToast('Funzione non ancora implementata.', 'info');
+                this.showNewCollaboratoreModal();
                 break;
             case 'edit-collaboratore':
-                // this.showEditCollaboratoreModal(id);
-                 this.ui.showToast('Funzione non ancora implementata.', 'info');
+                this.showEditCollaboratoreModal(id);
                 break;
             case 'toggle-collaboratore':
                 this.toggleCollaboratore(id);
@@ -75,6 +73,92 @@ class CollaboratoriSection extends BaseSection {
             default:
                 console.warn(`Azione non gestita: ${action}`);
         }
+    }
+
+    // ========================================================================
+    // MODALI: Collaboratore
+    // ========================================================================
+
+    showNewCollaboratoreModal() {
+        const modalTitle = 'Crea Nuovo Collaboratore';
+        const modalId = 'newCollaboratoreModal';
+        const modalBody = this.getCollaboratoreFormHTML();
+        const modalActions = [
+            { html: '<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>' },
+            { html: `<button type="submit" form="${modalId}_form" class="btn btn-primary">Crea Collaboratore</button>` }
+        ];
+        this.ui.createModal(modalId, modalTitle, modalBody, modalActions, { size: 'modal-md' });
+        this.addCollaboratoreFormListeners(`${modalId}_form`);
+    }
+
+    showEditCollaboratoreModal(collaboratoreId) {
+        const coll = this.app.collaboratori.find(c => c.ID_COLLABORATORE === collaboratoreId);
+        if (!coll) { this.ui.showToast('Collaboratore non trovato.', 'error'); return; }
+        const modalTitle = `Modifica Collaboratore: ${coll.Collaboratore}`;
+        const modalId = `editCollaboratoreModal_${collaboratoreId}`;
+        const modalBody = this.getCollaboratoreFormHTML(coll);
+        const modalActions = [
+            { html: '<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>' },
+            { html: `<button type="submit" form="${modalId}_form" class="btn btn-primary">Salva Modifiche</button>` }
+        ];
+        this.ui.createModal(modalId, modalTitle, modalBody, modalActions, { size: 'modal-md' });
+        this.addCollaboratoreFormListeners(`${modalId}_form`);
+    }
+
+    getCollaboratoreFormHTML(collaboratore = {}) {
+        const formId = collaboratore.ID_COLLABORATORE ? `editCollaboratoreModal_${collaboratore.ID_COLLABORATORE}_form` : 'newCollaboratoreModal_form';
+        const ruoloOptions = ['Admin', 'Manager', 'User'];
+        const ruoliHtml = ruoloOptions.map(r => `<option value="${r}" ${(collaboratore.Ruolo === r) ? 'selected' : ''}>${r}</option>`).join('');
+        return `
+            <form id="${formId}" novalidate>
+                <div class="row">
+                    <div class="col-md-12 mb-3"><label for="Collaboratore" class="form-label">Nome e Cognome</label><input type="text" class="form-control" id="Collaboratore" name="Collaboratore" value="${collaboratore.Collaboratore || ''}" required></div>
+                    <div class="col-md-6 mb-3"><label for="User" class="form-label">User</label><input type="text" class="form-control" id="User" name="User" value="${collaboratore.User || ''}"></div>
+                    <div class="col-md-6 mb-3"><label for="Email" class="form-label">Email</label><input type="email" class="form-control" id="Email" name="Email" value="${collaboratore.Email || ''}"></div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3"><label for="Ruolo" class="form-label">Ruolo</label><select class="form-select" id="Ruolo" name="Ruolo">${ruoliHtml}</select></div>
+                    <div class="col-md-6 mb-3"><label for="PIVA" class="form-label">Partita IVA <small class="text-muted">(facoltativa)</small></label><input type="text" class="form-control" id="PIVA" name="PIVA" value="${collaboratore.PIVA || ''}"></div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3"><label for="Password" class="form-label">Password <small class="text-muted">(facoltativa: lascia vuoto per non inviare)</small></label><input type="password" class="form-control" id="Password" name="PWD" value=""></div>
+                    <div class="col-md-6 mb-3 align-self-end"><div class="form-text text-muted">Password e Partita IVA sono facoltativi: se lasci vuoti, non verranno inviati al server (la password esistente non verrà sovrascritta durante la modifica).</div></div>
+                </div>
+            </form>
+        `;
+    }
+
+    addCollaboratoreFormListeners(formId) {
+        const form = document.getElementById(formId);
+        if (!form) return;
+        const collId = form.id.includes('editCollaboratoreModal') ? form.id.split('_')[1] : null;
+        form.addEventListener('submit', (e) => this.handleCollaboratoreFormSubmit(e, collId));
+    }
+
+    async handleCollaboratoreFormSubmit(event, collaboratoreId = null) {
+        event.preventDefault();
+        const form = event.target;
+        const formData = new FormData(form);
+        const data = Object.fromEntries(formData.entries());
+        // Normalizza campi vuoti: converti stringhe vuote in null
+        for (const k in data) { if (data[k] === '') data[k] = null; }
+        // Se è un update, rimuovi i campi nulli per evitare di sovrascrivere valori nel backend
+        if (collaboratoreId) {
+            Object.keys(data).forEach(k => { if (data[k] === null) delete data[k]; });
+        } else {
+            // Creazione: non inviare PWD o PIVA se vuoti (sono facoltativi)
+            ['PWD', 'PIVA'].forEach(k => { if (data[k] === null) delete data[k]; });
+        }
+        try {
+            const result = collaboratoreId
+                ? await this.api.updateCollaboratore(collaboratoreId, data)
+                : await this.api.createCollaboratore(data);
+            if (result.success) {
+                this.ui.showToast(`Collaboratore ${collaboratoreId ? 'aggiornato' : 'creato'} con successo!`, 'success');
+                bootstrap.Modal.getInstance(form.closest('.modal'))?.hide();
+                await this.app.loadInitialData();
+            } else { throw new Error(result.message || 'Errore nel salvataggio del collaboratore.'); }
+        } catch (error) { this.ui.showToast(error.message, 'error'); }
     }
 
     renderCollaboratoriCards(collaboratori) {
@@ -104,6 +188,7 @@ class CollaboratoriSection extends BaseSection {
                             <span class="badge bg-primary" title="Ruolo"><i class="fas fa-shield-alt me-1"></i>${collaboratore.Ruolo}</span>
                             <span class="badge bg-info text-dark" title="Commesse Assegnate"><i class="fas fa-briefcase me-1"></i>${stats.commesse_assegnate || 0}</span>
                             <span class="badge bg-success" title="Totale Giornate di Campo"><i class="fas fa-tractor me-1"></i>${totalGiornateCampo.toFixed(1)}</span>
+                            ${typeof stats.tariffa_standard !== 'undefined' ? `<span class="badge bg-warning text-dark" title="Tariffa standard attuale"><i class="fas fa-money-bill-wave me-1"></i>${this.app.utils.formatCurrency(stats.tariffa_standard)}</span>` : ''}
                             <span class="badge bg-danger" title="Costo Totale">${this.app.utils.formatCurrency(totalCosto)}</span>
                             <button class="btn btn-sm btn-outline-light" data-action="edit-collaboratore" data-id="${collaboratore.ID_COLLABORATORE}" title="Modifica Collaboratore"><i class="fas fa-pencil-alt"></i></button>
                             <button class="commessa-toggle-btn" id="toggleBtn-${collaboratore.ID_COLLABORATORE}"><i class="fas fa-chevron-down"></i></button>

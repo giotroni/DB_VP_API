@@ -10,13 +10,15 @@ class CollaboratoriAPI extends BaseAPI {
     public function __construct() {
         parent::__construct('ANA_COLLABORATORI', 'ID_COLLABORATORE');
         
-        $this->requiredFields = ['Collaboratore', 'User', 'Email', 'Ruolo', 'PWD'];
+        // PWD è opzionale: gestione lato client/server permette di non inviarla
+        $this->requiredFields = ['Collaboratore', 'User', 'Email', 'Ruolo'];
         $this->validationRules = [
             'ID_COLLABORATORE' => ['max_length' => 50],
             'Collaboratore' => ['required' => true, 'max_length' => 255],
             'User' => ['required' => true, 'max_length' => 100],
             'Email' => ['required' => true, 'max_length' => 255, 'email' => true],
-            'PWD' => ['required' => true, 'min_length' => 6, 'max_length' => 255],
+            // Se la password è fornita verrà validata; altrimenti è opzionale
+            'PWD' => ['min_length' => 6, 'max_length' => 255],
             'Ruolo' => ['required' => true, 'enum' => ['Admin', 'Manager', 'User']],
             'PIVA' => ['max_length' => 20, 'pattern' => '/^\d{11}$/']
         ];
@@ -335,12 +337,13 @@ class CollaboratoriAPI extends BaseAPI {
             $stmt->execute();
             $stats['ultima_giornata'] = $stmt->fetchColumn();
             
-            // Tariffa media attuale
-            $sql = "SELECT AVG(Tariffa_gg) as avg_tariffa FROM ANA_TARIFFE_COLLABORATORI WHERE ID_COLLABORATORE = :id";
+            // Tariffa standard attuale: ricerca la tariffa (ID_COMMESSA IS NULL) con Dal più recente
+            $sql = "SELECT Tariffa_gg FROM ANA_TARIFFE_COLLABORATORI WHERE ID_COLLABORATORE = :id AND ID_COMMESSA IS NULL ORDER BY Dal DESC LIMIT 1";
             $stmt = $this->db->prepare($sql);
             $stmt->bindValue(':id', $collaboratorId);
             $stmt->execute();
-            $stats['tariffa_media'] = floatval($stmt->fetchColumn()) ?: 0;
+            $tariffa_row = $stmt->fetch();
+            $stats['tariffa_standard'] = $tariffa_row ? floatval($tariffa_row['Tariffa_gg']) : 0;
             
             return $stats;
             

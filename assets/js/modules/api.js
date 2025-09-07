@@ -145,6 +145,9 @@ class APIClient {
     
     // Collaboratori
     async getCollaboratori(params = {}) { return this.request('collaboratori', 'getAll', { params }); }
+    async createCollaboratore(data) { return this.request('collaboratori', 'create', { data }); }
+    async updateCollaboratore(id, data) { return this.request('collaboratori', 'update', { data, params: { id } }); }
+    async deleteCollaboratore(id) { return this.request('collaboratori', 'delete', { params: { id } }); }
 
     // Tariffe
     async getTariffe(params = {}) { return this.request('tariffe', 'getAll', { params }); }
