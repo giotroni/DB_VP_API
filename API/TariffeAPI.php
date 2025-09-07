@@ -293,36 +293,10 @@ class TariffeAPI extends BaseAPI {
      * Verifica vincoli prima dell'eliminazione
      */
     protected function checkDeleteConstraints($id) {
-        try {
-            // Verifica se ci sono giornate registrate che utilizzano questa tariffa
-            // (controllo indiretto tramite collaboratore e date)
-            $sql = "SELECT t.ID_COLLABORATORE, t.Dal, COUNT(g.ID_GIORNATA) as count
-                    FROM {$this->table} t
-                    LEFT JOIN FACT_GIORNATE g ON g.ID_COLLABORATORE = t.ID_COLLABORATORE 
-                                                 AND g.Data >= t.Dal
-                    WHERE t.ID_TARIFFA = :id
-                    GROUP BY t.ID_COLLABORATORE, t.Dal";
-            
-            $stmt = $this->db->prepare($sql);
-            $stmt->bindValue(':id', $id);
-            $stmt->execute();
-            $result = $stmt->fetch();
-            
-            if ($result && $result['count'] > 0) {
-                return [
-                    'canDelete' => false,
-                    'message' => 'Impossibile eliminare: potrebbero esistere giornate che fanno riferimento a questa tariffa'
-                ];
-            }
-            
-            return ['canDelete' => true, 'message' => ''];
-            
-        } catch (PDOException $e) {
-            return [
-                'canDelete' => false,
-                'message' => 'Errore durante la verifica dei vincoli'
-            ];
-        }
+        // Allow deletion even if there are giornate that reference this tariffa.
+        // The system will not block the delete here; any referential cleanup or
+        // post-delete adjustments should be handled elsewhere if needed.
+        return ['canDelete' => true, 'message' => ''];
     }
     
     /**

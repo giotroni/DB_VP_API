@@ -40,8 +40,13 @@ class UIComponents {
         const modal = new bootstrap.Modal(modalElement);
         modal.show();
 
-        // Pulisce il DOM dopo la chiusura della modale
-        modalElement.addEventListener('hidden.bs.toast', () => modalElement.remove());
+        // Pulisce il DOM e il backdrop dopo la chiusura della modale
+        modalElement.addEventListener('hidden.bs.modal', () => {
+            // remove modal element
+            modalElement.remove();
+            // remove any leftover modal backdrops
+            document.querySelectorAll('.modal-backdrop').forEach(b => b.remove());
+        });
 
         return modal;
     }
