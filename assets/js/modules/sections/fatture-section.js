@@ -108,6 +108,10 @@ class FattureSection extends BaseSection {
     createFattureCard(clientData) {
         const totalFatture = clientData.fatture.length;
         const totalValue = clientData.fatture.reduce((sum, f) => sum + (parseFloat(f.Fatturato_TOT) || 0), 0);
+    // Valore pagato totale e conteggio fatture pagate
+    const totalPaid = clientData.fatture.reduce((sum, f) => sum + (parseFloat(f.Valore_Pagato) || 0), 0);
+    const paidCount = clientData.fatture.filter(f => f.stato_pagamento === 'pagata').length;
+    const paidBadgeClass = totalPaid < totalValue ? 'bg-danger text-light' : 'bg-success';
         
         return `
             <div class="management-card mb-4">
@@ -117,6 +121,8 @@ class FattureSection extends BaseSection {
                         <div class="d-flex align-items-center gap-2">
                             <span class="badge bg-dark" title="Valore Totale">${this.app.utils.formatCurrency(totalValue)}</span>
                             <span class="badge bg-primary">${totalFatture} Fatture</span>
+                            <span class="badge ${paidBadgeClass}" title="Valore Pagato">${this.app.utils.formatCurrency(totalPaid)}</span>
+                            <span class="badge bg-success text-light" title="Fatture Pagate">${paidCount} Pagate</span>
                             <button class="fattura-toggle-btn" id="toggleBtn-${clientData.ID_CLIENTE}"><i class="fas fa-chevron-down"></i></button>
                         </div>
                     </div>
@@ -136,6 +142,7 @@ class FattureSection extends BaseSection {
         const statoText = this.getStatoText(fattura.stato_pagamento, fattura.giorni_scadenza);
         // Nome commessa se disponibile
         const nomeCommessa = fattura.commessa_info?.Commessa || '';
+        const pagamentoDateText = fattura.Data_Pagamento ? this.app.utils.formatDate(fattura.Data_Pagamento) : 'N/D';
         
         return `
             <div class="col-12 mb-3">
@@ -153,6 +160,7 @@ class FattureSection extends BaseSection {
                         </div>
                         <div class="row small text-muted mt-2">
                             <div class="col-md-3"><i class="fas fa-piggy-bank me-1"></i> Pagato: <strong>${this.app.utils.formatCurrency(fattura.Valore_Pagato)}</strong> (${fattura.percentuale_pagata || 0}%)</div>
+                            <div class="col-md-3"><i class="fas fa-calendar-check me-1"></i> Data Pagamento: <strong>${pagamentoDateText}</strong></div>
                         </div>
                         <div class="action-buttons d-flex justify-content-end gap-2 mt-3">
                             <button class="btn btn-outline-secondary btn-sm" data-action="view-fattura" data-id="${fattura.ID_FATTURA}" title="Visualizza dettagli"><i class="fas fa-eye"></i></button>
@@ -411,8 +419,10 @@ class FattureSection extends BaseSection {
         const fattureCount = data.reduce((sum, c) => sum + c.fatture.length, 0);
         const fatturatoTotale = data.reduce((sum, c) => sum + c.fatture.reduce((fSum, f) => fSum + (parseFloat(f.Fatturato_TOT) || 0), 0), 0);
         const incassatoTotale = data.reduce((sum, c) => sum + c.fatture.reduce((fSum, f) => fSum + (parseFloat(f.Valore_Pagato) || 0), 0), 0);
-    // Rimosso conteggio 'in_scadenza' su richiesta: rimaniamo con scadute e altri riepiloghi
-    const scadute = data.reduce((sum, c) => sum + c.fatture.filter(f => f.stato_pagamento === 'scaduta').length, 0);
+        // Rimosso conteggio 'in_scadenza' su richiesta: rimaniamo con scadute e altri riepiloghi
+        const scadute = data.reduce((sum, c) => sum + c.fatture.filter(f => f.stato_pagamento === 'scaduta').length, 0);
+        // Nuova misura: Fatture non pagate (stato 'non_pagata' o default quando stato mancante)
+        const nonPagate = data.reduce((sum, c) => sum + c.fatture.filter(f => !f.stato_pagamento || f.stato_pagamento === 'non_pagata').length, 0);
         
         const statsContainer = document.getElementById('stats-row-container');
         if (statsContainer) {
@@ -421,6 +431,7 @@ class FattureSection extends BaseSection {
                     ${this.ui.createStatsCard('fas fa-file-invoice', fattureCount, 'Totale Fatture')}
                     ${this.ui.createStatsCard('fas fa-euro-sign', this.app.utils.formatCurrency(fatturatoTotale), 'Fatturato Totale')}
                     ${this.ui.createStatsCard('fas fa-piggy-bank', this.app.utils.formatCurrency(incassatoTotale), 'Totale Incassato')}
+                    ${this.ui.createStatsCard('fas fa-times-circle', nonPagate, 'Fatture Non Pagate')}
                     ${this.ui.createStatsCard('fas fa-exclamation-triangle', scadute, 'Fatture Scadute')}
                 </div>
             `;

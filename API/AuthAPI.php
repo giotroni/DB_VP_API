@@ -74,6 +74,8 @@ class AuthAPI {
                     'cognome' => explode(' ', $user['Collaboratore'], 2)[1] ?? '',
                     'email' => $user['Email'],
                     'ruolo' => $user['Ruolo'],
+                    // For compatibility with other parts of the code that expect 'role'
+                    'role' => $user['Ruolo'],
                     'username' => $user['User']
                 ]
             ];
@@ -178,6 +180,8 @@ class AuthAPI {
             'cognome' => explode(' ', $_SESSION['user_name'], 2)[1] ?? '',
             'email' => $_SESSION['user_email'],
             'ruolo' => $_SESSION['user_role'],
+            // alias in inglese per compatibilità col client/server
+            'role' => $_SESSION['user_role'],
             'username' => $_SESSION['user_username'] ?? ''
         ];
     }

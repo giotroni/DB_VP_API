@@ -95,9 +95,16 @@ class ConsuntivazioneApp {
             const result = await response.json();
             
             if (result.success && result.authenticated) {
-                this.currentUser = result.user;
-                // Inizializza selectedCollaboratore con l'utente corrente
-                this.selectedCollaboratore = result.user.id;
+            // Normalize user object coming from the backend to the fields used by the client
+            const user = result.user || {};
+            // Several backend fields: 'nome' (first name), 'cognome', 'username', 'ruolo'
+            // The UI expects 'name' and 'role' properties, so set them if missing.
+            user.name = user.name || user.nome || (user.username ? user.username : (user.email || ''));
+            user.role = user.role || user.ruolo || user.role || '';
+
+            this.currentUser = user;
+            // Inizializza selectedCollaboratore con l'utente corrente (id)
+            this.selectedCollaboratore = user.id;
                 return true;
             }
             
@@ -886,7 +893,7 @@ class ConsuntivazioneApp {
             }
             
             const rawText = await response.text();
-            console.log('Raw response text:', rawText.substring(0, 200) + '...');
+            //console.log('Raw response text:', rawText.substring(0, 200) + '...');
             
             // Prova a pulire la risposta da eventuali caratteri extra
             let cleanText = rawText.trim();
@@ -899,7 +906,7 @@ class ConsuntivazioneApp {
             }
             
             const result = JSON.parse(cleanText);
-            console.log('Commesse result:', result);
+            //console.log('Commesse result:', result);
             
             if (result.success) {
                 this.commesse = result.data;
@@ -955,7 +962,7 @@ class ConsuntivazioneApp {
             
             console.log('Tasks response status:', response.status);
             const result = await response.json();
-            console.log('Tasks result:', result);
+            //console.log('Tasks result:', result);
             
             if (result.success) {
                 this.tasks = result.data;
@@ -1031,7 +1038,7 @@ class ConsuntivazioneApp {
             note: document.getElementById('note').value.trim()
         };
         
-        console.log('Saving consuntivazione:', formData);
+        //console.log('Saving consuntivazione:', formData);
         
         try {
             const response = await fetch('API/ConsuntivazioneAPI.php', {
@@ -1049,7 +1056,7 @@ class ConsuntivazioneApp {
             }
             
             const rawText = await response.text();
-            console.log('Save raw response:', rawText.substring(0, 200) + '...');
+            //console.log('Save raw response:', rawText.substring(0, 200) + '...');
             
             // Pulisci la risposta
             let cleanText = rawText.trim();
@@ -1453,6 +1460,7 @@ class ConsuntivazioneApp {
                                 <th class="text-end">Spese Totali</th>
                                 <th class="text-end">Spese Rimborsabili</th>
                                 <th class="text-end">Costo gg</th>
+                                <th class="text-end">TOT</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -1467,6 +1475,7 @@ class ConsuntivazioneApp {
                         <td class="text-end">€ ${this.formatItalianNumber(mese.spese)}</td>
                         <td class="text-end">€ ${this.formatItalianNumber(mese.spese_rimborsabili || 0)}</td>
                         <td class="text-end">€ ${this.formatItalianNumber(mese.costo_gg || 0)}</td>
+                        <td class="text-end">€ ${this.formatItalianNumber((mese.spese_rimborsabili || 0) + (mese.costo_gg || 0))}</td>
                     </tr>
                 `;
             });
@@ -1537,8 +1546,8 @@ class ConsuntivazioneApp {
                     </td>
                     <td class="text-center">
                         ${cons.Confermata === 'Si' ? 
-                            '<span class="badge bg-success">Non modificabile</span>' : 
-                            '<span class="badge bg-warning text-dark">Non Modificabile</span>'
+                            '<span class="badge bg-success">Non Modificabile</span>' : 
+                            '<span class="badge bg-warning text-dark">Editabile</span>'
                         }
                     </td>
                     <td>
@@ -1645,7 +1654,7 @@ class ConsuntivazioneApp {
     }
     
     downloadCSV(data, filename) {
-        const headers = ['Data', 'Commessa', 'Cliente', 'Task', 'Tipo', 'Giorni', 'Spese Viaggio', 'Vitto/Alloggio', 'Altre Spese', 'Spese Fatturate VP', 'Totale Spese', 'Spese Rimborsabili', 'Costo gg', 'Note'];
+    const headers = ['Data', 'Commessa', 'Cliente', 'Task', 'Tipo', 'Giorni', 'Spese Viaggio', 'Vitto/Alloggio', 'Altre Spese', 'Spese Fatturate VP', 'Totale Spese', 'Spese Rimborsabili', 'Costo gg', 'TOT', 'Note'];
         
         let csvContent = headers.join(';') + '\n';
         
@@ -1668,6 +1677,7 @@ class ConsuntivazioneApp {
                 this.formatNumberForCSV(totaleSpese),
                 this.formatNumberForCSV(speseRimborsabili),
                 this.formatNumberForCSV(row.costo_gg || 0),
+                this.formatNumberForCSV((speseRimborsabili || 0) + parseFloat(row.costo_gg || 0)),
                 `"${row.Note || ''}"`
             ].join(';');
             csvContent += csvRow + '\n';

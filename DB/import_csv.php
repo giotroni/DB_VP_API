@@ -655,20 +655,23 @@ class CSVImporter {
                 );
                 
                 // Gestione speciale per campi numerici decimali
+                // Considera come decimali anche colonne che contengono 'fatturato' (es. Fatturato_gg, Fatturato_TOT, Fatturato_Spese)
+                $lowerHeader = strtolower($finalHeaders[$i]);
                 $isDecimalField = (
-                    in_array(strtolower($finalHeaders[$i]), ['gg', 'importo', 'valore', 'prezzo', 'costo', 'spese', 'vitto_alloggio', 'spese_viaggi', 'altri_costi', 'spese_fatturate_vp']) ||
-                    strpos(strtolower($finalHeaders[$i]), 'valore') !== false ||
-                    strpos(strtolower($finalHeaders[$i]), 'importo') !== false ||
-                    strpos(strtolower($finalHeaders[$i]), 'spese') !== false ||
-                    strpos(strtolower($finalHeaders[$i]), 'costo') !== false ||
-                    strpos(strtolower($finalHeaders[$i]), 'prezzo') !== false ||
-                    strpos(strtolower($finalHeaders[$i]), 'tariffa') !== false ||
-                    strpos(strtolower($finalHeaders[$i]), 'vitto') !== false ||
-                    strpos(strtolower($finalHeaders[$i]), 'alloggio') !== false ||
-                    strpos(strtolower($finalHeaders[$i]), 'viaggi') !== false ||
-                    strpos(strtolower($finalHeaders[$i]), 'fatturate') !== false
+                    in_array($lowerHeader, ['gg', 'importo', 'valore', 'prezzo', 'costo', 'spese', 'vitto_alloggio', 'spese_viaggi', 'altri_costi', 'spese_fatturate_vp', 'fatturato_gg', 'fatturato_spese', 'fatturato_tot', 'valore_pagato']) ||
+                    strpos($lowerHeader, 'valore') !== false ||
+                    strpos($lowerHeader, 'importo') !== false ||
+                    strpos($lowerHeader, 'spese') !== false ||
+                    strpos($lowerHeader, 'costo') !== false ||
+                    strpos($lowerHeader, 'prezzo') !== false ||
+                    strpos($lowerHeader, 'tariffa') !== false ||
+                    strpos($lowerHeader, 'vitto') !== false ||
+                    strpos($lowerHeader, 'alloggio') !== false ||
+                    strpos($lowerHeader, 'viaggi') !== false ||
+                    strpos($lowerHeader, 'fatturate') !== false ||
+                    strpos($lowerHeader, 'fatturato') !== false
                 );
-                
+
                 if ($isDateField && !empty($value)) {
                     $originalValue = $value;
                     $value = $this->convertDateFormat($value);
@@ -679,9 +682,18 @@ class CSVImporter {
                     }
                 } elseif ($isDecimalField && !empty($value)) {
                     $originalValue = $value;
-                    // Converti virgola in punto per i decimali
-                    $value = str_replace(',', '.', $value);
-                    
+                    // Normalizza formati italiani dove la virgola è il separatore decimale
+                    // Esempi: "1234,56" -> "1234.56", "1.234,56" -> "1234.56"
+                    if (strpos($value, ',') !== false) {
+                        // Rimuovi eventuali punti usati come separatori di migliaia
+                        $value = str_replace('.', '', $value);
+                        // Sostituisci la virgola decimale con il punto
+                        $value = str_replace(',', '.', $value);
+                    } else {
+                        // Se non c'è la virgola, mantieni il punto (es. formato anglosassone)
+                        $value = str_replace(',', '.', $value);
+                    }
+
                     // Log conversioni decimali per i primi record
                     if ($imported < 5 && $originalValue !== $value) {
                         $this->log("Campo decimale '{$finalHeaders[$i]}': '$originalValue' → '$value'");

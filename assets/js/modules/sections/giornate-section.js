@@ -499,6 +499,28 @@ class GiornateSection extends BaseSection {
             data.Desk = 'Si';
         }
         
+        // Se siamo in modalità modifica, alcuni campi possono essere "disabled" nel form
+        // (es. il select #ID_TASK) e quindi non vengono inviati nella FormData.
+        // Per evitare che il backend riceva FK mancanti (causa di errori SQL),
+        // preserviamo i valori originali presenti in this.app.giornate quando mancano nel payload.
+        if (giornataId) {
+            const original = this.app.giornate.find(g => String(g.ID_GIORNATA) === String(giornataId));
+            if (original) {
+                // ID_TASK è una FK critica: se non è stato inviato nel form, ripristiniamo il valore originale
+                if ((data.ID_TASK === undefined || data.ID_TASK === '') && original.ID_TASK) {
+                    data.ID_TASK = original.ID_TASK;
+                }
+                // Anche ID_COLLABORATORE e Data sono importanti per il record: preserviamoli se mancanti
+                if ((data.ID_COLLABORATORE === undefined || data.ID_COLLABORATORE === '') && original.ID_COLLABORATORE) {
+                    data.ID_COLLABORATORE = original.ID_COLLABORATORE;
+                }
+                if ((data.Data === undefined || data.Data === '') && original.Data) {
+                    data.Data = original.Data.split('T')[0] || original.Data;
+                }
+            }
+        }
+
+        // Rimuoviamo il campo temporaneo della commessa nel form prima di inviare
         delete data.ID_COMMESSA_FORM;
 
         ['Spese_Viaggi', 'Vitto_alloggio', 'Altri_costi', 'Spese_Fatturate_VP'].forEach(key => {
