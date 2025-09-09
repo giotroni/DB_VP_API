@@ -658,7 +658,9 @@ class CSVImporter {
                 // Considera come decimali anche colonne che contengono 'fatturato' (es. Fatturato_gg, Fatturato_TOT, Fatturato_Spese)
                 $lowerHeader = strtolower($finalHeaders[$i]);
                 $isDecimalField = (
-                    in_array($lowerHeader, ['gg', 'importo', 'valore', 'prezzo', 'costo', 'spese', 'vitto_alloggio', 'spese_viaggi', 'altri_costi', 'spese_fatturate_vp', 'fatturato_gg', 'fatturato_spese', 'fatturato_tot', 'valore_pagato']) ||
+                    // espliciti nomi colonne considerati decimali
+                    in_array($lowerHeader, ['gg', 'importo', 'valore', 'prezzo', 'costo', 'spese', 'vitto_alloggio', 'spese_viaggi', 'altri_costi', 'spese_fatturate_vp', 'fatturato_gg', 'fatturato_spese', 'fatturato_tot', 'valore_pagato', 'commissione']) ||
+                    // rilevamento per sottostringhe comuni
                     strpos($lowerHeader, 'valore') !== false ||
                     strpos($lowerHeader, 'importo') !== false ||
                     strpos($lowerHeader, 'spese') !== false ||
@@ -669,7 +671,9 @@ class CSVImporter {
                     strpos($lowerHeader, 'alloggio') !== false ||
                     strpos($lowerHeader, 'viaggi') !== false ||
                     strpos($lowerHeader, 'fatturate') !== false ||
-                    strpos($lowerHeader, 'fatturato') !== false
+                    strpos($lowerHeader, 'fatturato') !== false ||
+                    // supporto esplicito per commissione (es: 'Commissione', 'commissione_percent')
+                    strpos($lowerHeader, 'commissione') !== false
                 );
 
                 if ($isDateField && !empty($value)) {

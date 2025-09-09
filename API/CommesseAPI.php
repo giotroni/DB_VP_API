@@ -456,6 +456,8 @@ class CommesseAPI extends BaseAPI {
         } catch (Exception $e) {
             return $record;
         }
+
+        
     }
     
     /**
@@ -512,6 +514,365 @@ class CommesseAPI extends BaseAPI {
             return [];
         }
     }
+
+    /**
+     * Override handleRequest to support custom action 'maturato'
+     * Usage: GET /API/index.php?resource=commesse&action=maturato&id=COM0001
+     */
+    public function handleRequest($id = null) {
+        if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'maturato') {
+            // Permetti chiamate con o senza id: se non c'è id calcoliamo per tutte le commesse
+            $commessaId = $id ?? ($_GET['id'] ?? null);
+            $this->getMaturatoMensile($commessaId);
+            return;
+        }
+
+        // Fallback al comportamento di base
+        parent::handleRequest($id);
+    }
+
+    /**
+     * Calcola il maturato mensile per una commessa.
+     * Restituisce JSON con array di mesi (YYYY-MM) contenenti:
+     * - giorni_campo: totale giorni di tipo 'Campo'
+     * - valore_campo: somma (gg * tariffa_gg) per i task di campo
+     * - monitor_multiplier: somma dei Valore_gg dei task di tipo 'Monitoraggio' presenti nel mese
+     * - valore_monitoraggio: monitor_multiplier * valore_campo
+     * - totale_maturato: valore_campo + valore_monitoraggio
+     */
+    public function getMaturatoMensile($commessaId) {
+        try {
+            // Se non è specificata una singola commessa, calcoliamo per tutte le commesse
+            if (empty($commessaId)) {
+                $allSql = "SELECT ID_COMMESSA FROM ANA_COMMESSE";
+                $allStmt = $this->db->prepare($allSql);
+                $allStmt->execute();
+                $commesse = $allStmt->fetchAll(PDO::FETCH_COLUMN);
+
+                $allResults = [];
+                foreach ($commesse as $cid) {
+                    $allResults[] = $this->computeMaturatoForCommessa($cid);
+                }
+
+                sendSuccessResponse([
+                    'maturato_per_commessa' => $allResults
+                ]);
+                return;
+            }
+
+            // Altrimenti calcola per la singola commessa richiesta
+            $single = $this->computeMaturatoForCommessa($commessaId);
+            sendSuccessResponse($single);
+
+        } catch (PDOException $e) {
+            sendErrorResponse('Errore durante il calcolo del maturato: ' . $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Calcolo effettivo del maturato per una singola commessa (riutilizzabile)
+     * Restituisce un array con 'id_commessa' e 'maturato_mensile'
+     */
+    private function computeMaturatoForCommessa($commessaId) {
+        // Recupera nome commessa
+        $commessaName = null;
+        try {
+            $cstmt = $this->db->prepare("SELECT Commessa, ID_COLLABORATORE FROM ANA_COMMESSE WHERE ID_COMMESSA = :id LIMIT 1");
+            $cstmt->bindValue(':id', $commessaId);
+            $cstmt->execute();
+            $cinfo = $cstmt->fetch(PDO::FETCH_ASSOC);
+            if ($cinfo) {
+                $commessaName = $cinfo['Commessa'] ?? null;
+                $commessa_default_collab = $cinfo['ID_COLLABORATORE'] ?? null;
+            } else {
+                $commessa_default_collab = null;
+            }
+        } catch (PDOException $e) {
+            $commessa_default_collab = null;
+        }
+        // 1) Recupera, per ogni task di tipo 'Campo', la somma di gg per mese
+        $sql = "SELECT t.ID_TASK, t.ID_COLLABORATORE, MAX(t.Valore_gg) AS valore_gg, DATE_FORMAT(g.Data, '%Y-%m') AS ym, SUM(g.gg) AS giorni, MAX(g.Data) AS ref_date
+            FROM ANA_TASK t
+            JOIN FACT_GIORNATE g ON t.ID_TASK = g.ID_TASK
+            WHERE t.ID_COMMESSA = :id AND g.Tipo = 'Campo'
+            GROUP BY t.ID_TASK, t.ID_COLLABORATORE, ym";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->bindValue(':id', $commessaId);
+        $stmt->execute();
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $monthly = [];
+
+        // Prepared statement per determinare la tariffa attiva al riferimento di data
+        $tarStmt = $this->db->prepare("SELECT Tariffa_gg FROM ANA_TARIFFE_COLLABORATORI WHERE ID_COLLABORATORE = :collab AND (ID_COMMESSA = :commessa OR ID_COMMESSA = '' OR ID_COMMESSA IS NULL) AND Dal <= :ref_date ORDER BY Dal DESC LIMIT 1");
+
+        foreach ($rows as $r) {
+            $ym = $r['ym'];
+            $gg = floatval($r['giorni']);
+            $refDate = $r['ref_date'];
+            $collab = $r['ID_COLLABORATORE'];
+
+            // Preferisci Valore_gg dichiarato nel task se presente (>0), altrimenti cerca la tariffa dal listino
+            $taskValoreGg = floatval($r['valore_gg']);
+
+            if ($taskValoreGg > 0) {
+                $valore = $gg * $taskValoreGg;
+            } else {
+                $tarStmt->bindValue(':collab', $collab);
+                $tarStmt->bindValue(':commessa', $commessaId);
+                $tarStmt->bindValue(':ref_date', $refDate);
+                $tarStmt->execute();
+                $tariffa = floatval($tarStmt->fetchColumn()) ?: 0;
+                $valore = $gg * $tariffa;
+            }
+
+            if (!isset($monthly[$ym])) {
+                $monthly[$ym] = [
+                    'giorni_campo' => 0,
+                    'valore_campo' => 0,
+                    'monitor_multiplier' => 0
+                ];
+            }
+
+            $monthly[$ym]['giorni_campo'] += $gg;
+            $monthly[$ym]['valore_campo'] += $valore;
+        }
+
+        // 2) Calcola il multiplicatore di monitoraggio prendendo i task di tipo 'Monitoraggio' dalla tabella ANA_TASK
+        $sqlMon = "SELECT SUM(COALESCE(Valore_gg,0)) AS monitor_valore_sum, COUNT(*) AS monitor_tasks
+                   FROM ANA_TASK
+                   WHERE ID_COMMESSA = :id AND Tipo = 'Monitoraggio'";
+
+        $stmt = $this->db->prepare($sqlMon);
+        $stmt->bindValue(':id', $commessaId);
+        $stmt->execute();
+        $monSummary = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        $monitor_sum = floatval($monSummary['monitor_valore_sum'] ?? 0);
+        $monitor_tasks = intval($monSummary['monitor_tasks'] ?? 0);
+
+        // Recupera dettagli dei task di monitoraggio (ID_COLLABORATORE e nome collaboratore)
+        $monitorDetails = [];
+        try {
+            $mdSql = "SELECT t.ID_TASK, t.ID_COLLABORATORE, c.Collaboratore
+                      FROM ANA_TASK t
+                      LEFT JOIN ANA_COLLABORATORI c ON t.ID_COLLABORATORE = c.ID_COLLABORATORE
+                      WHERE t.ID_COMMESSA = :id AND t.Tipo = 'Monitoraggio'";
+            $mdStmt = $this->db->prepare($mdSql);
+            $mdStmt->bindValue(':id', $commessaId);
+            $mdStmt->execute();
+            $monitorRows = $mdStmt->fetchAll(PDO::FETCH_ASSOC);
+            foreach ($monitorRows as $mr) {
+                $monitorDetails[] = [
+                    'ID_TASK' => $mr['ID_TASK'],
+                    'ID_COLLABORATORE' => $mr['ID_COLLABORATORE'],
+                    'Collaboratore' => $mr['Collaboratore'] ?? null
+                ];
+            }
+        } catch (PDOException $e) {
+            // ignore, lasciamo monitorDetails vuoto
+        }
+
+        if ($monitor_tasks > 0 && $monitor_sum > 0) {
+            foreach ($monthly as $ymKey => $_) {
+                if (!isset($monthly[$ymKey])) continue;
+                $monthly[$ymKey]['monitor_multiplier'] = $monitor_sum;
+            }
+        }
+
+        // Inizializza valore_spese e contatori di costo per ogni mese
+        foreach ($monthly as $ymKey => $_) {
+            $monthly[$ymKey]['valore_spese'] = 0;
+            // Costo_gg: somma dei costi giornalieri (tariffa * gg) per il mese
+            $monthly[$ymKey]['costo_gg'] = 0;
+        }
+
+        // Recupera tasks della commessa per calcolare le spese come in TaskAPI
+        try {
+            $tasksSql = "SELECT ID_TASK, Spese_Comprese, Valore_Spese_std FROM ANA_TASK WHERE ID_COMMESSA = :id";
+            $tasksStmt = $this->db->prepare($tasksSql);
+            $tasksStmt->bindValue(':id', $commessaId);
+            $tasksStmt->execute();
+            $tasksList = $tasksStmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            $tasksList = [];
+        }
+
+        // Se ci sono tasks, aggrega le spese presenti in FACT_GIORNATE per task e mese
+        $speseByTaskMonth = [];
+        if (!empty($tasksList)) {
+            $ids = array_map(function($t){ return $t['ID_TASK']; }, $tasksList);
+            // costruisci placeholder
+            $placeholders = rtrim(str_repeat('?,', count($ids)), ',');
+                        $aggSql = "SELECT ID_TASK, DATE_FORMAT(Data, '%Y-%m') AS ym, 
+                                                SUM(
+                                                    COALESCE(CAST(REPLACE(Spese_Viaggi, ',', '.') AS DECIMAL(10,2)),0) +
+                                                    COALESCE(CAST(REPLACE(Vitto_alloggio, ',', '.') AS DECIMAL(10,2)),0) +
+                                                    COALESCE(CAST(REPLACE(Altri_costi, ',', '.') AS DECIMAL(10,2)),0)
+                                                ) AS spese_sum,
+                                                SUM(
+                                                    COALESCE(CAST(REPLACE(Spese_Fatturate_VP, ',', '.') AS DECIMAL(10,2)),0)
+                                                ) AS spese_fatturate_sum,
+                                                SUM(CAST(REPLACE(gg, ',', '.') AS DECIMAL(10,2))) AS gg_sum
+                                             FROM FACT_GIORNATE
+                                             WHERE ID_TASK IN ($placeholders)
+                                             GROUP BY ID_TASK, ym";
+
+            try {
+                $aggStmt = $this->db->prepare($aggSql);
+                foreach ($ids as $i => $tid) {
+                    $aggStmt->bindValue($i+1, $tid);
+                }
+                $aggStmt->execute();
+                $aggRows = $aggStmt->fetchAll(PDO::FETCH_ASSOC);
+                foreach ($aggRows as $ar) {
+                    $speseByTaskMonth[$ar['ID_TASK']][$ar['ym']] = [
+                        'spese_sum' => floatval($ar['spese_sum']),
+                        'spese_fatturate_sum' => floatval($ar['spese_fatturate_sum'] ?? 0),
+                        'gg_sum' => floatval($ar['gg_sum'])
+                    ];
+                }
+            } catch (PDOException $e) {
+                // ignore aggregation errors
+                $speseByTaskMonth = [];
+            }
+        }
+
+        // Applica la logica di calcolo spese (per task) su ogni mese presente in $monthly
+        foreach ($tasksList as $task) {
+            $taskId = $task['ID_TASK'];
+            $speseComprese = ($task['Spese_Comprese'] ?? '') === 'Si';
+            $valoreStd = floatval($task['Valore_Spese_std'] ?? 0);
+
+            foreach ($monthly as $ymKey => $_) {
+                // Se c'è valore standard e il task ha giornate nel mese aggiungilo al valore di ricavo
+                // Per il costo delle spese usiamo sempre le spese effettive registrate meno la quota già fatturata a VP
+                $taskMonth = $speseByTaskMonth[$taskId][$ymKey] ?? null;
+                $ggInMonth = $taskMonth['gg_sum'] ?? 0;
+                $speseSum = $taskMonth['spese_sum'] ?? 0;
+                $speseFatturate = $taskMonth['spese_fatturate_sum'] ?? 0;
+
+                if ($valoreStd > 0) {
+                    if ($ggInMonth > 0) {
+                        $monthly[$ymKey]['valore_spese'] += $valoreStd;
+                    }
+                } else {
+                    $monthly[$ymKey]['valore_spese'] += $speseSum;
+                }
+
+                // Nota: il costo spese non viene più considerato nel calcolo del costo totale
+                // (viene comunque mantenuto il calcolo di valore_spese per il ricavo se necessario)
+            }
+        }
+
+        // 3) Costruisci il risultato ordinato per mese
+        ksort($monthly);
+
+        $result = [];
+        // Commissione e id_account (ID_COLLABORATORE della commessa)
+        $commissione = 0;
+        if (isset($cinfo['Commissione'])) {
+            $commissione = floatval($cinfo['Commissione']);
+        } else {
+            // tentativo di recuperare nuovamente se non presente
+            try {
+                $cc = $this->db->prepare("SELECT Commissione FROM ANA_COMMESSE WHERE ID_COMMESSA = :id LIMIT 1");
+                $cc->bindValue(':id', $commessaId);
+                $cc->execute();
+                $commissione = floatval($cc->fetchColumn()) ?: 0;
+            } catch (PDOException $e) {
+                $commissione = 0;
+            }
+        }
+
+        $id_account = $commessa_default_collab ?? null;
+
+        foreach ($monthly as $ym => $v) {
+            $valore_campo = floatval($v['valore_campo']);
+            $monitor_mult = floatval($v['monitor_multiplier']);
+            $valore_monitor = ($monitor_mult > 0) ? ($valore_campo * $monitor_mult) : 0;
+            $totale = $valore_campo + $valore_monitor;
+
+            // valore accounting: valore_campo * commissione
+            $valore_accounting = $valore_campo * floatval($commissione);
+
+            // valore spese già calcolato in $v['valore_spese']
+            $valore_spese = floatval($v['valore_spese'] ?? 0);
+
+            // valore monitoraggio e totale mensile
+            $valore_monitoraggio = $valore_monitor;
+            $valore_totale_mese = $valore_campo + $valore_monitoraggio + $valore_spese;
+
+            // Calcolo Costo_gg: ricostruiamo il costo a partire dalle giornate per quel mese
+            // Per ottenere il costo effettivo usiamo la stessa logica: se il task definisce Valore_gg usiamolo,
+            // altrimenti cerchiamo la tariffa attiva nel listino. Per semplicità e per evitare query molto costose
+            // ricostruiamo con una query aggregata su FACT_GIORNATE unendola ad ANA_TASK e ANA_TARIFFE_COLLABORATORI.
+            try {
+                // Recupera tutte le giornate di tipo 'Campo' per la commessa e il mese specifico
+                // Prendiamo l'ID_COLLABORATORE dalla giornata (g.ID_COLLABORATORE): è chi ha effettivamente svolto la giornata
+                $costoGgSql = "SELECT g.ID_TASK, g.Data, g.gg, t.Valore_gg AS task_valore_gg, g.ID_COLLABORATORE AS giornata_collab
+                               FROM FACT_GIORNATE g
+                               LEFT JOIN ANA_TASK t ON g.ID_TASK = t.ID_TASK
+                               WHERE t.ID_COMMESSA = :cid AND DATE_FORMAT(g.Data, '%Y-%m') = :ym AND g.Tipo = 'Campo'";
+
+                $cgStmt = $this->db->prepare($costoGgSql);
+                $cgStmt->bindValue(':cid', $commessaId);
+                $cgStmt->bindValue(':ym', $ym);
+                $cgStmt->execute();
+                $cggRows = $cgStmt->fetchAll(PDO::FETCH_ASSOC);
+
+                $costo_gg_tot = 0;
+
+                foreach ($cggRows as $cr) {
+                    // Normalizza e calcola frazione di giornata
+                    $ggRaw = $cr['gg'] ?? 0;
+                    $ggSum = floatval(str_replace(',', '.', $ggRaw));
+                    $taskVal = floatval($cr['task_valore_gg'] ?? 0);
+                    // Usa il collaboratore che ha effettuato la giornata
+                    $collabId = $cr['giornata_collab'];
+                    $refDate = $cr['Data'];
+
+                    // Usa sempre la tariffa del collaboratore che ha effettuato la giornata,
+                    // indipendentemente dal valore eventualmente impostato nel task.
+                    $rate = $this->getTariffaAttiva($collabId, $refDate, $commessaId);
+
+                    $costo_gg_tot += $ggSum * floatval($rate);
+                }
+            } catch (PDOException $e) {
+                $costo_gg_tot = 0;
+            }
+
+            // Costo totale: somma del costo delle giornate (Costo_gg) e del valore spese (Valore_spese)
+            $costo_tot = $costo_gg_tot + $valore_spese;
+
+            $entry = [
+                'year_month' => $ym,
+                'giorni_campo' => round(floatval($v['giorni_campo']), 3),
+                'valore_campo' => round($valore_campo, 2),
+                'monitor_multiplier' => round($monitor_mult, 3),
+                'valore_monitoraggio' => round($valore_monitoraggio, 2),
+                'valore_spese' => round($valore_spese, 2),
+                'totale_maturato' => round($totale, 2),
+                'Costo_gg' => round($costo_gg_tot, 2),
+                'Costo_TOT' => round($costo_tot, 2),
+                'Valore_TOT' => round($valore_totale_mese, 2),
+                'valore_accounting' => round($valore_accounting, 2),
+                'id_account' => $id_account,
+                'margine' => round(($valore_totale_mese - $costo_tot - $valore_accounting), 2)
+            ];
+
+            $result[] = $entry;
+        }
+
+        return [
+            'id_commessa' => $commessaId,
+            'Commessa' => $commessaName,
+            'ID_COLLABORATORE' => $commessa_default_collab,
+            'monitor_tasks' => $monitorDetails,
+            'maturato_mensile' => $result
+        ];
+    }
     
     /**
      * Utility functions
@@ -543,6 +904,39 @@ class CommesseAPI extends BaseAPI {
             return $stmt->fetch();
         } catch (PDOException $e) {
             return null;
+        }
+    }
+
+    /**
+     * Recupera la tariffa attiva per un collaboratore a una data specifica,
+     * dando priorità a tariffe per commessa.
+     */
+    private function getTariffaAttiva($collaboratoreId, $data, $commessaId = null) {
+        try {
+            if (empty($collaboratoreId) || empty($data)) return 0;
+
+            // Prima prova a cercare una tariffa specifica per la commessa
+            $sql = "SELECT Tariffa_gg FROM ANA_TARIFFE_COLLABORATORI 
+                    WHERE ID_COLLABORATORE = :collab ";
+
+            if (!empty($commessaId)) {
+                $sql .= " AND (ID_COMMESSA = :commessa OR ID_COMMESSA = '' OR ID_COMMESSA IS NULL)";
+            } else {
+                $sql .= " AND (ID_COMMESSA = '' OR ID_COMMESSA IS NULL)";
+            }
+
+            $sql .= " AND Dal <= :ref_date ORDER BY Dal DESC LIMIT 1";
+
+            $stmt = $this->db->prepare($sql);
+            $stmt->bindValue(':collab', $collaboratoreId);
+            if (!empty($commessaId)) $stmt->bindValue(':commessa', $commessaId);
+            $stmt->bindValue(':ref_date', $data);
+            $stmt->execute();
+            $val = $stmt->fetchColumn();
+            return floatval($val) ?: 0;
+
+        } catch (PDOException $e) {
+            return 0;
         }
     }
 }
