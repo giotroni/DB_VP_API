@@ -33,13 +33,23 @@ class CollaboratoriSection extends BaseSection {
         this.updateTopbarActions(`<button class="btn btn-vp-primary" data-action="add-collaboratore"><i class="fas fa-user-plus me-2"></i>Nuovo Collaboratore</button>`);
         
         const container = this.getContainer();
+        // prepara le opzioni per anno e mese (riuso lo stesso pattern usato altrove)
+        const currentYear = new Date().getFullYear();
+        let yearOptions = '';
+        for (let y = 2024; y <= currentYear + 1; y++) { yearOptions += `<li><label class="dropdown-item"><input type="checkbox" class="form-check-input me-2" value="${y}">${y}</label></li>`; }
+        const months = ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"];
+        let monthOptions = months.map((month, index) => `<li><label class="dropdown-item"><input type="checkbox" class="form-check-input me-2" value="${index + 1}">${month}</label></li>`).join('');
+
         container.innerHTML = `
             <div id="stats-row-container"></div>
             <div class="search-filters">
                 <div class="row gy-3 align-items-end">
                     <div class="col-lg-4 col-md-6">
-                        <label for="searchCollaboratori" class="form-label">Cerca collaboratore</label>
-                        <input type="text" class="form-control" id="searchCollaboratori" placeholder="Nome, email, utente...">
+                        <label for="filterCollaboratore" class="form-label">Filtra per Collaboratore</label>
+                        <select class="form-select" id="filterCollaboratore">
+                            <option value="">Tutti i collaboratori</option>
+                            ${Array.isArray(this.app.collaboratori) ? this.app.collaboratori.map(c => `<option value="${c.ID_COLLABORATORE}">${this.app.utils.escapeHtml(c.Collaboratore)}</option>`).join('') : ''}
+                        </select>
                     </div>
                     <div class="col-lg-3 col-md-6">
                         <label for="filterRuolo" class="form-label">Filtra per Ruolo</label>
@@ -50,6 +60,8 @@ class CollaboratoriSection extends BaseSection {
                             <option value="User">User</option>
                         </select>
                     </div>
+                    <div class="col-lg-1 col-md-3"><label class="form-label">Anno</label><div class="dropdown"><button class="btn btn-outline-secondary dropdown-toggle w-100" type="button" id="filterAnnoBtn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">Tutti</button><ul class="dropdown-menu" id="filterAnno" aria-labelledby="filterAnnoBtn"><li><a class="dropdown-item fw-bold" href="#" data-action="toggle-all-filter" data-target-filter="filterAnno">Seleziona/Deseleziona</a></li><li><hr class="dropdown-divider"></li>${yearOptions}</ul></div></div>
+                    <div class="col-lg-2 col-md-3"><label class="form-label">Mese</label><div class="dropdown"><button class="btn btn-outline-secondary dropdown-toggle w-100" type="button" id="filterMeseBtn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">Tutti</button><ul class="dropdown-menu" id="filterMese" aria-labelledby="filterMeseBtn"><li><a class="dropdown-item fw-bold" href="#" data-action="toggle-all-filter" data-target-filter="filterMese">Seleziona/Deseleziona</a></li><li><hr class="dropdown-divider"></li>${monthOptions}</ul></div></div>
                 </div>
             </div>
             <div id="collaboratoriContainer">
@@ -62,16 +74,42 @@ class CollaboratoriSection extends BaseSection {
     }
 
     bindEvents() {
-        const searchInput = document.getElementById('searchCollaboratori');
+        const filterCollaboratore = document.getElementById('filterCollaboratore');
         const filterRuolo = document.getElementById('filterRuolo');
 
-        let debounceTimeout;
-        searchInput?.addEventListener('input', () => {
-            clearTimeout(debounceTimeout);
-            debounceTimeout = setTimeout(() => this.filterData(), 300);
-        });
-
+        filterCollaboratore?.addEventListener('change', () => this.filterData());
         filterRuolo?.addEventListener('change', () => this.filterData());
+
+        // setup per i filtri Anno/Mese (multi-select dropdown) - comportamenti simili a commesse-task-section
+        const setupMultiSelectFilter = (filterId, buttonId) => {
+            const filterContainer = document.getElementById(filterId);
+            const filterButton = document.getElementById(buttonId);
+            if (!filterContainer || !filterButton) return;
+            filterContainer.addEventListener('change', () => {
+                const checked = filterContainer.querySelectorAll('input:checked');
+                if (checked.length === 0) { filterButton.textContent = 'Tutti'; } 
+                else if (checked.length === 1) { filterButton.textContent = checked[0].parentElement.textContent.trim(); } 
+                else { filterButton.textContent = `${checked.length} selezionati`; }
+                this.filterData();
+            });
+        };
+        setupMultiSelectFilter('filterAnno', 'filterAnnoBtn');
+        setupMultiSelectFilter('filterMese', 'filterMeseBtn');
+        // Gestore per i link "Seleziona/Deseleziona" interni ai dropdown
+        ['filterAnno','filterMese'].forEach(filterId => {
+            const container = document.getElementById(filterId);
+            if (!container) return;
+            container.addEventListener('click', (ev) => {
+                const anchor = ev.target.closest('[data-action="toggle-all-filter"]');
+                if (!anchor) return;
+                ev.preventDefault();
+                const inputs = container.querySelectorAll('input[type="checkbox"]');
+                if (inputs.length === 0) return;
+                const allChecked = Array.from(inputs).every(cb => cb.checked);
+                inputs.forEach(cb => cb.checked = !allChecked);
+                container.dispatchEvent(new Event('change'));
+            });
+        });
     }
     
     handleAction(action, id) {
@@ -571,6 +609,57 @@ class CollaboratoriSection extends BaseSection {
 
         const totalCosto = collaboratore.giornate.reduce((sum, g) => sum + (g.costo_calcolato || 0), 0);
 
+        // Calcolo del valore di Accounting per questo collaboratore (totale e suddiviso per mese)
+        // Implementiamo una funzione che per ogni commessa di cui il collaboratore è responsabile
+        // somma i valori maturati delle giornate (rispettando il filtro di periodo se presente) e moltiplica per la commissione.
+        const computeAccountingByMonth = () => {
+            const resultByMonth = {}; // { 'YYYY-MM': value }
+            const byCommessa = {}; // { commessaId: { name, total, byMonth: { 'YYYY-MM': value } } }
+            let total = 0;
+            const commesse = Array.isArray(this.app.commesse) ? this.app.commesse : [];
+            const tasks = Array.isArray(this.app.tasks) ? this.app.tasks : [];
+            const giornateAll = Array.isArray(this.app.giornate) ? this.app.giornate : [];
+
+            commesse.forEach(commessa => {
+                if (String(commessa.ID_COLLABORATORE) !== String(collaboratore.ID_COLLABORATORE)) return;
+                const commissione = parseFloat(commessa.Commissione) || 0;
+                const commId = String(commessa.ID_COMMESSA || '');
+                if (!byCommessa[commId]) byCommessa[commId] = { name: commessa.Commessa || commId, total: 0, byMonth: {} };
+
+                const tasksOfCommessa = tasks.filter(t => String(t.ID_COMMESSA) === String(commessa.ID_COMMESSA) && t.Tipo === 'Campo');
+                tasksOfCommessa.forEach(task => {
+                    const allGiornate = giornateAll.filter(g => String(g.ID_TASK) === String(task.ID_TASK));
+                    const giornateConsiderate = this.activeDateFilter
+                        ? allGiornate.filter(g => {
+                            const d = new Date(g.Data);
+                            const yearMatch = this.activeDateFilter.years.length === 0 || this.activeDateFilter.years.includes(d.getFullYear());
+                            const monthMatch = this.activeDateFilter.months.length === 0 || this.activeDateFilter.months.includes(d.getMonth() + 1);
+                            return yearMatch && monthMatch;
+                        })
+                        : allGiornate;
+
+                    giornateConsiderate.forEach(g => {
+                        const valore = parseFloat(g.valore_calcolato ?? g.Valore_calcolato ?? 0) || 0;
+                        const contrib = valore * commissione;
+                        const monthKey = (g.Data || '').substring(0,7) || '0000-00';
+
+                        if (!resultByMonth[monthKey]) resultByMonth[monthKey] = 0;
+                        resultByMonth[monthKey] += contrib;
+
+                        if (!byCommessa[commId].byMonth[monthKey]) byCommessa[commId].byMonth[monthKey] = 0;
+                        byCommessa[commId].byMonth[monthKey] += contrib;
+
+                        byCommessa[commId].total += contrib;
+                        total += contrib;
+                    });
+                });
+            });
+            return { total, byMonth: resultByMonth, byCommessa };
+        };
+
+        const accounting = computeAccountingByMonth();
+        const accountingValue = accounting.total;
+
         const accordionId = `accordion-${collaboratore.ID_COLLABORATORE}`;
 
         return `
@@ -583,12 +672,13 @@ class CollaboratoriSection extends BaseSection {
                             <span class="badge bg-info text-dark" title="Commesse Assegnate"><i class="fas fa-briefcase me-1"></i>${stats.commesse_assegnate || 0}</span>
                             <span class="badge bg-success" title="Totale Giornate di Campo"><i class="fas fa-tractor me-1"></i>${totalGiornateCampo.toFixed(1)}</span>
                             ${typeof stats.tariffa_standard !== 'undefined' ? `<span class="badge bg-warning text-dark" title="Tariffa standard attuale"><i class="fas fa-money-bill-wave me-1"></i>${this.app.utils.formatCurrency(stats.tariffa_standard)}</span>` : ''}
-                            <span class="badge bg-danger" title="Costo Totale">${this.app.utils.formatCurrency(totalCosto)}</span>
+                            <span class="badge bg-danger" title="RImborso Totale">${this.app.utils.formatCurrency(totalCosto)}</span>
+                            <span class="badge bg-secondary text-dark" title="Valore Accounting"><i class="fas fa-file-invoice-dollar me-1"></i>${this.app.utils.formatCurrency(accountingValue)}</span>
                             <button class="btn btn-sm btn-outline-light" data-action="edit-collaboratore" data-id="${collaboratore.ID_COLLABORATORE}" title="Modifica Collaboratore"><i class="fas fa-pencil-alt"></i></button>
                             <button class="commessa-toggle-btn" id="toggleBtn-${collaboratore.ID_COLLABORATORE}"><i class="fas fa-chevron-down"></i></button>
                         </div>
                     </div>
-                    <div class="mt-2 text-light small">
+                        <div class="mt-2 text-light small">
                         <i class="fas fa-envelope me-1"></i> ${collaboratore.Email} |
                         <i class="fas fa-user me-1"></i> User: ${collaboratore.User}
                     </div>
@@ -612,18 +702,7 @@ class CollaboratoriSection extends BaseSection {
                             </div>
                         </div>
 
-                        <div class="accordion-item">
-                            <h2 class="accordion-header">
-                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-monitoraggio-${collaboratore.ID_COLLABORATORE}" aria-expanded="false">
-                                    <i class="fas fa-chart-line me-2"></i> Monitoraggio
-                                </button>
-                            </h2>
-                            <div id="collapse-monitoraggio-${collaboratore.ID_COLLABORATORE}" class="accordion-collapse collapse" data-bs-parent="#${accordionId}">
-                                <div class="accordion-body">
-                                    <p class="text-muted fst-italic">Sezione in fase di sviluppo.</p>
-                                </div>
-                            </div>
-                        </div>
+                        <!-- Monitoraggio rimosso come richiesto -->
 
                         <div class="accordion-item">
                             <h2 class="accordion-header">
@@ -633,7 +712,41 @@ class CollaboratoriSection extends BaseSection {
                             </h2>
                             <div id="collapse-accounting-${collaboratore.ID_COLLABORATORE}" class="accordion-collapse collapse" data-bs-parent="#${accordionId}">
                                 <div class="accordion-body">
-                                    <p class="text-muted fst-italic">Sezione in fase di sviluppo.</p>
+                                    <div class="row">
+                                        <div class="col-12 mb-2">
+                                            <dl class="row">
+                                                <dt class="col-sm-4">Valore Accounting (Responsabile Commessa)</dt>
+                                                <dd class="col-sm-8"><strong>${this.app.utils.formatCurrency(accountingValue)}</strong></dd>
+                                            </dl>
+                                        </div>
+                                        <div class="col-12">
+                                            <h6 class="small text-muted">Dettaglio mensile</h6>
+                                            ${Object.keys(accounting.byMonth).length === 0 ? '<p class="text-muted small">Nessun valore di accounting per il periodo selezionato.</p>' : `
+                                                <div class="table-responsive">
+                                                    <table class="table table-sm table-striped">
+                                                        <thead class="table-light"><tr><th>Mese</th><th class="text-end">Valore Accounting</th></tr></thead>
+                                                        <tbody>
+                                                            ${Object.keys(accounting.byMonth).sort().reverse().map(mk => {
+                                                                const parts = mk.split('-');
+                                                                const label = (mk === '0000-00') ? mk : new Date(parts[0], parts[1]-1).toLocaleString('it-IT', { month: 'long', year: 'numeric' });
+                                                                const collapseId = `acc-${collaboratore.ID_COLLABORATORE}-${mk.replace('-', '_')}`;
+                                                                // build per-commessa rows for this month
+                                                                const commessaRows = Object.keys(accounting.byCommessa || {}).map(cid => {
+                                                                    const comm = accounting.byCommessa[cid];
+                                                                    const val = (comm && comm.byMonth && comm.byMonth[mk]) ? comm.byMonth[mk] : 0;
+                                                                    return val > 0 ? `<tr><td>${this.app.utils.escapeHtml(comm.name)}</td><td class="text-end">${this.app.utils.formatCurrency(val)}</td></tr>` : '';
+                                                                }).filter(r => r && r.trim() !== '').join('');
+
+                                                                const detailRow = commessaRows.length ? `<tr class="collapse" id="${collapseId}"><td colspan="2"><div class="table-responsive"><table class="table table-sm table-borderless mb-0"><tbody>${commessaRows}</tbody></table></div></td></tr>` : '';
+
+                                                                return `<tr><td><button class="btn btn-sm btn-outline-secondary me-2" data-bs-toggle="collapse" data-bs-target="#${collapseId}" aria-expanded="false"><i class="fas fa-chevron-down"></i></button>${label.charAt(0).toUpperCase() + label.slice(1)}</td><td class="text-end"><strong>${this.app.utils.formatCurrency(accounting.byMonth[mk])}</strong></td></tr>${detailRow}`;
+                                                            }).join('')}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            `}
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -648,38 +761,42 @@ class CollaboratoriSection extends BaseSection {
         if (months.length === 0) {
             return '<p class="text-muted">Nessuna giornata registrata per questo collaboratore.</p>';
         }
-
         return months.map(monthKey => {
             const [year, month] = monthKey.split('-');
             const monthName = new Date(year, month - 1).toLocaleString('it-IT', { month: 'long', year: 'numeric' });
             const giornate = giornateByMonth[monthKey];
-            
             const totalCostoMese = giornate.reduce((sum, g) => sum + (g.costo_calcolato || 0), 0);
+
+            // id univoco per collapse: include monthKey (YYYY-MM) e un prefisso
+            const collapseId = `giornate-${monthKey.replace('-', '_')}`;
 
             return `
                 <div class="mb-4">
-                    <h6 class="mb-2 d-flex justify-content-between">
-                        <span><i class="fas fa-calendar-alt me-2"></i>${monthName.charAt(0).toUpperCase() + monthName.slice(1)}</span>
-                        <span class="fw-bold">Costo Totale Mese: ${this.app.utils.formatCurrency(totalCostoMese)}</span>
+                    <h6 class="mb-2 d-flex justify-content-between align-items-center">
+                        <button class="btn btn-sm btn-outline-secondary me-2" data-bs-toggle="collapse" data-bs-target="#${collapseId}" aria-expanded="false" aria-controls="${collapseId}"><i class="fas fa-chevron-down"></i></button>
+                        <span class="flex-grow-1"><i class="fas fa-calendar-alt me-2"></i>${monthName.charAt(0).toUpperCase() + monthName.slice(1)}</span>
+                        <span class="fw-bold">RImborso Totale Mese: ${this.app.utils.formatCurrency(totalCostoMese)}</span>
                     </h6>
-                    <div class="table-responsive">
-                        <table class="table table-sm table-hover table-bordered">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>Data</th>
-                                    <th>Commessa</th>
-                                    <th>Task</th>
-                                    <th>gg</th>
-                                    <th>Tipo</th>
-                                    <th class="text-end">Costo Gg (€)</th>
-                                    <th class="text-end">Costo Spese (€)</th>
-                                    <th class="text-end">Costo Totale (€)</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${giornate.map(g => this.renderGiornataRow(g)).join('')}
-                            </tbody>
-                        </table>
+                    <div class="collapse" id="${collapseId}">
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover table-bordered">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Data</th>
+                                        <th>Commessa</th>
+                                        <th>Task</th>
+                                        <th>gg</th>
+                                        <th>Tipo</th>
+                                        <th class="text-end">Costo Gg (€)</th>
+                                        <th class="text-end">Costo Spese (€)</th>
+                                        <th class="text-end">RImborso Totale (€)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${giornate.map(g => this.renderGiornataRow(g)).join('')}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             `;
@@ -710,19 +827,40 @@ class CollaboratoriSection extends BaseSection {
     }
 
     filterData() {
-        const searchText = document.getElementById('searchCollaboratori')?.value.toLowerCase() || '';
+        const filterCollaboratoreVal = document.getElementById('filterCollaboratore')?.value || '';
         const selectedRuolo = document.getElementById('filterRuolo')?.value || '';
 
-        const filteredData = this.collaboratoriConGiornate.filter(c => {
-            const matchSearch = !searchText ||
-                (c.Collaboratore || '').toLowerCase().includes(searchText) ||
-                (c.Email || '').toLowerCase().includes(searchText) ||
-                (c.User || '').toLowerCase().includes(searchText);
-            
-            const matchRuolo = !selectedRuolo || c.Ruolo === selectedRuolo;
+        const selectedYears = Array.from(document.querySelectorAll('#filterAnno input:checked')).map(el => parseInt(el.value));
+        const selectedMonths = Array.from(document.querySelectorAll('#filterMese input:checked')).map(el => parseInt(el.value));
 
-            return matchSearch && matchRuolo;
-        });
+        this.activeDateFilter = (selectedYears.length > 0 || selectedMonths.length > 0) ? { years: selectedYears, months: selectedMonths } : null;
+
+        let filteredData = this.collaboratoriConGiornate
+            .filter(c => {
+                const matchCollaboratore = !filterCollaboratoreVal || String(c.ID_COLLABORATORE) === String(filterCollaboratoreVal);
+                const matchRuolo = !selectedRuolo || c.Ruolo === selectedRuolo;
+                return matchCollaboratore && matchRuolo;
+            });
+
+        // Se è attivo un filtro di data, applichiamo il filtro alle giornate per collaboratore
+        if (this.activeDateFilter) {
+            filteredData = filteredData.map(c => {
+                const giornateNelPeriodo = c.giornate.filter(g => {
+                    const dataGiornata = new Date(g.Data);
+                    const yearMatch = this.activeDateFilter.years.length === 0 || this.activeDateFilter.years.includes(dataGiornata.getFullYear());
+                    const monthMatch = this.activeDateFilter.months.length === 0 || this.activeDateFilter.months.includes(dataGiornata.getMonth() + 1);
+                    return yearMatch && monthMatch;
+                });
+                // Manteniamo anche la mappa giornateByMonth aggiornata per l'interfaccia
+                const giornateByMonth = giornateNelPeriodo.reduce((acc, g) => {
+                    const monthKey = g.Data.substring(0,7);
+                    if (!acc[monthKey]) acc[monthKey] = [];
+                    acc[monthKey].push(g);
+                    return acc;
+                }, {});
+                return { ...c, giornate: giornateNelPeriodo, giornateByMonth };
+            }).filter(c => c.giornate.length > 0);
+        }
 
         document.getElementById('collaboratoriContainer').innerHTML = this.renderCollaboratoriCards(filteredData);
         this.updateStats(filteredData);
@@ -801,6 +939,38 @@ class CollaboratoriSection extends BaseSection {
             .sort((a, b) => new Date(b.Data_Inizio_Validita) - new Date(a.Data_Inizio_Validita));
         return tariffeValide.length > 0 ? tariffeValide[0] : null;
     }
+
+    // Calcola il valore di Accounting totale per un singolo collaboratore rispettando i filtri attivi
+    computeAccountingTotalForCollaboratore(collaboratore) {
+        const commesse = Array.isArray(this.app.commesse) ? this.app.commesse : [];
+        const tasks = Array.isArray(this.app.tasks) ? this.app.tasks : [];
+        const giornateAll = Array.isArray(this.app.giornate) ? this.app.giornate : [];
+        let total = 0;
+
+        commesse.forEach(commessa => {
+            if (String(commessa.ID_COLLABORATORE) !== String(collaboratore.ID_COLLABORATORE)) return;
+            const commissione = parseFloat(commessa.Commissione) || 0;
+            const tasksOfCommessa = tasks.filter(t => String(t.ID_COMMESSA) === String(commessa.ID_COMMESSA) && t.Tipo === 'Campo');
+            tasksOfCommessa.forEach(task => {
+                const allGiornate = giornateAll.filter(g => String(g.ID_TASK) === String(task.ID_TASK));
+                const giornateConsiderate = this.activeDateFilter
+                    ? allGiornate.filter(g => {
+                        const d = new Date(g.Data);
+                        const yearMatch = this.activeDateFilter.years.length === 0 || this.activeDateFilter.years.includes(d.getFullYear());
+                        const monthMatch = this.activeDateFilter.months.length === 0 || this.activeDateFilter.months.includes(d.getMonth() + 1);
+                        return yearMatch && monthMatch;
+                    })
+                    : allGiornate;
+
+                giornateConsiderate.forEach(g => {
+                    const valore = parseFloat(g.valore_calcolato ?? g.Valore_calcolato ?? 0) || 0;
+                    total += (valore * commissione);
+                });
+            });
+        });
+
+        return total;
+    }
     
     updateStats(data) {
         const collaboratoriCount = data.length;
@@ -809,13 +979,23 @@ class CollaboratoriSection extends BaseSection {
             return sum + c.giornate.reduce((s, g) => s + (g.costo_calcolato || 0), 0);
         }, 0);
         
+        // aggregate accounting total for displayed collaborators
+        const totalAccounting = data.reduce((sum, c) => {
+            try {
+                // use helper to compute accounting respecting current filters
+                const val = this.computeAccountingTotalForCollaboratore(c) || 0;
+                return sum + val;
+            } catch (e) { return sum; }
+        }, 0);
+
         const statsContainer = document.getElementById('stats-row-container');
         if (statsContainer) {
             statsContainer.innerHTML = `
                 <div class="stats-row">
                     ${this.ui.createStatsCard('fas fa-users', collaboratoriCount, 'Collaboratori Visualizzati')}
                     ${this.ui.createStatsCard('fas fa-calendar-check', totalGiornate, "Totale Giornate Registrate")}
-                    ${this.ui.createStatsCard('fas fa-euro-sign', this.app.utils.formatCurrency(totalCosto), 'Costo Totale Stimato')}
+                    ${this.ui.createStatsCard('fas fa-euro-sign', this.app.utils.formatCurrency(totalCosto), 'Rimborso attività')}
+                    ${this.ui.createStatsCard('fas fa-file-invoice-dollar', this.app.utils.formatCurrency(totalAccounting), 'Valore Accounting')}
                 </div>
             `;
         }
