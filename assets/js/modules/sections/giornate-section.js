@@ -418,6 +418,7 @@ class GiornateSection extends BaseSection {
                                 <th>Data</th>
                                 <th>Commessa</th>
                                 <th>Task</th>
+                                <th class="text-center">Immagini</th>
                                 <th class="text-center">GG</th>
                                 <th>Tipo</th>
                                 <th class="text-center">Desk</th>
@@ -451,11 +452,30 @@ class GiornateSection extends BaseSection {
             ? '<i class="fas fa-desktop text-primary" title="Sì"></i>'
             : '';
 
+        // Show a small thumbnail (first image) or an icon if images exist
+        let immaginiCell = '';
+        try {
+            if (giornata.has_images || (giornata.images && giornata.images.length)) {
+                // If images array available, use first image; otherwise show icon badge
+                const thumbUrl = (giornata.images && giornata.images[0] && giornata.images[0].url) ? giornata.images[0].url : null;
+                if (thumbUrl) {
+                    immaginiCell = `<td class="text-center"><a href="${thumbUrl}" target="_blank" title="Apri immagine"><img src="${thumbUrl}" style="width:40px;height:40px;object-fit:cover;border-radius:4px"/></a></td>`;
+                } else {
+                    immaginiCell = `<td class="text-center"><i class="fas fa-image text-primary" title="Immagini disponibili"></i></td>`;
+                }
+            } else {
+                immaginiCell = `<td class="text-center text-muted"><i class="fas fa-image" title="Nessuna immagine"></i></td>`;
+            }
+        } catch (e) {
+            immaginiCell = `<td class="text-center text-muted"><i class="fas fa-image" title="Nessuna immagine"></i></td>`;
+        }
+
         return `
             <tr data-action="edit-giornata" data-id="${giornata.ID_GIORNATA}" style="cursor: pointer;">
                 <td>${this.app.utils.formatDate(giornata.Data)}</td>
                 <td>${commessa}</td>
                 <td>${task}</td>
+                ${immaginiCell}
                 <td class="text-center"><span class="badge bg-primary">${giornata.gg}</span></td>
                 <td>${tipoHtml}</td>
                 <td class="text-center">${deskIcon}</td>
@@ -637,6 +657,11 @@ class GiornateSection extends BaseSection {
                     <label for="Note" class="form-label">Note</label>
                     <textarea class="form-control" id="Note" name="Note" rows="3">${giornata.Note || ''}</textarea>
                 </div>
+                <!-- Images preview (if editing an existing giornata, thumbnails will be loaded) -->
+                <div class="mb-3">
+                    <label class="form-label">Immagini</label>
+                    <div id="giornataImagesPreview" class="d-flex gap-2 align-items-start" style="flex-wrap:wrap"></div>
+                </div>
             </form>
         `;
     }
@@ -678,6 +703,42 @@ class GiornateSection extends BaseSection {
         const giornataId = formId.includes('new') ? null : modalId.split('_').pop();
         // Aggancio submit del form
         form.addEventListener('submit', (e) => this.handleGiornataFormSubmit(e, giornataId));
+
+        // If editing an existing giornata, load images and render thumbnails into the modal
+        if (giornataId) {
+            // Use the API client helper we added
+            (async () => {
+                try {
+                    const res = await this.api.listImages(giornataId);
+                    if (res && res.success) {
+                        const container = document.getElementById('giornataImagesPreview');
+                        if (container) {
+                            container.innerHTML = '';
+                            (res.images || []).forEach(img => {
+                                const a = document.createElement('a');
+                                a.href = img.url;
+                                a.target = '_blank';
+                                a.title = 'Apri immagine';
+                                a.style.display = 'inline-block';
+
+                                const imageEl = document.createElement('img');
+                                imageEl.src = img.url;
+                                imageEl.style.width = '60px';
+                                imageEl.style.height = '60px';
+                                imageEl.style.objectFit = 'cover';
+                                imageEl.style.borderRadius = '6px';
+                                imageEl.style.border = '1px solid #e9e9e9';
+
+                                a.appendChild(imageEl);
+                                container.appendChild(a);
+                            });
+                        }
+                    }
+                } catch (err) {
+                    console.warn('Errore caricamento immagini per modal:', err);
+                }
+            })();
+        }
 
         // Listener per il toggle Confermata: aggiorna l'etichetta per migliorare la UX
         const confermataToggle = form.querySelector('#Confermata_toggle');

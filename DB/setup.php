@@ -193,7 +193,27 @@ class DatabaseSetup {
             INDEX idx_confermata (Confermata)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
         $this->executeSQL($sql, "FACT_GIORNATE");
-        
+        // 6b. GIORNATE_IMMAGINI - memorizza riferimenti a file immagine associati alle giornate (metadati)
+        $sql = "CREATE TABLE IF NOT EXISTS GIORNATE_IMMAGINI (
+            id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+            ID_GIORNATA VARCHAR(50) NOT NULL,
+            filename VARCHAR(255) NOT NULL,
+            original_name VARCHAR(255) DEFAULT NULL,
+            mime_type VARCHAR(100) DEFAULT NULL,
+            size INT DEFAULT 0,
+            uploader_id VARCHAR(50) DEFAULT NULL,
+            visible TINYINT(1) DEFAULT 1,
+            uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            INDEX idx_id_giornata (ID_GIORNATA),
+            CONSTRAINT fk_giornate_immagini_giornata FOREIGN KEY (ID_GIORNATA) REFERENCES FACT_GIORNATE(ID_GIORNATA) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+        $this->executeSQL($sql, "GIORNATE_IMMAGINI");
+
+        // Aggiunge una colonna facoltativa per indicare presenza immagini (utile per ricerche/ottimizzazioni)
+        $sql = "ALTER TABLE FACT_GIORNATE ADD COLUMN has_images TINYINT(1) DEFAULT 0";
+        $this->executeSQL($sql, "FACT_GIORNATE (has_images)");
+
         // 7. FACT_FATTURE
         $sql = "CREATE TABLE IF NOT EXISTS FACT_FATTURE (
             ID_FATTURA VARCHAR(50) PRIMARY KEY,

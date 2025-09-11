@@ -169,6 +169,22 @@ class APIClient {
         });
     }
 
+    // Convenience wrapper to list images for a giornata (used by the UI)
+    async listImages(idGiornata) {
+        try {
+            const response = await fetch('API/ConsuntivazioneAPI.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'list_images', id_giornata: idGiornata })
+            });
+            const result = await response.json();
+            return result;
+        } catch (err) {
+            console.error('Errore listImages API:', err);
+            return { success: false, message: err.message };
+        }
+    }
+
     async createGiornata(data) {
         return this.request('giornate', 'create', { data });
     }

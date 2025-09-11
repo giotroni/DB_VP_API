@@ -17,13 +17,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 require_once '../DB/config.php';
 require_once 'AuthAPI.php';
 
+// Small diagnostic logging to capture PHP errors/fatals during multipart handling (useful for 500 debugging)
+$logDir = __DIR__ . '/../DB/uploads/consuntivazioni';
+if (!is_dir($logDir)) {
+    @mkdir($logDir, 0755, true);
+}
+$logFile = $logDir . '/upload_errors.log';
+@ini_set('log_errors', '1');
+@ini_set('error_log', $logFile);
+set_error_handler(function($errno, $errstr, $errfile, $errline) use ($logFile) {
+    $msg = date('[Y-m-d H:i:s] ') . "PHP Error [$errno] $errstr in $errfile:$errline\n";
+    error_log($msg, 3, $logFile);
+    // return false to allow normal PHP error handling as well
+    return false;
+});
+register_shutdown_function(function() use ($logFile) {
+    $err = error_get_last();
+    if ($err) {
+        $msg = date('[Y-m-d H:i:s] ') . "Shutdown error: " . print_r($err, true) . "\n";
+        error_log($msg, 3, $logFile);
+    }
+});
+
 class ConsuntivazioneAPI {
     private $db;
     private $authAPI;
+    private $uploadDir;
+    private $uploadUrlBase;
     
     public function __construct() {
         $this->db = getDatabase();
         $this->authAPI = new AuthAPI();
+        // Percorso fisico per gli upload (cartella creata in DB/uploads/consuntivazioni)
+        $this->uploadDir = realpath(__DIR__ . '/../DB/uploads/consuntivazioni') ?: (__DIR__ . '/../DB/uploads/consuntivazioni');
+        // URL base per accedere ai file (serve che la cartella sia raggiungibile dal web)
+        $this->uploadUrlBase = '/DB/uploads/consuntivazioni';
     }
     
     /**
@@ -199,7 +227,10 @@ class ConsuntivazioneAPI {
             $stmt->execute([$targetCollaboratoreId, $limit]);
             
             $consuntivazioni = $stmt->fetchAll();
-            
+
+            // Allego immagini (se presenti)
+            $this->attachImagesToList($consuntivazioni);
+
             return [
                 'success' => true,
                 'data' => $consuntivazioni
@@ -332,6 +363,8 @@ class ConsuntivazioneAPI {
                 $raggruppatePer_Mese[$chiaveMese]['costo_gg'] += $costoGgConsuntivazione;
                 $raggruppatePer_Mese[$chiaveMese]['count']++;
             }
+            // Allego immagini alle consuntivazioni trovate
+            $this->attachImagesToList($consuntivazioni);
             
             return [
                 'success' => true,
@@ -582,6 +615,11 @@ class ConsuntivazioneAPI {
                 ];
             }
             
+            // Allego immagini
+            if ($consuntivazione) {
+                $consuntivazione['images'] = $this->listImages($consuntivazione['ID_GIORNATA'])['images'] ?? [];
+            }
+
             return [
                 'success' => true,
                 'data' => $consuntivazione
@@ -821,6 +859,10 @@ class ConsuntivazioneAPI {
             $success = $stmt->execute($insertData);
 
             if ($success) {
+                // Se ci sono file uplodati (multipart/form-data), gestiscili
+                if (!empty($_FILES) && isset($_FILES['images'])) {
+                    $this->saveUploadedImages($idGiornata, $_FILES['images'], $user['id']);
+                }
                 return [
                     'success' => true,
                     'message' => 'Consuntivazione salvata con successo',
@@ -842,6 +884,201 @@ class ConsuntivazioneAPI {
                 'message' => 'Errore durante il salvataggio: ' . $e->getMessage()
             ];
         }
+    }
+
+    /**
+     * Salva i metadati delle immagini e sposta i file nella cartella di upload
+     */
+    public function saveUploadedImages($idGiornata, $filesArray, $uploaderId = null) {
+        // $filesArray è la struttura di $_FILES['images'] con array di file
+        $count = is_array($filesArray['name']) ? count($filesArray['name']) : 0;
+
+        if ($count === 0) return [];
+
+        // Assicurati che la cartella esista
+        if (!is_dir($this->uploadDir)) {
+            @mkdir($this->uploadDir, 0755, true);
+        }
+
+        $allowed = ['image/jpeg', 'image/png', 'image/webp'];
+        $maxSize = 5 * 1024 * 1024; // 5MB
+
+        $inserted = [];
+
+        for ($i = 0; $i < $count; $i++) {
+            $error = $filesArray['error'][$i];
+            if ($error !== UPLOAD_ERR_OK) continue;
+
+            $tmpName = $filesArray['tmp_name'][$i];
+            $origName = basename($filesArray['name'][$i]);
+            $size = intval($filesArray['size'][$i]);
+            $mime = mime_content_type($tmpName);
+
+            if ($size > $maxSize) continue;
+            if (!in_array($mime, $allowed)) continue;
+
+            $ext = pathinfo($origName, PATHINFO_EXTENSION);
+            // Genera un identificatore sicuro compatibile con diverse versioni di PHP
+            if (function_exists('random_bytes')) {
+                $rand = bin2hex(random_bytes(8));
+            } elseif (function_exists('openssl_random_pseudo_bytes')) {
+                $rand = bin2hex(openssl_random_pseudo_bytes(8));
+            } else {
+                // Fallback meno crittografico ma operativo per PHP molto vecchi
+                $rand = str_replace('.', '', uniqid('', true));
+            }
+            $unique = $rand . '_' . time();
+            $safeName = $unique . '.' . $ext;
+            $dest = rtrim($this->uploadDir, '/\\') . DIRECTORY_SEPARATOR . $safeName;
+
+            if (move_uploaded_file($tmpName, $dest)) {
+                // Inserisci metadati
+                $ins = $this->db->prepare("INSERT INTO GIORNATE_IMMAGINI (ID_GIORNATA, filename, original_name, mime_type, size, uploader_id, visible) VALUES (?, ?, ?, ?, ?, ?, 1)");
+                $ins->execute([$idGiornata, $safeName, $origName, $mime, $size, $uploaderId]);
+                $inserted[] = $this->db->lastInsertId();
+            }
+        }
+
+        // Aggiorna flag has_images
+        $this->db->prepare("UPDATE FACT_GIORNATE SET has_images = (SELECT COUNT(*) FROM GIORNATE_IMMAGINI WHERE ID_GIORNATA = ?) WHERE ID_GIORNATA = ?")->execute([$idGiornata, $idGiornata]);
+
+        return $inserted;
+    }
+
+    /**
+     * Restituisce le immagini associate a una giornata
+     */
+    public function listImages($idGiornata) {
+        $images = [];
+        if (!$idGiornata) return ['success' => true, 'images' => []];
+
+        $sql = "SELECT id, filename, original_name, mime_type, size, uploaded_at FROM GIORNATE_IMMAGINI WHERE ID_GIORNATA = ? AND visible = 1 ORDER BY uploaded_at DESC";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$idGiornata]);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Costruisci percorso canonico allo script API (es. /test/API/ConsuntivazioneAPI.php)
+    $scriptPath = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/') . '/' . basename(__FILE__);
+    // Assicura leading slash e rimuovi possibili duplicazioni
+    $scriptPath = '/' . ltrim($scriptPath, '/');
+        foreach ($rows as $r) {
+            // Usa endpoint API relativo per servire l'immagine
+            $r['url'] = $scriptPath . '?action=serve_image&id_image=' . $r['id'];
+            $images[] = $r;
+        }
+
+        return ['success' => true, 'images' => $images];
+    }
+
+    /**
+     * Allegare immagini a un array di consuntivazioni (per migliorare UI)
+     */
+    private function attachImagesToList(&$consList) {
+        if (!is_array($consList) || count($consList) === 0) return;
+
+        $ids = array_map(function($c) { return $c['ID_GIORNATA']; }, $consList);
+        if (count($ids) === 0) return;
+
+        // Preleva tutte le immagini per questi id
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $sql = "SELECT id, ID_GIORNATA, filename, original_name FROM GIORNATE_IMMAGINI WHERE ID_GIORNATA IN ($placeholders) AND visible = 1 ORDER BY uploaded_at DESC";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($ids);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Costruisci percorso canonico allo script API per evitare duplicazioni
+    $scriptPath = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/') . '/' . basename(__FILE__);
+    // Assicura leading slash e rimuovi possibili duplicazioni
+    $scriptPath = '/' . ltrim($scriptPath, '/');
+        $grouped = [];
+        foreach ($rows as $r) {
+            $r['url'] = $scriptPath . '?action=serve_image&id_image=' . $r['id'];
+            $grouped[$r['ID_GIORNATA']][] = $r;
+        }
+
+        foreach ($consList as &$cons) {
+            $cons['images'] = $grouped[$cons['ID_GIORNATA']] ?? [];
+        }
+    }
+
+    /**
+     * Elimina immagine (set visible=0 e cancella file fisico) data l'id immagine
+     */
+    public function deleteImage($idImage) {
+        try {
+            if (!$this->authAPI->isAuthenticated()) {
+                return ['success' => false, 'message' => 'Utente non autenticato'];
+            }
+
+            $user = $this->authAPI->getCurrentUser();
+
+            // Recupera la riga
+            $sql = "SELECT id, filename, ID_GIORNATA, uploader_id FROM GIORNATE_IMMAGINI WHERE id = ? LIMIT 1";
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([$idImage]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$row) return ['success' => false, 'message' => 'Immagine non trovata'];
+
+            // Permessi: solo uploader o Admin/Manager possono cancellare
+            if ($row['uploader_id'] && $row['uploader_id'] != $user['id'] && !in_array($user['role'], ['Admin','Manager'])) {
+                return ['success' => false, 'message' => 'Permessi insufficienti per eliminare l\'immagine'];
+            }
+
+            // Cancella fisicamente
+            $filePath = rtrim($this->uploadDir, '/\\') . DIRECTORY_SEPARATOR . $row['filename'];
+            if (file_exists($filePath)) @unlink($filePath);
+
+            // Elimina o marca come non visibile
+            $del = $this->db->prepare("DELETE FROM GIORNATE_IMMAGINI WHERE id = ?");
+            $del->execute([$idImage]);
+
+            // Aggiorna flag has_images
+            $this->db->prepare("UPDATE FACT_GIORNATE SET has_images = (SELECT COUNT(*) FROM GIORNATE_IMMAGINI WHERE ID_GIORNATA = ?) WHERE ID_GIORNATA = ?")->execute([$row['ID_GIORNATA'], $row['ID_GIORNATA']]);
+
+            return ['success' => true];
+        } catch (Exception $e) {
+            return ['success' => false, 'message' => 'Errore eliminazione immagine: ' . $e->getMessage()];
+        }
+    }
+
+    /**
+     * Serve an image binary given image id (with basic auth check)
+     */
+    public function serveImage($idImage) {
+        // No JSON response: invia direttamente il file
+        if (!$idImage) {
+            http_response_code(400);
+            echo 'Invalid image id';
+            exit;
+        }
+
+        // Recupera filename e mime
+        $sql = "SELECT filename, mime_type FROM GIORNATE_IMMAGINI WHERE id = ? LIMIT 1";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$idImage]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$row) {
+            http_response_code(404);
+            echo 'Image not found';
+            exit;
+        }
+
+        $filePath = rtrim($this->uploadDir, '/\\') . DIRECTORY_SEPARATOR . $row['filename'];
+        if (!file_exists($filePath)) {
+            http_response_code(404);
+            echo 'File not found';
+            exit;
+        }
+
+        // Imposta header corretti
+        header('Content-Type: ' . ($row['mime_type'] ?: 'application/octet-stream'));
+        header('Content-Length: ' . filesize($filePath));
+
+        // Output file
+        readfile($filePath);
+        exit;
     }
 }
 
@@ -893,7 +1130,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             break;
             
         case 'update_consuntivazione':
-            $result = $consuntivazioneAPI->updateConsuntivazione($input);
+            // Se la richiesta è multipart/form-data e contiene files, usa $_POST/$_FILES
+            $payload = $input ?: $_POST;
+            $result = $consuntivazioneAPI->updateConsuntivazione($payload);
+            // Se ci sono files inviati, salvali associandoli all'id_giornata
+            if (!empty($_FILES) && isset($_FILES['images'])) {
+                $idG = $payload['id_giornata'] ?? ($_POST['id_giornata'] ?? null);
+                if ($idG) {
+                    // il metodo saveUploadedImages gestisce anche l'aggiornamento has_images
+                    // Usiamo output buffering e try/catch per catturare eventuale output/exception durante l'upload
+                    try {
+                        ob_start();
+                        $inserted = $consuntivazioneAPI->saveUploadedImages($idG, $_FILES['images'], $_SESSION['user']['id'] ?? null);
+                        $ob = ob_get_clean();
+                        if ($ob) {
+                            if (!isset($result['debug'])) $result['debug'] = '';
+                            $result['debug'] .= "\n[upload_output]: " . $ob;
+                        }
+                        if ($inserted === null) {
+                            // No inserted ids returned but no exception: note it
+                            if (!isset($result['debug'])) $result['debug'] = '';
+                            $result['debug'] .= "\n[upload_info]: saveUploadedImages returned null or empty";
+                        }
+                    } catch (Throwable $t) {
+                        $ob = '';
+                        if (ob_get_level()) $ob = ob_get_clean();
+                        $result = [
+                            'success' => false,
+                            'message' => 'Errore durante l\'upload delle immagini: ' . $t->getMessage(),
+                            'exception' => $t instanceof Exception ? $t->getTraceAsString() : null,
+                            'debug' => $ob
+                        ];
+                    }
+                }
+            }
             echo json_encode($result);
             break;
             
@@ -915,7 +1185,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             break;
             
         case 'salva_consuntivazione':
-            $result = $consuntivazioneAPI->salvaConsuntivazione($input);
+            // Nota: se la richiesta è multipart/form-data, $input può provenire da $_POST
+            $payload = $input ?: $_POST;
+            $result = $consuntivazioneAPI->salvaConsuntivazione($payload);
+            echo json_encode($result);
+            break;
+
+        case 'list_images':
+            $idGiornata = $input['id_giornata'] ?? ($_POST['id_giornata'] ?? null);
+            $result = $consuntivazioneAPI->listImages($idGiornata);
+            echo json_encode($result);
+            break;
+
+        case 'delete_image':
+            $idImage = $input['id_image'] ?? ($_POST['id_image'] ?? null);
+            $result = $consuntivazioneAPI->deleteImage($idImage);
             echo json_encode($result);
             break;
             
@@ -1004,10 +1288,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'message' => 'Azione non valida: ' . $action
             ]);
     }
-} else {
+} else if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
+    // Se non è POST e neppure GET, rispondi con errore; per GET lasciamo il codice più sotto
     echo json_encode([
         'success' => false,
         'message' => 'Metodo non supportato'
     ]);
+}
+
+// Supporta la chiamata GET per servire immagini: /API/ConsuntivazioneAPI.php?action=serve_image&id_image=123
+if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+    $action = $_GET['action'] ?? '';
+    if ($action === 'serve_image') {
+        $consuntivazioneAPI = new ConsuntivazioneAPI();
+        $idImage = $_GET['id_image'] ?? null;
+        $consuntivazioneAPI->serveImage($idImage);
+    }
 }
 ?>

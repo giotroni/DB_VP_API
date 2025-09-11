@@ -64,6 +64,10 @@ class ConsuntivazioneApp {
             if (e.target.id === 'commessa') {
                 this.loadTasksForCommessa(e.target.value);
             }
+            // Selezione immagini - genera anteprima
+            if (e.target.id === 'images') {
+                this.handleImagesSelected(e.target.files);
+            }
         });
         
         // Calcolo automatico totale spese
@@ -78,6 +82,13 @@ class ConsuntivazioneApp {
             if (e.target.id === 'resetForm') {
                 e.preventDefault();
                 this.resetForm();
+            }
+            // Delete immagine button (dynamic) - support clicks on inner icon
+            const delBtn = e.target && e.target.closest ? e.target.closest('.delete-image-btn') : null;
+            if (delBtn) {
+                e.preventDefault();
+                const imageId = delBtn.getAttribute('data-image-id');
+                if (imageId) this.deleteImage(imageId);
             }
         });
     }
@@ -437,6 +448,13 @@ class ConsuntivazioneApp {
                                         <label for="note" class="form-label">Note</label>
                                         <textarea id="note" class="form-control" rows="4"
                                                 placeholder="Descrivi le attività svolte, dettagli sui clienti incontrati, obiettivi raggiunti, spese sostenute..."></textarea>
+                                    </div>
+
+                                    <!-- Upload immagini -->
+                                    <div class="form-group mb-3">
+                                        <label for="images" class="form-label">Allega Immagini</label>
+                                        <input type="file" id="images" name="images[]" class="form-control" accept="image/*" multiple>
+                                        <div id="imagesPreview" class="mt-2 d-flex gap-2 flex-wrap"></div>
                                     </div>
                                     
                                     <div class="d-flex justify-content-between">
@@ -1022,31 +1040,36 @@ class ConsuntivazioneApp {
         submitBtn.disabled = true;
         submitBtn.innerHTML = '<span class="loading-spinner"></span> Salvataggio...';
         
-        // Raccoglie i dati del form
-        const formData = {
-            action: 'salva_consuntivazione',
-            data: document.getElementById('data').value,
-            giornate_lavorate: parseFloat(document.getElementById('giornatelavorate').value),
-            commessa: document.getElementById('commessa').value,
-            task: document.getElementById('task').value,
-            tipo: document.getElementById('tipo').value,
-            desk: document.getElementById('desk').checked ? 'Si' : 'No',
-            spese_viaggio: parseFloat(document.getElementById('speseViaggio').value || 0),
-            vitto_alloggio: parseFloat(document.getElementById('vittoAlloggio').value || 0),
-            altre_spese: parseFloat(document.getElementById('altreSpese').value || 0),
-            spese_fatturate_vp: parseFloat(document.getElementById('speseFattVP').value || 0),
-            note: document.getElementById('note').value.trim()
-        };
+        // Raccoglie i dati del form in FormData (per includere file)
+        const fd = new FormData();
+        fd.append('action', 'salva_consuntivazione');
+        fd.append('data', document.getElementById('data').value);
+        fd.append('giornate_lavorate', parseFloat(document.getElementById('giornatelavorate').value));
+        fd.append('commessa', document.getElementById('commessa').value);
+        fd.append('task', document.getElementById('task').value);
+        fd.append('tipo', document.getElementById('tipo').value);
+        fd.append('desk', document.getElementById('desk').checked ? 'Si' : 'No');
+        fd.append('spese_viaggio', parseFloat(document.getElementById('speseViaggio').value || 0));
+        fd.append('vitto_alloggio', parseFloat(document.getElementById('vittoAlloggio').value || 0));
+        fd.append('altre_spese', parseFloat(document.getElementById('altreSpese').value || 0));
+        fd.append('spese_fatturate_vp', parseFloat(document.getElementById('speseFattVP').value || 0));
+        fd.append('note', document.getElementById('note').value.trim());
+
+        // Allegati immagini (se presenti)
+        const fileInput = document.getElementById('images');
+        if (fileInput && fileInput.files && fileInput.files.length) {
+            for (let i = 0; i < fileInput.files.length; i++) {
+                fd.append('images[]', fileInput.files[i]);
+            }
+        }
         
         //console.log('Saving consuntivazione:', formData);
         
         try {
             const response = await fetch('API/ConsuntivazioneAPI.php', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(formData)
+                body: fd,
+                credentials: 'same-origin'
             });
             
             console.log('Save response status:', response.status);
@@ -1090,6 +1113,73 @@ class ConsuntivazioneApp {
         } finally {
             submitBtn.disabled = false;
             submitBtn.innerHTML = originalText;
+        }
+    }
+
+    /**
+     * Genera anteprima client-side delle immagini selezionate
+     */
+    handleImagesSelected(files) {
+        const preview = document.getElementById('imagesPreview');
+        if (!preview) return;
+        preview.innerHTML = '';
+
+        for (let i = 0; i < files.length; i++) {
+            const f = files[i];
+            if (!f.type.startsWith('image/')) continue;
+
+            const reader = new FileReader();
+            const wrapper = document.createElement('div');
+            wrapper.className = 'image-preview-item position-relative';
+            wrapper.style.width = '80px';
+            wrapper.style.height = '80px';
+            wrapper.style.overflow = 'hidden';
+            wrapper.style.borderRadius = '6px';
+
+            const img = document.createElement('img');
+            img.style.width = '100%';
+            img.style.height = '100%';
+            img.style.objectFit = 'cover';
+
+            reader.onload = (e) => {
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(f);
+
+            wrapper.appendChild(img);
+            preview.appendChild(wrapper);
+        }
+    }
+
+    /**
+     * Richiama API per cancellare un'immagine (by id)
+     */
+    async deleteImage(imageId) {
+        if (!confirm('Eliminare questa immagine?')) return;
+
+        try {
+            const response = await fetch('API/ConsuntivazioneAPI.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'delete_image', id_image: imageId })
+            });
+            const result = await response.json();
+            if (result.success) {
+                this.showMessage('Immagine eliminata', 'success');
+                // Se siamo nel modal di edit, ricarica le immagini nel modal
+                const editModal = document.getElementById('editModal');
+                if (editModal && bootstrap.Modal.getInstance(editModal)) {
+                    const idG = document.getElementById('editIdGiornata')?.value;
+                    if (idG) await this.reloadEditImages(idG);
+                }
+                // ricarica anche le ultime consuntivazioni per aggiornare la lista principale
+                await this.loadUltimeConsuntivazioni();
+            } else {
+                this.showMessage(result.message || 'Errore eliminazione immagine', 'danger');
+            }
+        } catch (error) {
+            console.error('Errore delete image:', error);
+            this.showMessage('Errore di connessione durante l\'eliminazione dell\'immagine', 'danger');
         }
     }
     
@@ -1147,6 +1237,12 @@ class ConsuntivazioneApp {
                     <small>${cons.Cliente || 'Commessa interna'}</small>
                 </div>
                 ${cons.Note ? `<div class="mt-1"><small><em>"${cons.Note}"</em></small></div>` : ''}
+                ${cons.images && cons.images.length ? `
+                <div class="consuntivazione-images mt-2">
+                    ${cons.images.map(img => `<a href="${img.url}" target="_blank" class="me-1"><img src="${img.url}" style="width:60px;height:60px;object-fit:cover;border-radius:6px"></a>`).join('')}
+                </div>
+                ` : ''}
+
                 <div class="consuntivazione-spese">
                     <span>Viaggi: € ${parseFloat(cons.Spese_Viaggi || 0).toFixed(2)}</span>
                     <span>Vitto/Alloggio: € ${parseFloat(cons.Vitto_alloggio || 0).toFixed(2)}</span>
@@ -1189,6 +1285,13 @@ class ConsuntivazioneApp {
             
             // Ricalcola totale spese
             this.calcolaTotaleSpese();
+            // Pulisci anteprima immagini e input file
+            const fileInput = document.getElementById('images');
+            if (fileInput) {
+                try { fileInput.value = ''; } catch(e) { /* some browsers may restrict but typically works */ }
+            }
+            const preview = document.getElementById('imagesPreview');
+            if (preview) preview.innerHTML = '';
         }
     }
     
@@ -1526,7 +1629,7 @@ class ConsuntivazioneApp {
                 'Formazione': 'bg-success'
             };
             
-            html += `
+                html += `
                 <tr>
                     <td>${this.formatDate(cons.Data)}</td>
                     <td>
@@ -1557,6 +1660,11 @@ class ConsuntivazioneApp {
                     </td>
                     <td>
                         ${cons.Note ? `<small>${cons.Note}</small>` : '<span class="text-muted">-</span>'}
+                        ${cons.images && cons.images.length ? `
+                            <div class="mt-2">
+                                ${cons.images.map(img => `<a href="${img.url}" target="_blank" class="me-1"><img src="${img.url}" style="width:40px;height:40px;object-fit:cover;border-radius:4px"></a>`).join('')}
+                            </div>
+                        ` : ''}
                     </td>
                     <td class="text-center">
                         ${this.shouldShowConsuntivazioneForm() ? `
@@ -1857,6 +1965,14 @@ class ConsuntivazioneApp {
                                     <label for="editNote" class="form-label">Note</label>
                                     <textarea id="editNote" class="form-control" rows="3">${consuntivazione.Note || ''}</textarea>
                                 </div>
+                                <!-- Immagini esistenti e upload -->
+                                <div class="form-group mb-3">
+                                    <label class="form-label">Immagini</label>
+                                    <div id="existingImages" class="mb-2 d-flex gap-2 flex-wrap"></div>
+                                    <label for="editImages" class="form-label">Aggiungi altre immagini</label>
+                                    <input type="file" id="editImages" name="images[]" class="form-control" accept="image/*" multiple>
+                                    <div id="editImagesPreview" class="mt-2 d-flex gap-2 flex-wrap"></div>
+                                </div>
                             </form>
                         </div>
                         <div class="modal-footer">
@@ -1884,6 +2000,45 @@ class ConsuntivazioneApp {
         // Mostra il modal
         const modal = new bootstrap.Modal(document.getElementById('editModal'));
         modal.show();
+
+        // Dopo che il modal è visibile, carica le immagini esistenti
+        setTimeout(() => {
+            this.reloadEditImages(consuntivazione.ID_GIORNATA);
+
+            // Collega listener per l'input editImages per preview
+            const editInput = document.getElementById('editImages');
+            if (editInput) {
+                editInput.addEventListener('change', (e) => {
+                    const files = e.target.files;
+                    const preview = document.getElementById('editImagesPreview');
+                    if (!preview) return;
+                    preview.innerHTML = '';
+                    for (let i = 0; i < files.length; i++) {
+                        const f = files[i];
+                        if (!f.type.startsWith('image/')) continue;
+
+                        const reader = new FileReader();
+                        const wrapper = document.createElement('div');
+                        wrapper.className = 'image-preview-item position-relative';
+                        wrapper.style.width = '80px';
+                        wrapper.style.height = '80px';
+                        wrapper.style.overflow = 'hidden';
+                        wrapper.style.borderRadius = '6px';
+
+                        const img = document.createElement('img');
+                        img.style.width = '100%';
+                        img.style.height = '100%';
+                        img.style.objectFit = 'cover';
+
+                        reader.onload = (ev) => { img.src = ev.target.result; };
+                        reader.readAsDataURL(f);
+
+                        wrapper.appendChild(img);
+                        preview.appendChild(wrapper);
+                    }
+                });
+            }
+        }, 200);
     }
     
     async populateEditSelects(consuntivazione) {
@@ -1947,9 +2102,67 @@ class ConsuntivazioneApp {
             taskSelect.innerHTML = '<option value="">Errore caricamento</option>';
         }
     }
+
+    /**
+     * Ricarica le immagini esistenti di una giornata dentro il modal di edit
+     */
+    async reloadEditImages(idGiornata) {
+        if (!idGiornata) return;
+        try {
+            const response = await fetch('API/ConsuntivazioneAPI.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'list_images', id_giornata: idGiornata })
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                this.renderExistingImages(result.images || []);
+            }
+        } catch (error) {
+            console.error('Errore reload images:', error);
+        }
+    }
+
+    renderExistingImages(images) {
+        const container = document.getElementById('existingImages');
+        if (!container) return;
+        container.innerHTML = '';
+
+        images.forEach(img => {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'position-relative';
+            wrapper.style.width = '80px';
+            wrapper.style.height = '80px';
+            wrapper.style.borderRadius = '6px';
+            wrapper.style.overflow = 'hidden';
+
+            const imageEl = document.createElement('img');
+            imageEl.src = img.url;
+            imageEl.style.width = '100%';
+            imageEl.style.height = '100%';
+            imageEl.style.objectFit = 'cover';
+
+            const delBtn = document.createElement('button');
+            delBtn.type = 'button'; // evita submit del form
+            delBtn.className = 'btn btn-sm btn-danger delete-image-btn position-absolute';
+            delBtn.style.top = '4px';
+            delBtn.style.right = '4px';
+            delBtn.style.padding = '4px 6px';
+            delBtn.style.cursor = 'pointer';
+            delBtn.setAttribute('data-image-id', img.id);
+            delBtn.setAttribute('title', 'Elimina immagine');
+            delBtn.setAttribute('aria-label', 'Elimina immagine');
+            delBtn.innerHTML = '<i class="fas fa-trash"></i>';
+
+            wrapper.appendChild(imageEl);
+            wrapper.appendChild(delBtn);
+            container.appendChild(wrapper);
+        });
+    }
     
     async saveEdit() {
-        const formData = {
+        const basicData = {
             id_giornata: document.getElementById('editIdGiornata').value,
             data: document.getElementById('editData').value,
             gg: document.getElementById('editGiornate').value,
@@ -1957,43 +2170,72 @@ class ConsuntivazioneApp {
             tipo: document.getElementById('editTipo').value,
             desk: document.getElementById('editDesk').checked ? 'Si' : 'No',
             spese_viaggi: document.getElementById('editSpeseViaggio').value || 0,
-            vitto_alloggio: document.getElementById('editVittoAlloggio').value || 0,
+            vitto_alloggio: document.getElementById('editVittoAlloggio')?.value || 0,
             altri_costi: document.getElementById('editAltreSpese').value || 0,
             spese_fatturate_vp: document.getElementById('editSpeseFattVP').value || 0,
             note: document.getElementById('editNote').value
         };
         
         // Validazione
-        if (!formData.data || !formData.gg || !formData.id_task) {
+        if (!basicData.data || !basicData.gg || !basicData.id_task) {
             alert('Compila tutti i campi obbligatori');
             return;
         }
         
         try {
-            const response = await fetch('API/ConsuntivazioneAPI.php', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    action: 'update_consuntivazione',
-                    ...formData
-                })
-            });
-            
-            const result = await response.json();
-            
+            // Se sono presenti file selezionati, usa FormData per inviare multipart
+            const fileInput = document.getElementById('editImages');
+            let response, result;
+
+            if (fileInput && fileInput.files && fileInput.files.length) {
+                const fd = new FormData();
+                fd.append('action', 'update_consuntivazione');
+                // Aggiungi campi base
+                Object.keys(basicData).forEach(k => fd.append(k, basicData[k]));
+                // Aggiungi eventuali file
+                for (let i = 0; i < fileInput.files.length; i++) {
+                    fd.append('images[]', fileInput.files[i]);
+                }
+
+                response = await fetch('API/ConsuntivazioneAPI.php', {
+                    method: 'POST',
+                    body: fd,
+                    credentials: 'same-origin'
+                });
+
+                const rawText = await response.text();
+                let cleanText = rawText.trim();
+                const jsonStart = cleanText.indexOf('{');
+                if (jsonStart > 0) cleanText = cleanText.substring(jsonStart);
+                try {
+                    result = JSON.parse(cleanText);
+                } catch (e) {
+                    console.error('Errore parsing JSON da update_consuntivazione (multipart). Raw response:', rawText);
+                    throw new Error('Risposta non valida dal server durante l\'upload delle immagini. Controlla i log server.');
+                }
+            } else {
+                response = await fetch('API/ConsuntivazioneAPI.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(Object.assign({ action: 'update_consuntivazione' }, basicData))
+                });
+                result = await response.json();
+            }
+
             if (result.success) {
+                // Dopo update ricarica le immagini esistenti per il modal (senza chiuderlo)
+                await this.reloadEditImages(basicData.id_giornata);
+
+                // Aggiorna la lista principale e mostra messaggio
+                await this.loadInitialData();
+                this.showMessage('Consuntivazione aggiornata con successo!', 'success');
+
                 // Chiudi modal
                 const modal = bootstrap.Modal.getInstance(document.getElementById('editModal'));
-                modal.hide();
-                
-                // Ricarica dati
-                this.loadInitialData();
-                
-                alert('Consuntivazione aggiornata con successo!');
+                if (modal) modal.hide();
             } else {
-                alert('Errore: ' + result.message);
+                if (result.debug) console.warn('Server debug:', result.debug);
+                alert('Errore: ' + result.message + (result.debug ? '\n(vedi console per dettagli server)' : ''));
             }
         } catch (error) {
             console.error('Errore salvataggio:', error);
