@@ -794,8 +794,8 @@ class CommesseAPI extends BaseAPI {
             $valore_monitor = ($monitor_mult > 0) ? ($valore_campo * $monitor_mult) : 0;
             $totale = $valore_campo + $valore_monitor;
 
-            // valore accounting: valore_campo * commissione
-            $valore_accounting = $valore_campo * floatval($commissione);
+            // costo accounting: valore_campo * commissione
+            $costo_accounting = $valore_campo * floatval($commissione);
 
             // valore spese già calcolato in $v['valore_spese']
             $valore_spese = floatval($v['valore_spese'] ?? 0);
@@ -857,9 +857,9 @@ class CommesseAPI extends BaseAPI {
                 'Costo_gg' => round($costo_gg_tot, 2),
                 'Costo_TOT' => round($costo_tot, 2),
                 'Valore_TOT' => round($valore_totale_mese, 2),
-                'valore_accounting' => round($valore_accounting, 2),
+                'costo_accounting' => round($costo_accounting, 2),
                 'id_account' => $id_account,
-                'margine' => round(($valore_totale_mese - $costo_tot - $valore_accounting), 2)
+                'margine' => round(($valore_totale_mese - $costo_tot - $costo_accounting), 2)
             ];
 
             $result[] = $entry;

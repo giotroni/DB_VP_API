@@ -105,6 +105,7 @@ class CommesseTaskSection extends BaseSection {
     }
 
     createCommessaCard(commessa) {
+        console.log('Creazione card per commessa:', commessa);
         const totalTasks = commessa.tasks.length;
         const activeTasks = commessa.tasks.filter(t => t.Stato_Task === 'In corso').length;
         const totalGiornate = commessa.tasks.reduce((sum, task) => sum + (parseFloat(task.gg_effettuate) || 0), 0);
@@ -113,6 +114,9 @@ class CommesseTaskSection extends BaseSection {
         const valoreComplessivoLavori = sommaValoreCampo + sommaValoreMonitoraggio;
         const valoreComplessivoSpese = commessa.tasks.reduce((sum, task) => sum + (parseFloat(task.valore_spese_maturato) || 0), 0);
         const valoreTotale = valoreComplessivoLavori + valoreComplessivoSpese;
+    // Costo Accounting: somma dei Valore_gg dei task di tipo 'Campo' moltiplicata per la Commissione della commessa
+    const commissioneCommessa = parseFloat(commessa.Commissione) || 0;
+    const costoAccounting = sommaValoreCampo * commissioneCommessa;
 
         return `
             <div class="management-card mb-4">
@@ -124,6 +128,7 @@ class CommesseTaskSection extends BaseSection {
                             <span class="badge bg-warning text-dark" title="Valore Lavori">${this.app.utils.formatCurrency(valoreComplessivoLavori)}</span>
                             <span class="badge bg-danger" title="Valore Spese">${this.app.utils.formatCurrency(valoreComplessivoSpese)}</span>
                             <span class="badge bg-primary">${totalTasks} Task</span>
+                            <span class="badge bg-secondary text-dark" title="Costo Accounting">${this.app.utils.formatCurrency(costoAccounting)}</span>
                             <span class="badge bg-success">${totalGiornate.toFixed(1)} Giorni</span>
                             <button class="btn btn-sm btn-outline-light" data-action="edit-commessa" data-id="${commessa.ID_COMMESSA}" title="Modifica Commessa"><i class="fas fa-pencil-alt"></i></button>
                             <button class="btn btn-vp-primary btn-sm" data-action="add-task" data-id="${commessa.ID_COMMESSA}" title="Aggiungi nuovo task"><i class="fas fa-plus me-1"></i>Nuovo Task</button>
