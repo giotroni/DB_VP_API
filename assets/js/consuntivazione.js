@@ -1155,14 +1155,19 @@ class ConsuntivazioneApp {
                     <strong>Tot: € ${this.formatItalianNumber(cons.Totale_Spese || 0)}</strong>
                     <strong>Rimborsabili: € ${this.formatItalianNumber(Math.max(0, parseFloat(cons.Totale_Spese || 0) - parseFloat(cons.Spese_Fatturate_VP || 0)))}</strong>
                 </div>
-                ${(cons.Confermata === 'No' && this.shouldShowConsuntivazioneForm()) ? `
+                ${this.shouldShowConsuntivazioneForm() ? `
                     <div class="consuntivazione-actions mt-2">
-                        <button class="btn btn-sm btn-outline-primary me-1" onclick="app.editConsuntivazione('${cons.ID_GIORNATA}')">
-                            <i class="fas fa-edit me-1"></i>Modifica
+                        <button class="btn btn-sm btn-outline-secondary me-1" title="Duplica giornata" onclick="app.duplicateConsuntivazione('${cons.ID_GIORNATA}')">
+                            <i class="fas fa-clone me-1"></i>Duplica
                         </button>
-                        <button class="btn btn-sm btn-outline-danger" onclick="app.deleteConsuntivazione('${cons.ID_GIORNATA}')">
-                            <i class="fas fa-trash me-1"></i>Elimina
-                        </button>
+                        ${cons.Confermata === 'No' ? `
+                            <button class="btn btn-sm btn-outline-primary me-1" onclick="app.editConsuntivazione('${cons.ID_GIORNATA}')">
+                                <i class="fas fa-edit me-1"></i>Modifica
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="app.deleteConsuntivazione('${cons.ID_GIORNATA}')">
+                                <i class="fas fa-trash me-1"></i>Elimina
+                            </button>
+                        ` : ''}
                     </div>
                 ` : ''}
             </div>
@@ -1554,13 +1559,18 @@ class ConsuntivazioneApp {
                         ${cons.Note ? `<small>${cons.Note}</small>` : '<span class="text-muted">-</span>'}
                     </td>
                     <td class="text-center">
-                        ${(cons.Confermata === 'No' && this.shouldShowConsuntivazioneForm()) ? `
-                            <button class="btn btn-sm btn-outline-primary me-1" onclick="app.editConsuntivazione('${cons.ID_GIORNATA}')">
-                                <i class="fas fa-edit"></i>
+                        ${this.shouldShowConsuntivazioneForm() ? `
+                            <button class="btn btn-sm btn-outline-secondary me-1" title="Duplica giornata" onclick="app.duplicateConsuntivazione('${cons.ID_GIORNATA}')">
+                                <i class="fas fa-clone"></i>
                             </button>
-                            <button class="btn btn-sm btn-outline-danger" onclick="app.deleteConsuntivazione('${cons.ID_GIORNATA}')">
-                                <i class="fas fa-trash"></i>
-                            </button>
+                            ${cons.Confermata === 'No' ? `
+                                <button class="btn btn-sm btn-outline-primary me-1" onclick="app.editConsuntivazione('${cons.ID_GIORNATA}')">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-danger" onclick="app.deleteConsuntivazione('${cons.ID_GIORNATA}')">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            ` : ''}
                         ` : '<span class="text-muted">-</span>'}
                     </td>
                 </tr>
@@ -2020,6 +2030,150 @@ class ConsuntivazioneApp {
         } catch (error) {
             console.error('Errore cancellazione:', error);
             alert('Errore durante la cancellazione');
+        }
+    }
+
+    // ========== METODI PER DUPLICAZIONE GIORNATA ==========
+
+    async duplicateConsuntivazione(idGiornata) {
+        try {
+            // Carica i dati della consuntivazione
+            const response = await fetch('API/ConsuntivazioneAPI.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    action: 'get_consuntivazione',
+                    id_giornata: idGiornata
+                })
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                this.showDuplicateModal(result.data);
+            } else {
+                alert('Errore: ' + result.message);
+            }
+        } catch (error) {
+            console.error('Errore caricamento consuntivazione per duplicazione:', error);
+            alert('Errore durante il caricamento della consuntivazione');
+        }
+    }
+
+    showDuplicateModal(consuntivazione) {
+        const modalHtml = `
+            <div class="modal fade" id="duplicateModal" tabindex="-1">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header bg-secondary text-white">
+                            <h5 class="modal-title">
+                                <i class="fas fa-clone me-2"></i>
+                                Duplica Giornata
+                            </h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <p>Stai duplicando la giornata del <strong>${this.formatDate(consuntivazione.Data)}</strong> per il task <strong>${consuntivazione.Task}</strong> (${consuntivazione.Commessa}).</p>
+                            <div class="form-group mb-3">
+                                <label for="duplicateData" class="form-label">Nuova Data *</label>
+                                <input type="date" id="duplicateData" class="form-control" value="${new Date().toISOString().split('T')[0]}">
+                            </div>
+                            <div class="form-text text-muted">Gli altri campi verranno copiati dalla giornata originale. Puoi modificare la data prima di confermare.</div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                            <button type="button" class="btn btn-primary" id="confirmDuplicateBtn">
+                                <i class="fas fa-copy me-1"></i> Duplica
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Rimuovi modal esistente e aggiungi il nuovo
+        const existingModal = document.getElementById('duplicateModal');
+        if (existingModal) {
+            existingModal.remove();
+        }
+
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+        // Aggiunge listener al pulsante di conferma
+        document.getElementById('confirmDuplicateBtn').addEventListener('click', () => {
+            this.confirmDuplicate(consuntivazione);
+        });
+
+        // Mostra il modal
+        const modal = new bootstrap.Modal(document.getElementById('duplicateModal'));
+        modal.show();
+    }
+
+    async confirmDuplicate(originalCons) {
+        const newDate = document.getElementById('duplicateData').value;
+        if (!newDate) {
+            alert('Inserisci la nuova data per la giornata duplicata');
+            return;
+        }
+
+        // Prepara i dati per la nuova consuntivazione copiando i campi principali
+        const payload = {
+            action: 'salva_consuntivazione',
+            data: newDate,
+            giornate_lavorate: parseFloat(originalCons.gg) || 1,
+            task: originalCons.ID_TASK || originalCons.ID_TASK,
+            tipo: originalCons.Tipo || 'Campo',
+            desk: originalCons.Desk || 'No',
+            spese_viaggio: parseFloat(originalCons.Spese_Viaggi || 0),
+            vitto_alloggio: parseFloat(originalCons.Vitto_alloggio || 0),
+            altre_spese: parseFloat(originalCons.Altri_costi || 0),
+            spese_fatturate_vp: parseFloat(originalCons.Spese_Fatturate_VP || 0),
+            note: originalCons.Note || ''
+        };
+
+        try {
+            const confirmBtn = document.getElementById('confirmDuplicateBtn');
+            const originalText = confirmBtn.innerHTML;
+            confirmBtn.disabled = true;
+            confirmBtn.innerHTML = '<span class="loading-spinner"></span> Duplica...';
+
+            const response = await fetch('API/ConsuntivazioneAPI.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            });
+
+            let rawText = await response.text();
+            let cleanText = rawText.trim();
+            const jsonStart = cleanText.indexOf('{');
+            if (jsonStart > 0) cleanText = cleanText.substring(jsonStart);
+            const result = JSON.parse(cleanText);
+
+            if (result.success) {
+                // Chiudi modal
+                const modal = bootstrap.Modal.getInstance(document.getElementById('duplicateModal'));
+                modal.hide();
+
+                // Ricarica dati
+                await Promise.all([this.loadStatistiche(), this.loadUltimeConsuntivazioni()]);
+
+                this.showMessage('Giornata duplicata con successo!', 'success');
+            } else {
+                alert('Errore durante la duplicazione: ' + result.message);
+            }
+        } catch (error) {
+            console.error('Errore durante la duplicazione:', error);
+            alert('Errore durante la duplicazione. Riprova.');
+        } finally {
+            const confirmBtn = document.getElementById('confirmDuplicateBtn');
+            if (confirmBtn) {
+                confirmBtn.disabled = false;
+                confirmBtn.innerHTML = '<i class="fas fa-copy me-1"></i> Duplica';
+            }
         }
     }
     
