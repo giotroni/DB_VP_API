@@ -26,7 +26,7 @@ class GiornateSection extends BaseSection {
      */
     render() {
         this.updatePageTitle('Riepilogo Giornate', 'Visualizza, aggiungi e modifica le giornate lavorative');
-        this.updateTopbarActions(`<button class="btn btn-vp-primary" data-action="add-giornata"><i class="fas fa-plus me-2"></i>Aggiungi Giornata</button>`);
+    this.updateTopbarActions(`<div class="d-flex gap-2"><button class="btn btn-vp-primary" data-action="add-giornata"><i class="fas fa-plus me-2"></i>Aggiungi Giornata</button><button class="btn btn-outline-secondary" data-action="export-giornate"><i class="fas fa-file-export me-2"></i>Esporta Excel</button></div>`);
         
         const container = this.getContainer();
         
@@ -78,6 +78,7 @@ class GiornateSection extends BaseSection {
                             <option value="Formazione">Formazione</option>
                         </select>
                     </div>
+                    <!-- export button moved to topbar -->
                 </div>
             </div>
             <div id="giornateContainer">
@@ -126,6 +127,8 @@ class GiornateSection extends BaseSection {
                 if (e.target && e.target.type === 'checkbox') this.updateDateFilterFromUI();
             });
         }
+
+    // L'esportazione è ora gestita dal bottone nella topbar che invia l'azione 'export-giornate'
     }
 
     /**
@@ -164,6 +167,88 @@ class GiornateSection extends BaseSection {
         this.filterData();
     }
 
+    /**
+     * Esporta le giornate visualizzate (filtrate) in un CSV compatibile con Excel.
+     */
+    exportGiornateToCSV() {
+        const data = this.filteredGiornateAggregate || this.giornateAggregate || [];
+
+        // Flatten in righe: ogni riga corrisponde a una giornata con il nome del collaboratore
+        const rows = [];
+        data.forEach(mese => {
+            mese.collaboratori.forEach(coll => {
+                coll.giornate.forEach(g => {
+                    const viaggio = parseFloat(g.Spese_Viaggi ?? g.Spese_Viaggio ?? g.spese_viaggio ?? 0) || 0;
+                    const vitto = parseFloat(g.Vitto_alloggio ?? g.Vitto_Alloggio ?? g.vitto_alloggio ?? 0) || 0;
+                    const altre = parseFloat(g.Altri_costi ?? g.AltriSpese ?? g.altri_costi ?? 0) || 0;
+                    const fatturate = parseFloat(g.Spese_Fatturate_VP ?? g.Spese_Fatturate ?? g.spese_fatturate_vp ?? 0) || 0;
+                    const valoreSpese = parseFloat(g.spese_totali ?? g.Spese_Totali ?? (viaggio + vitto + altre) ?? 0) || 0;
+                    const valoreGg = parseFloat(g.valore_calcolato ?? g.Valore_Calcolato ?? 0) || 0;
+                    const speseRimborsabili = viaggio + vitto + altre - fatturate;
+                    rows.push({
+                        'Collaboratore': coll.collaboratore_nome,
+                        'Data': this.app.utils.formatDate(g.Data),
+                        // Cliente rimosso per richiesta
+                        'Commessa': g.commessa_info?.Commessa || '',
+                        'Task': g.task_info?.Task || '',
+                        'Giorni': g.gg,
+                        'Spese Viaggio': parseFloat(g.Spese_Viaggi ?? g.Spese_Viaggio ?? g.spese_viaggio ?? 0) || 0,
+                        'Vitto/Alloggio': parseFloat(g.Vitto_alloggio ?? g.Vitto_Alloggio ?? g.vitto_alloggio ?? 0) || 0,
+                        'Altre Spese': parseFloat(g.Altri_costi ?? g.AltriSpese ?? g.altri_costi ?? 0) || 0,
+                        'Spese Fatturate VP': parseFloat(g.Spese_Fatturate_VP ?? g.Spese_Fatturate ?? g.spese_fatturate_vp ?? 0) || 0,
+                        'Spese Rimborsabili': speseRimborsabili,
+                        'Costo gg': parseFloat(g.Costo_gg ?? g.costo_gg ?? g.CostoGg ?? 0) || 0,
+                        'Valore Spese': valoreSpese,
+                        'Valore gg': valoreGg,
+                        'Valore TOT': (valoreSpese + valoreGg),
+                        'Note': (g.Note || '').replace(/\r?\n/g, ' ')
+                    });
+                });
+            });
+        });
+
+        if (rows.length === 0) {
+            this.ui.showToast('Nessuna giornata da esportare con i filtri attivi.', 'info');
+            return;
+        }
+
+    // Costruisci CSV (punto e virgola come separatore per Excel italiano) - ordine richiesto dall'utente
+    const headers = ['Collaboratore','Data','Commessa','Task','Giorni','Spese Viaggio','Vitto/Alloggio','Altre Spese','Spese Fatturate VP','Spese Rimborsabili','Costo gg','Valore Spese','Valore gg','Valore TOT','Note'];
+    const csvLines = [headers.join(';')];
+
+        rows.forEach(r => {
+            const line = headers.map(h => {
+                let v = r[h] ?? '';
+                // numeri con decimale con la virgola per Excel locale
+                if (['Giorni','Valore Spese','Valore gg','Valore TOT','Costo gg','Spese Viaggio','Vitto/Alloggio','Altre Spese','Spese Fatturate VP','Spese Rimborsabili'].includes(h)) {
+                    const num = parseFloat(v);
+                    v = isNaN(num) ? '' : num.toString().replace('.', ',');
+                }
+                // escape ; and newlines and wrap in quotes if needed
+                if (typeof v === 'string' && (v.includes(';') || v.includes('\n') || v.includes('\r') || v.includes('"'))) {
+                    v = '"' + v.replace(/"/g, '""') + '"';
+                }
+                return v;
+            }).join(';');
+            csvLines.push(line);
+        });
+
+        const csvContent = csvLines.join('\r\n');
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+
+        const a = document.createElement('a');
+        a.href = url;
+        const now = new Date();
+        const filename = `giornate_export_${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}.csv`;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        this.ui.showToast(`Esportazione completata: ${rows.length} righe.`, 'success');
+    }
+
     handleAction(action, id, type, targetElement, e) {
         // Se il click avviene nell'header della card, evitiamo il bubbling per azioni specifiche
         if (targetElement && targetElement.closest && targetElement.closest('.management-card-header') && !['toggle-mese', 'edit-giornata'].includes(action)) {
@@ -178,6 +263,9 @@ class GiornateSection extends BaseSection {
                 if (e && typeof e.preventDefault === 'function') e.preventDefault();
                 this.handleToggleConfermaMese(id);
                 break;
+                case 'export-giornate':
+                    this.exportGiornateToCSV();
+                    break;
             case 'edit-giornata':
                 this.showGiornataModal(id);
                 break;
