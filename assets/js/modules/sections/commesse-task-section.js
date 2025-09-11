@@ -17,7 +17,7 @@ class CommesseTaskSection extends BaseSection {
 
     render() {
         this.updatePageTitle('Situazione Commesse e Task', 'Visualizza e gestisci commesse e task');
-        this.updateTopbarActions(`<button class="btn btn-vp-primary" data-action="add-commessa"><i class="fas fa-plus me-2"></i>Nuova Commessa</button>`);
+    this.updateTopbarActions(`<div class="d-flex gap-2"><button class="btn btn-vp-primary" data-action="add-commessa"><i class="fas fa-plus me-2"></i>Nuova Commessa</button><button class="btn btn-outline-secondary" data-action="export-commesse"><i class="fas fa-file-export me-2"></i>Esporta Excel</button></div>`);
         const container = this.getContainer();
         const currentYear = new Date().getFullYear();
         let yearOptions = '';
@@ -37,6 +37,8 @@ class CommesseTaskSection extends BaseSection {
                 </div>
             </div>
             <div id="commesseTaskContainer">${this.renderCommesseCards(this.commesseConTask)}</div>`;
+        // salva l'ultima lista mostrata (inizialmente tutte le commesse raggruppate)
+        this.lastFilteredData = this.commesseConTask;
         this.updateStats(this.commesseConTask);
         this.bindEvents();
     }
@@ -89,6 +91,9 @@ class CommesseTaskSection extends BaseSection {
                 const targetId = targetElement.dataset.targetFilter;
                 this.toggleAllCheckboxes(targetId);
                 break;
+            case 'export-commesse':
+                this.exportCommesseToExcel();
+                break;
             default: console.warn(`Azione non gestita: ${action}`);
         }
     }
@@ -114,9 +119,46 @@ class CommesseTaskSection extends BaseSection {
         const valoreComplessivoLavori = sommaValoreCampo + sommaValoreMonitoraggio;
         const valoreComplessivoSpese = commessa.tasks.reduce((sum, task) => sum + (parseFloat(task.valore_spese_maturato) || 0), 0);
         const valoreTotale = valoreComplessivoLavori + valoreComplessivoSpese;
-    // Costo Accounting: somma dei Valore_gg dei task di tipo 'Campo' moltiplicata per la Commissione della commessa
-    const commissioneCommessa = parseFloat(commessa.Commissione) || 0;
-    const costoAccounting = sommaValoreCampo * commissioneCommessa;
+        // Costo Accounting: somma dei Valore_gg dei task di tipo 'Campo' moltiplicata per la Commissione della commessa
+        const commissioneCommessa = parseFloat(commessa.Commissione) || 0;
+        const costoAccounting = sommaValoreCampo * commissioneCommessa;
+
+        // ======= NUOVO: Calcolo di "costo_totale_attività" =======
+        // 1) Per i task di tipo 'Campo' sommiamo per ogni giornata: Costo_gg + Costo_Spese (con fallback sui nomi possibili)
+        const costoCampoDalleGiornate = commessa.tasks
+            .filter(t => t.Tipo === 'Campo')
+            .reduce((accTask, task) => {
+                const giornate = task.giornate || [];
+                const costoPerTask = giornate.reduce((accGg, g) => {
+                    const costoGg = parseFloat(g.Costo_gg ?? g.costo_gg ?? 0) || 0;
+                    // Usare Valore_spese come richiesto (non Costo_Spese)
+                    const valoreSpese = parseFloat(g.Valore_spese ?? g.valore_spese ?? g.Valore_Spese ?? 0) || 0;
+                    return accGg + costoGg + valoreSpese;
+                }, 0);
+                return accTask + costoPerTask;
+            }, 0);
+
+        // 2) Per i task di tipo 'Monitoraggio' aggiungiamo il valore maturato:
+        //    sommaValoreCampo (calcolato dalle proprietà task.valore_gg_maturato o dalle giornate) * Valore_gg (percentuale)
+        const sommaValoreCampoMaturato = commessa.tasks.reduce((sum, task) => {
+            if (task.Tipo !== 'Campo') return sum;
+            // preferiamo usare task.valore_gg_maturato se presente, altrimenti ricaviamo dalle giornate
+            if (typeof task.valore_gg_maturato !== 'undefined' && task.valore_gg_maturato !== null) {
+                return sum + (parseFloat(task.valore_gg_maturato) || 0);
+            }
+            const fromGiornate = (task.giornate || []).reduce((s, g) => s + (parseFloat(g.valore_calcolato ?? g.valore_calcolato ?? g.Valore_calcolato ?? 0) || 0), 0);
+            return sum + fromGiornate;
+        }, 0);
+
+        const costoMonitoraggio = commessa.tasks.reduce((acc, task) => {
+            if (task.Tipo === 'Monitoraggio' && parseFloat(task.Valore_gg) > 0) {
+                return acc + (sommaValoreCampoMaturato * (parseFloat(task.Valore_gg) || 0));
+            }
+            return acc;
+        }, 0);
+
+    const costo_totale_attivita = costoCampoDalleGiornate + costoMonitoraggio;
+        // ==========================================================
 
         return `
             <div class="management-card mb-4">
@@ -127,17 +169,20 @@ class CommesseTaskSection extends BaseSection {
                             <span class="badge bg-dark" title="Valore TOTALE">${this.app.utils.formatCurrency(valoreTotale)}</span>
                             <span class="badge bg-warning text-dark" title="Valore Lavori">${this.app.utils.formatCurrency(valoreComplessivoLavori)}</span>
                             <span class="badge bg-danger" title="Valore Spese">${this.app.utils.formatCurrency(valoreComplessivoSpese)}</span>
-                            <span class="badge bg-primary">${totalTasks} Task</span>
-                            <span class="badge bg-secondary text-dark" title="Costo Accounting">${this.app.utils.formatCurrency(costoAccounting)}</span>
+                            <!-- badge numero di task rimosso -->
+                            <span class="badge bg-secondary text-dark" title="Costo totale attività">${this.app.utils.formatCurrency(costo_totale_attivita)}</span>
+                            <!-- Margine commessa = Valore TOTALE - Costo totale attività - Costo Accounting -->
+                            <span class="badge bg-info text-dark" title="Margine Commessa">${this.app.utils.formatCurrency((valoreTotale || 0) - (costo_totale_attivita || 0) - (costoAccounting || 0))}</span>
                             <span class="badge bg-success">${totalGiornate.toFixed(1)} Giorni</span>
                             <button class="btn btn-sm btn-outline-light" data-action="edit-commessa" data-id="${commessa.ID_COMMESSA}" title="Modifica Commessa"><i class="fas fa-pencil-alt"></i></button>
                             <button class="btn btn-vp-primary btn-sm" data-action="add-task" data-id="${commessa.ID_COMMESSA}" title="Aggiungi nuovo task"><i class="fas fa-plus me-1"></i>Nuovo Task</button>
                             <button class="commessa-toggle-btn" id="toggleBtn-${commessa.ID_COMMESSA}"><i class="fas fa-chevron-down"></i></button>
                         </div>
                     </div>
-                    <div class="mt-2 text-light small">
+                        <div class="mt-2 text-light small">
                         <i class="fas fa-building me-1"></i> ${commessa.Tipo_Commessa === 'Interna' ? 'Interna' : `Cliente: ${commessa.cliente_nome}`} |
                         <i class="fas fa-user me-1"></i> Responsabile: ${commessa.responsabile_nome} |
+                        <i class="fas fa-coins me-1"></i> Costo Accounting: ${this.app.utils.formatCurrency(costoAccounting)} |
                         <i class="fas fa-tasks me-1"></i> Task attivi: ${activeTasks}
                     </div>
                 </div>
@@ -327,8 +372,10 @@ class CommesseTaskSection extends BaseSection {
             filteredData = finalData;
         }
 
-        document.getElementById('commesseTaskContainer').innerHTML = this.renderCommesseCards(filteredData);
-        this.updateStats(filteredData);
+    document.getElementById('commesseTaskContainer').innerHTML = this.renderCommesseCards(filteredData);
+    // tieni traccia dei dati correnti mostrati per l'export
+    this.lastFilteredData = filteredData;
+    this.updateStats(filteredData);
     }
     
 
@@ -521,27 +568,58 @@ class CommesseTaskSection extends BaseSection {
 
             const modalBody = giornateTask.length === 0
                 ? '<p class="text-muted">Nessuna giornata registrata per questo task nel periodo selezionato.</p>'
-                : `<div class="table-responsive">
-                    <table class="table table-sm table-hover">
-                        <thead><tr><th>Data</th><th>Collaboratore</th><th>gg</th><th>Tipo</th><th>Note</th><th>Valore (€)</th><th>Valore Spese (€)</th></tr></thead>
-                        <tbody>
-                            ${giornateTask.map(g => {
-                                const collab = this.app.collaboratori.find(c => c.ID_COLLABORATORE === g.ID_COLLABORATORE);
-                                const valoreGiornata = this.app.utils.formatCurrency(g.valore_calcolato || 0);
-                                const valoreSpese = this.app.utils.formatCurrency(g.Valore_spese || 0);
-                                return `<tr>
-                                    <td>${new Date(g.Data).toLocaleDateString('it-IT')}</td>
-                                    <td>${collab?.Collaboratore || 'N/A'}</td>
-                                    <td><span class="badge bg-primary">${g.gg}g</span></td>
-                                    <td>${g.Tipo}</td>
-                                    <td>${g.Note || '-'}</td>
-                                    <td class="text-end fw-bold">${valoreGiornata}</td>
-                                    <td class="text-end fw-bold text-danger">${valoreSpese}</td>
-                                </tr>`;
-                            }).join('')}
-                        </tbody>
-                    </table>
-                </div>`;
+                : (() => {
+                    // Calcola i totali per il riepilogo
+                    const totals = giornateTask.reduce((acc, g) => {
+                        const gg = parseFloat(g.gg) || 0;
+                        const valore = parseFloat(g.valore_calcolato ?? g.Valore_calcolato ?? 0) || 0;
+                        const costoGg = parseFloat(g.Costo_gg ?? g.costo_gg ?? g.Valore_gg ?? 0) || 0;
+                        const valoreSpese = parseFloat(g.Valore_spese ?? g.valore_spese ?? 0) || 0;
+                        acc.num_gg += gg;
+                        acc.valore_tot += valore;
+                        acc.costo_gg += costoGg;
+                        acc.valore_spese += valoreSpese;
+                        return acc;
+                    }, { num_gg: 0, valore_tot: 0, costo_gg: 0, valore_spese: 0 });
+
+                    const costo_tot = totals.costo_gg + totals.valore_spese;
+
+                    return `<div class="table-responsive">
+                        <table class="table table-sm table-hover">
+                            <thead><tr><th>Data</th><th>Collaboratore</th><th>gg</th><th>Tipo</th><th>Note</th><th>Valore (€)</th><th>Costo_gg (€)</th><th>Valore Spese (€)</th></thead>
+                            <tbody>
+                                ${giornateTask.map(g => {
+                                    const collab = this.app.collaboratori.find(c => c.ID_COLLABORATORE === g.ID_COLLABORATORE);
+                                    const valoreGiornata = this.app.utils.formatCurrency(g.valore_calcolato || g.Valore_calcolato || 0);
+                                    const costoGgRaw = parseFloat(g.Costo_gg ?? g.costo_gg ?? g.Valore_gg ?? 0) || 0;
+                                    const costoGg = this.app.utils.formatCurrency(costoGgRaw);
+                                    const valoreSpese = this.app.utils.formatCurrency(g.Valore_spese || g.valore_spese || 0);
+                                    return `<tr>
+                                        <td>${new Date(g.Data).toLocaleDateString('it-IT')}</td>
+                                        <td>${collab?.Collaboratore || 'N/A'}</td>
+                                        <td><span class="badge bg-primary">${g.gg}g</span></td>
+                                        <td>${g.Tipo}</td>
+                                        <td>${g.Note || '-'}</td>
+                                        <td class="text-end fw-bold">${valoreGiornata}</td>
+                                        <td class="text-end fw-bold">${costoGg}</td>
+                                        <td class="text-end fw-bold text-danger">${valoreSpese}</td>
+                                    </tr>`;
+                                }).join('')}
+                            </tbody>
+                            <tfoot>
+                                <tr class="table-active">
+                                    <td colspan="2" class="text-start"><strong>Riepilogo</strong></td>
+                                    <td class="text-end"><strong>${totals.num_gg.toFixed(1)}</strong></td>
+                                    <td></td>
+                                    <td></td>
+                                    <td class="text-end"><strong>${this.app.utils.formatCurrency(totals.valore_tot)}</strong></td>
+                                    <td class="text-end"><strong>${this.app.utils.formatCurrency(totals.costo_gg)}</strong></td>
+                                    <td class="text-end"><strong>${this.app.utils.formatCurrency(totals.valore_spese)}</strong></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>`;
+                })();
 
             const modalActions = [{ html: '<button type-button" class="btn btn-secondary" data-bs-dismiss="modal">Chiudi</button>' }];
             this.ui.createModal(`giornateModal_${taskId}`, modalTitle, modalBody, modalActions, { size: 'modal-xl' });
@@ -686,8 +764,10 @@ class CommesseTaskSection extends BaseSection {
     // ========================================================================
     
     updateStats(data) {
-            const commesseCount = data.length;
-            const taskCount = data.reduce((sum, commessa) => sum + commessa.tasks.length, 0);
+        // Conta solo le commesse di tipo 'Cliente'
+        const commesseCount = data.filter(c => c.Tipo_Commessa === 'Cliente').length;
+        // Rimuoviamo la misura del numero totale di Task dalle statistiche
+        const taskCount = null;
             
             const giornateCount = data.reduce((commessaSum, commessa) => {
                 const taskSum = commessa.tasks.reduce((sum, task) => {
@@ -724,16 +804,48 @@ class CommesseTaskSection extends BaseSection {
             // NUOVO: Calcolo del valore totale complessivo
             const valoreTotaleComplessivo = valoreTotaleLavori + valoreTotaleSpese;
 
+            // NUOVO: Calcolo Costo Totale Attività e Margine Commessa a livello globale
+            const totaleCostoAttivita = data.reduce((sumComm, commessa) => {
+                const costoCampo = commessa.tasks.reduce((sumTask, task) => {
+                    if (task.Tipo !== 'Campo') return sumTask;
+                    const giornate = task.giornate || [];
+                    const costoPerTask = giornate.reduce((accGg, g) => {
+                        const costoGg = parseFloat(g.Costo_gg ?? g.costo_gg ?? 0) || 0;
+                        const valoreSpese = parseFloat(g.Valore_spese ?? g.valore_spese ?? 0) || 0;
+                        return accGg + costoGg + valoreSpese;
+                    }, 0);
+                    return sumTask + costoPerTask;
+                }, 0);
+
+                const sommaValoreCampo = commessa.tasks.reduce((sum, task) => (task.Tipo === 'Campo' ? sum + (parseFloat(task.valore_gg_maturato) || 0) : sum), 0);
+                const costoMonitor = commessa.tasks.reduce((acc, task) => {
+                    if (task.Tipo === 'Monitoraggio' && parseFloat(task.Valore_gg) > 0) {
+                        return acc + (sommaValoreCampo * (parseFloat(task.Valore_gg) || 0));
+                    }
+                    return acc;
+                }, 0);
+
+                return sumComm + costoCampo + costoMonitor;
+            }, 0);
+
+            const totaleCostoAccounting = data.reduce((sumComm, commessa) => {
+                const sommaValoreCampo = commessa.tasks.reduce((sum, task) => (task.Tipo === 'Campo' ? sum + (parseFloat(task.valore_gg_maturato) || 0) : sum), 0);
+                const commissione = parseFloat(commessa.Commissione) || 0;
+                return sumComm + (sommaValoreCampo * commissione);
+            }, 0);
+
+            const totaleMargine = valoreTotaleComplessivo - totaleCostoAttivita - totaleCostoAccounting;
+
             const statsContainer = document.getElementById('stats-row-container');
             if (statsContainer) {
                 statsContainer.innerHTML = `
                     <div class="stats-row">
                         ${this.ui.createStatsCard('fas fa-briefcase', commesseCount, 'Commesse')}
-                        ${this.ui.createStatsCard('fas fa-tasks', taskCount, 'Task')}
                         ${this.ui.createStatsCard('fas fa-calendar-check', giornateCount.toFixed(1), "Giornate Campo")}
-                        ${this.ui.createStatsCard('fas fa-euro-sign', this.app.utils.formatCurrency(valoreTotaleLavori), 'Valore Lavori')}
-                        ${this.ui.createStatsCard('fas fa-receipt', this.app.utils.formatCurrency(valoreTotaleSpese), 'Valore Spese')}
                         ${this.ui.createStatsCard('fas fa-calculator', this.app.utils.formatCurrency(valoreTotaleComplessivo), 'Valore TOTALE')}
+                        ${this.ui.createStatsCard('fas fa-cogs', this.app.utils.formatCurrency(totaleCostoAttivita), 'Costo Totale Attività')}
+                        ${this.ui.createStatsCard('fas fa-building', this.app.utils.formatCurrency(totaleCostoAccounting), 'COSTO ACCOUNTING')}
+                        ${this.ui.createStatsCard('fas fa-chart-line', this.app.utils.formatCurrency(totaleMargine), 'MARGINE')}
                     </div>
                 `;
             }
@@ -837,5 +949,65 @@ class CommesseTaskSection extends BaseSection {
             }
         });
         return Array.from(commesseMap.values()).sort((a, b) => (a.Commessa || '').localeCompare(b.Commessa || ''));
+    }
+
+    // Export delle commesse attualmente visualizzate in CSV (aperto in Excel)
+    exportCommesseToExcel() {
+        const data = this.lastFilteredData || this.groupTasksByCommessa();
+        if (!data || data.length === 0) { this.ui.showToast('Nessuna commessa da esportare.', 'warning'); return; }
+
+        const headers = [
+            'ID_COMMESSA','Commessa','Tipo_Commessa','Cliente','Responsabile','Stato_Commessa','Valore_TOTALE','Valore_Lavori','Valore_Spese','Costo_Totale_Attivita','Costo_Accounting','Margine_Commessa','Giornate_Campo','Totale_Giornate','Num_Tasks'
+        ];
+
+        const rows = data.map(commessa => {
+            const sommaValoreCampo = commessa.tasks.reduce((sum, task) => (task.Tipo === 'Campo' ? sum + (parseFloat(task.valore_gg_maturato) || 0) : sum), 0);
+            const valoreSpese = commessa.tasks.reduce((sum, task) => sum + (parseFloat(task.valore_spese_maturato) || 0), 0);
+            const valoreLavori = sommaValoreCampo + commessa.tasks.reduce((sum, task) => (task.Tipo === 'Monitoraggio' && parseFloat(task.Valore_gg) > 0 ? sum + (sommaValoreCampo * (parseFloat(task.Valore_gg) || 0)) : sum), 0);
+            // calcola costo totale attività per la commessa (Campo + Monitoraggio)
+            const costoCampoAttivita = commessa.tasks.reduce((accTask, task) => {
+                if (task.Tipo !== 'Campo') return accTask;
+                const giornate = task.giornate || [];
+                return accTask + giornate.reduce((accGg, g) => {
+                    const costoGg = parseFloat(g.Costo_gg ?? g.costo_gg ?? 0) || 0;
+                    const valoreSp = parseFloat(g.Valore_spese ?? g.valore_spese ?? 0) || 0;
+                    return accGg + costoGg + valoreSp;
+                }, 0);
+            }, 0);
+            // contributo dei task di Monitoraggio: sommaValoreCampo * Valore_gg (per ogni task monitoraggio)
+            const costoMonitoraggio = commessa.tasks.reduce((acc, task) => {
+                if (task.Tipo === 'Monitoraggio' && parseFloat(task.Valore_gg) > 0) {
+                    return acc + (sommaValoreCampo * (parseFloat(task.Valore_gg) || 0));
+                }
+                return acc;
+            }, 0);
+            const costoAttivita = costoCampoAttivita + costoMonitoraggio;
+            const costoAccounting = sommaValoreCampo * (parseFloat(commessa.Commissione) || 0);
+            const margine = (valoreLavori + valoreSpese) - costoAttivita - costoAccounting;
+            const totaleGiornate = commessa.tasks.reduce((sum, task) => sum + (parseFloat(task.gg_effettuate) || 0), 0);
+            const giornateCampo = commessa.tasks.reduce((sumTask, task) => {
+                const gg = (task.giornate || []).filter(g => g.Tipo === 'Campo').reduce((s, g) => s + (parseFloat(g.gg) || 0), 0);
+                return sumTask + gg;
+            }, 0);
+            const numTasks = commessa.tasks.length;
+            return [commessa.ID_COMMESSA, commessa.Commessa, commessa.Tipo_Commessa, commessa.cliente_nome, commessa.responsabile_nome, commessa.Stato_Commessa, valoreLavori + valoreSpese, valoreLavori, valoreSpese, costoAttivita, costoAccounting, margine, giornateCampo, totaleGiornate, numTasks];
+        });
+
+        // costruisci CSV
+        const csvLines = [headers.join(';')];
+        rows.forEach(r => {
+            csvLines.push(r.map(v => typeof v === 'number' ? v.toString().replace('.', ',') : `"${(v||'').toString().replace(/"/g,'""')}"`).join(';'));
+        });
+
+        const blob = new Blob([csvLines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `commesse_export_${new Date().toISOString().slice(0,10)}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+        this.ui.showToast('Esportazione avviata.', 'success');
     }
 }
