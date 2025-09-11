@@ -36,6 +36,7 @@ class CSVImporter {
         'ANA_TASK',
         'ANA_TARIFFE_COLLABORATORI',
         'FACT_GIORNATE',
+        'GIORNATE_IMMAGINI',
         'FACT_FATTURE'
     ];
     
@@ -47,6 +48,7 @@ class CSVImporter {
         'ANA_TASK.csv' => 'ANA_TASK',
         'ANA_TARIFFE_COLLABORATORI.csv' => 'ANA_TARIFFE_COLLABORATORI',
         'FACT_GIORNATE.csv' => 'FACT_GIORNATE',
+        'GIORNATE_IMMAGINI.csv' => 'GIORNATE_IMMAGINI',
         'FACT_FATTURE.csv' => 'FACT_FATTURE'
     ];
     
@@ -704,8 +706,41 @@ class CSVImporter {
                     }
                 }
                 
-                // Converti stringhe vuote in NULL
+                // Special handling for GIORNATE_IMMAGINI: if field looks like a filename or data URI,
+                // try to load the binary content from Dati/Images or Export/Images or decode base64.
                 $cleanValue = ($value === '') ? null : $value;
+                if ($tableName === 'GIORNATE_IMMAGINI' && $cleanValue !== null) {
+                    // If value looks like data URI
+                    if (preg_match('/^data:(.*);base64,(.*)$/', $cleanValue, $m)) {
+                        $bin = base64_decode($m[2]);
+                        $cleanValue = $bin;
+                    } else {
+                        // If it's a filename (no spaces and contains a dot) try to load from possible folders
+                        if (preg_match('/^[a-zA-Z0-9_\-\.]+\.[a-zA-Z0-9]{2,5}$/', $cleanValue)) {
+                            $possiblePaths = [
+                                $this->dataDir . '/Images/' . $cleanValue,
+                                __DIR__ . '/Export/Images/' . $cleanValue,
+                                __DIR__ . '/Export/' . $cleanValue
+                            ];
+                            $found = false;
+                            foreach ($possiblePaths as $p) {
+                                if (file_exists($p)) {
+                                    $bin = file_get_contents($p);
+                                    $cleanValue = $bin;
+                                    $found = true;
+                                    break;
+                                }
+                            }
+                            if (!$found) {
+                                // leave value as-is (maybe it's intended to be filename string)
+                                $this->log("GIORNATE_IMMAGINI: file non trovato per valore '$cleanValue' nei percorsi: " . implode(', ', $possiblePaths));
+                            }
+                        }
+                    }
+                }
+
+                // Converti stringhe vuote in NULL (se non convertite in binario)
+                if ($cleanValue === '') $cleanValue = null;
                 $params[$finalHeaders[$i]] = $cleanValue;
                 
                 // Per tabelle auto-increment, prepara anche parametri senza campo auto-increment

@@ -62,11 +62,91 @@ try {
         
         // Scrivi i dati
         $recordCount = 0;
-        foreach ($data as $row) {
-            // Converti numeri decimali in formato italiano
-            $formattedRow = array_map($formatNumber, $row);
-            fputcsv($file, $formattedRow, ';');
-            $recordCount++;
+        // Se la tabella è GIORNATE_IMMAGINI, gestisci eventuali colonne BLOB (salva immagini su disco)
+        $imagesDir = $exportDir . '/Images';
+        if (strtoupper($table) === 'GIORNATE_IMMAGINI') {
+            if (!is_dir($imagesDir)) {
+                mkdir($imagesDir, 0755, true);
+            }
+
+            // Identifica colonne BLOB/TEXT/BINARY tramite DESCRIBE
+            $blobCols = array();
+            try {
+                $colsInfo = $db->query("DESCRIBE `{$table}`")->fetchAll(PDO::FETCH_ASSOC);
+                foreach ($colsInfo as $col) {
+                    $type = strtolower($col['Type']);
+                    if (strpos($type, 'blob') !== false || strpos($type, 'binary') !== false || strpos($type, 'text') !== false) {
+                        $blobCols[] = $col['Field'];
+                    }
+                }
+            } catch (Exception $e) {
+                // in caso di errore, lascia blobCols vuoto e procederemo con l'esport normale
+                $blobCols = array();
+            }
+
+            // Prova a individuare la PK per nomi file più leggibili
+            $pkCol = null;
+            try {
+                $pkInfo = $db->query("SHOW KEYS FROM `{$table}` WHERE Key_name = 'PRIMARY'")->fetch(PDO::FETCH_ASSOC);
+                if ($pkInfo && isset($pkInfo['Column_name'])) {
+                    $pkCol = $pkInfo['Column_name'];
+                }
+            } catch (Exception $e) {
+                $pkCol = null;
+            }
+
+            foreach ($data as $row) {
+                $rowCopy = $row;
+
+                // Per ogni colonna BLOB trovata, salva su disco e sostituisci nel CSV
+                foreach ($blobCols as $colName) {
+                    if (!isset($row[$colName]) || $row[$colName] === null || $row[$colName] === '') continue;
+
+                    $bin = $row[$colName];
+
+                    // Usa finfo per cercare il mime-type
+                    $ext = 'bin';
+                    if (function_exists('finfo_open')) {
+                        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+                        if ($finfo) {
+                            $mime = finfo_buffer($finfo, $bin);
+                            finfo_close($finfo);
+                            if ($mime) {
+                                switch ($mime) {
+                                    case 'image/jpeg': $ext = 'jpg'; break;
+                                    case 'image/png': $ext = 'png'; break;
+                                    case 'image/gif': $ext = 'gif'; break;
+                                    case 'image/webp': $ext = 'webp'; break;
+                                    case 'image/bmp': $ext = 'bmp'; break;
+                                    default: $ext = 'bin';
+                                }
+                            }
+                        }
+                    }
+
+                    $idPart = ($pkCol && isset($row[$pkCol])) ? $row[$pkCol] : uniqid();
+                    $filename = 'giornate_img_' . $idPart . '_' . $colName . '_' . uniqid() . '.' . $ext;
+                    $filePath = $imagesDir . '/' . $filename;
+
+                    // Scrivi i dati binari su file
+                    file_put_contents($filePath, $bin);
+
+                    // Sostituisci nel CSV il valore con il nome del file
+                    $rowCopy[$colName] = $filename;
+                }
+
+                // Converti numeri decimali in formato italiano
+                $formattedRow = array_map($formatNumber, $rowCopy);
+                fputcsv($file, $formattedRow, ';');
+                $recordCount++;
+            }
+        } else {
+            foreach ($data as $row) {
+                // Converti numeri decimali in formato italiano
+                $formattedRow = array_map($formatNumber, $row);
+                fputcsv($file, $formattedRow, ';');
+                $recordCount++;
+            }
         }
         
         fclose($file);
