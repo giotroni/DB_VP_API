@@ -8,6 +8,9 @@ class GiornateSection extends BaseSection {
         this.giornateAggregate = [];
         this.filteredGiornateAggregate = []; // NUOVO: Array per i dati filtrati
         this.mesiItaliani = ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"];
+        // stato dei filtri per anno/mese/tipo
+        this.activeDateFilter = { years: [], months: [] };
+        this.activeTipoFilter = '';
     }
 
     async loadData() {
@@ -31,27 +34,49 @@ class GiornateSection extends BaseSection {
         const collaboratoriOptions = this.app.collaboratori.map(c => `<option value="${c.ID_COLLABORATORE}">${c.Collaboratore}</option>`).join('');
         const commesseOptions = this.app.commesse.map(c => `<option value="${c.ID_COMMESSA}">${c.Commessa}</option>`).join('');
 
+        // prepara le opzioni per anno e mese (riuso pattern usato altrove)
+        const currentYear = new Date().getFullYear();
+        let yearOptions = '';
+        for (let y = 2024; y <= currentYear + 1; y++) { yearOptions += `<li><label class="dropdown-item"><input type="checkbox" class="form-check-input me-2" value="${y}">${y}</label></li>`; }
+        const months = this.mesiItaliani;
+        let monthOptions = months.map((month, index) => `<li><label class="dropdown-item"><input type="checkbox" class="form-check-input me-2" value="${index + 1}">${month}</label></li>`).join('');
+
         container.innerHTML = `
             <div id="stats-row-container"></div>
             <!-- NUOVO: Blocco filtri -->
             <div class="search-filters">
                 <div class="row gy-3 align-items-end">
-                    <div class="col-lg-4 col-md-6">
+                    <div class="col-lg-3 col-md-6">
                         <label for="filterCollaboratore" class="form-label">Filtra per Collaboratore</label>
                         <select class="form-select" id="filterCollaboratore">
                             <option value="">Tutti i collaboratori</option>
                             ${collaboratoriOptions}
                         </select>
                     </div>
-                    <div class="col-lg-4 col-md-6">
+                    <div class="col-lg-3 col-md-6">
                         <label for="filterCommessa" class="form-label">Filtra per Commessa</label>
                         <select class="form-select" id="filterCommessa">
                             <option value="">Tutte le commesse</option>
                             ${commesseOptions}
                         </select>
                     </div>
-                    <div class="col-lg-2 col-md-12">
-                         <p class="text-muted small mb-0 mt-3">I filtri vengono applicati automaticamente.</p>
+                    <div class="col-lg-2 col-md-6">
+                        <label class="form-label">Anno</label>
+                        <div class="dropdown"><button class="btn btn-outline-secondary dropdown-toggle w-100" type="button" id="filterAnnoBtn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">Tutti</button><ul class="dropdown-menu" id="filterAnno" aria-labelledby="filterAnnoBtn"><li><a class="dropdown-item fw-bold" href="#" data-action="toggle-all-filter" data-target-filter="filterAnno">Seleziona/Deseleziona</a></li><li><hr class="dropdown-divider"></li>${yearOptions}</ul></div>
+                    </div>
+                    <div class="col-lg-2 col-md-6">
+                        <label class="form-label">Mese</label>
+                        <div class="dropdown"><button class="btn btn-outline-secondary dropdown-toggle w-100" type="button" id="filterMeseBtn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">Tutti</button><ul class="dropdown-menu" id="filterMese" aria-labelledby="filterMeseBtn"><li><a class="dropdown-item fw-bold" href="#" data-action="toggle-all-filter" data-target-filter="filterMese">Seleziona/Deseleziona</a></li><li><hr class="dropdown-divider"></li>${monthOptions}</ul></div>
+                    </div>
+                    <div class="col-lg-2 col-md-6">
+                        <label for="filterTipo" class="form-label">Filtra per Tipo</label>
+                        <select class="form-select" id="filterTipo">
+                            <option value="">Tutti i tipi</option>
+                            <option value="Campo">Campo</option>
+                            <option value="Promo">Promo</option>
+                            <option value="Sviluppo">Sviluppo</option>
+                            <option value="Formazione">Formazione</option>
+                        </select>
                     </div>
                 </div>
             </div>
@@ -71,70 +96,180 @@ class GiornateSection extends BaseSection {
     bindEvents() {
         document.getElementById('filterCollaboratore')?.addEventListener('change', () => this.filterData());
         document.getElementById('filterCommessa')?.addEventListener('change', () => this.filterData());
+        document.getElementById('filterTipo')?.addEventListener('change', (e) => { this.activeTipoFilter = e.target.value || ''; this.filterData(); });
+
+        // gestore per i link Seleziona/Deseleziona dentro i dropdown anni/mesi
+        document.querySelectorAll('[data-action="toggle-all-filter"]').forEach(link => {
+            link.addEventListener('click', (ev) => {
+                ev.preventDefault();
+                const target = link.getAttribute('data-target-filter');
+                const container = document.getElementById(target);
+                if (!container) return;
+                const checkboxes = container.querySelectorAll('input[type="checkbox"]');
+                const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+                checkboxes.forEach(cb => cb.checked = !allChecked);
+                this.updateDateFilterFromUI();
+            });
+        });
+
+        // Delegate change events for year/month checkbox lists so manual checking updates filters
+        const anniContainer = document.getElementById('filterAnno');
+        if (anniContainer) {
+            anniContainer.addEventListener('change', (e) => {
+                if (e.target && e.target.type === 'checkbox') this.updateDateFilterFromUI();
+            });
+        }
+
+        const mesiContainer = document.getElementById('filterMese');
+        if (mesiContainer) {
+            mesiContainer.addEventListener('change', (e) => {
+                if (e.target && e.target.type === 'checkbox') this.updateDateFilterFromUI();
+            });
+        }
+    }
+
+    /**
+     * Legge gli input checkbox nei dropdown Anno/Mese e aggiorna lo stato dei filtri.
+     * Aggiorna anche le etichette dei pulsanti dei dropdown e riapplica il filtro.
+     */
+    updateDateFilterFromUI() {
+        const anniContainer = document.getElementById('filterAnno');
+        const mesiContainer = document.getElementById('filterMese');
+
+        const years = anniContainer
+            ? Array.from(anniContainer.querySelectorAll('input[type="checkbox"]:checked')).map(cb => parseInt(cb.value, 10)).filter(v => !isNaN(v))
+            : [];
+
+        const months = mesiContainer
+            ? Array.from(mesiContainer.querySelectorAll('input[type="checkbox"]:checked')).map(cb => parseInt(cb.value, 10)).filter(v => !isNaN(v))
+            : [];
+
+        this.activeDateFilter = { years, months };
+
+        // Aggiorna le etichette dei pulsanti
+        const annoBtn = document.getElementById('filterAnnoBtn');
+        if (annoBtn) {
+            if (!years.length) annoBtn.textContent = 'Tutti';
+            else if (years.length === 1) annoBtn.textContent = String(years[0]);
+            else annoBtn.textContent = `${years.length} anni`;
+        }
+
+        const meseBtn = document.getElementById('filterMeseBtn');
+        if (meseBtn) {
+            if (!months.length) meseBtn.textContent = 'Tutti';
+            else if (months.length === 1) meseBtn.textContent = this.mesiItaliani[months[0] - 1] || `${months[0]}`;
+            else meseBtn.textContent = `${months.length} mesi`;
+        }
+
+        this.filterData();
     }
 
     handleAction(action, id, type, targetElement, e) {
-        if (action === 'toggle-conferma-mese') {
-            e.stopPropagation();
+        // Se il click avviene nell'header della card, evitiamo il bubbling per azioni specifiche
+        if (targetElement && targetElement.closest && targetElement.closest('.management-card-header') && !['toggle-mese', 'edit-giornata'].includes(action)) {
+            if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
         }
-        
+
         switch (action) {
-            case 'add-giornata': this.showGiornataModal(); break;
-            case 'edit-giornata': this.showGiornataModal(id); break;
-            case 'toggle-mese': this.toggleMese(id); break;
-            case 'toggle-conferma-mese': this.handleToggleConfermaMese(id); break;
-            default: console.warn(`Azione non gestita: ${action}`);
+            case 'toggle-mese':
+                this.toggleMese(id);
+                break;
+            case 'toggle-conferma-mese':
+                if (e && typeof e.preventDefault === 'function') e.preventDefault();
+                this.handleToggleConfermaMese(id);
+                break;
+            case 'edit-giornata':
+                this.showGiornataModal(id);
+                break;
+            case 'add-giornata':
+                this.showGiornataModal();
+                break;
+            default:
+                // Delegare al BaseSection per default
+                if (typeof super.handleAction === 'function') {
+                    try { super.handleAction(action, id, type, targetElement, e); } catch (err) { console.warn(err); }
+                } else {
+                    console.warn(`Azione non gestita in GiornateSection: ${action}`);
+                }
         }
     }
-    
+
+    filterData() {
+                const selectedCollaboratore = document.getElementById('filterCollaboratore')?.value || '';
+                const selectedCommessa = document.getElementById('filterCommessa')?.value || '';
+
+                // Parti da una copia profonda dei dati originali non filtrati
+                let data = JSON.parse(JSON.stringify(this.giornateAggregate));
+
+                // Selezione collaboratore
+                if (selectedCollaboratore) {
+                    data = data.map(mese => { mese.collaboratori = mese.collaboratori.filter(c => String(c.collaboratore_id) === String(selectedCollaboratore)); return mese; }).filter(m => m.collaboratori.length > 0);
+                }
+
+                // Filtro commessa: all'interno delle giornate di ogni collaboratore
+                if (selectedCommessa) {
+                    data = data.map(mese => {
+                        mese.collaboratori.forEach(coll => {
+                            coll.giornate = coll.giornate.filter(g => String(g.task_info?.ID_COMMESSA) === String(selectedCommessa));
+                            // aggiorna i totali locali
+                            coll.totaleGiornate = coll.giornate.reduce((s, gg) => s + (parseFloat(gg.gg) || 0), 0);
+                            coll.totaleGiornateCampo = coll.giornate.filter(gg => gg.Tipo === 'Campo').reduce((s, gg) => s + (parseFloat(gg.gg) || 0), 0);
+                            coll.totaleValoreCalcolato = coll.giornate.reduce((s, gg) => s + (parseFloat(gg.valore_calcolato) || 0), 0);
+                        });
+                        mese.collaboratori = mese.collaboratori.filter(c => c.giornate.length > 0);
+                        return mese;
+                    }).filter(m => m.collaboratori.length > 0);
+                }
+
+                // Filtro tipo
+                if (this.activeTipoFilter) {
+                    data = data.map(mese => {
+                        mese.collaboratori.forEach(coll => {
+                            coll.giornate = coll.giornate.filter(g => String(g.Tipo) === String(this.activeTipoFilter));
+                            coll.totaleGiornate = coll.giornate.reduce((s, gg) => s + (parseFloat(gg.gg) || 0), 0);
+                            coll.totaleGiornateCampo = coll.giornate.filter(gg => gg.Tipo === 'Campo').reduce((s, gg) => s + (parseFloat(gg.gg) || 0), 0);
+                            coll.totaleValoreCalcolato = coll.giornate.reduce((s, gg) => s + (parseFloat(gg.valore_calcolato) || 0), 0);
+                        });
+                        mese.collaboratori = mese.collaboratori.filter(c => c.giornate.length > 0);
+                        return mese;
+                    }).filter(m => m.collaboratori.length > 0);
+                }
+
+                // Filtro anno/mese
+                if (this.activeDateFilter && (this.activeDateFilter.years.length || this.activeDateFilter.months.length)) {
+                    data = data.map(mese => {
+                        // each mese contains giornate already grouped by month; but we still filter inside giornate to be safe
+                        mese.collaboratori.forEach(coll => {
+                            coll.giornate = coll.giornate.filter(g => {
+                                const d = new Date(g.Data);
+                                const y = d.getFullYear();
+                                const m = d.getMonth() + 1;
+                                if (this.activeDateFilter.years.length && !this.activeDateFilter.years.includes(y)) return false;
+                                if (this.activeDateFilter.months.length && !this.activeDateFilter.months.includes(m)) return false;
+                                return true;
+                            });
+                            coll.totaleGiornate = coll.giornate.reduce((s, gg) => s + (parseFloat(gg.gg) || 0), 0);
+                            coll.totaleGiornateCampo = coll.giornate.filter(gg => gg.Tipo === 'Campo').reduce((s, gg) => s + (parseFloat(gg.gg) || 0), 0);
+                            coll.totaleValoreCalcolato = coll.giornate.reduce((s, gg) => s + (parseFloat(gg.valore_calcolato) || 0), 0);
+                        });
+                        mese.collaboratori = mese.collaboratori.filter(c => c.giornate.length > 0);
+                        return mese;
+                    }).filter(m => m.collaboratori.length > 0);
+                }
+
+                this.filteredGiornateAggregate = data;
+
+                // Aggiorna la vista con i dati filtrati
+                const container = document.getElementById('giornateContainer');
+                container.innerHTML = this.renderGiornateAggregate(this.filteredGiornateAggregate);
+
+                // Aggiorna le statistiche con le sole giornate filtrate
+                const giornateFiltrate = this.filteredGiornateAggregate.flatMap(m => m.collaboratori.flatMap(c => c.giornate));
+                this.updateStats(giornateFiltrate);
+            }
     // ========================================================================
     // SEZIONE: NUOVA LOGICA DI FILTRAGGIO
     // ========================================================================
-    
-    /**
-     * NUOVA FUNZIONE: Filtra i dati delle giornate in base ai valori
-     * selezionati nei menù a tendina e aggiorna la vista.
-     */
-    filterData() {
-        const selectedCollaboratore = document.getElementById('filterCollaboratore').value;
-        const selectedCommessa = document.getElementById('filterCommessa').value;
-
-        // Parti da una copia profonda dei dati originali non filtrati
-        let data = JSON.parse(JSON.stringify(this.giornateAggregate));
-
-        // Applica i filtri se almeno uno è stato selezionato
-        if (selectedCollaboratore || selectedCommessa) {
-            data = data.map(mese => {
-                // 1. Filtra i collaboratori (se il filtro è attivo)
-                if (selectedCollaboratore) {
-                    mese.collaboratori = mese.collaboratori.filter(c => c.collaboratore_id === selectedCollaboratore);
-                }
-
-                // 2. Filtra le giornate per commessa all'interno di ogni collaboratore rimasto
-                if (selectedCommessa) {
-                    mese.collaboratori.forEach(collaboratore => {
-                        // CORREZIONE: Il riferimento corretto all'ID commessa è dentro 'task_info'
-                        collaboratore.giornate = collaboratore.giornate.filter(g => g.task_info?.ID_COMMESSA === selectedCommessa);
-                    });
-                }
-                
-                // 3. Pulisci: rimuovi i collaboratori che non hanno più giornate dopo il filtro per commessa
-                mese.collaboratori = mese.collaboratori.filter(c => c.giornate.length > 0);
-
-                return mese;
-            }).filter(mese => mese.collaboratori.length > 0); // 4. Pulisci: rimuovi i mesi che non hanno più collaboratori
-        }
-
-        this.filteredGiornateAggregate = data;
-        
-        // Aggiorna la vista con i dati filtrati
-        const container = document.getElementById('giornateContainer');
-        container.innerHTML = this.renderGiornateAggregate(this.filteredGiornateAggregate);
-        
-        // Aggiorna le statistiche con le sole giornate filtrate
-        const giornateFiltrate = this.filteredGiornateAggregate.flatMap(m => m.collaboratori.flatMap(c => c.giornate));
-        this.updateStats(giornateFiltrate);
-    }
 
     // ========================================================================
     // SEZIONE: RENDERING (invariata ma ora usa i dati filtrati)
