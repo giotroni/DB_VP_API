@@ -176,6 +176,247 @@ class ManagementApp {
         }
     }
 
+    // ========== METODI PER CAMBIO PASSWORD ==========
+
+    showChangePasswordModal() {
+        const modalHtml = `
+            <div class="modal fade" id="changePwdModal" tabindex="-1">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header bg-primary text-white">
+                            <h5 class="modal-title">
+                                <i class="fas fa-key me-2"></i>
+                                Cambia Password
+                            </h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <form id="changePwdForm">
+                                <div class="form-group mb-3">
+                                    <label for="currentPassword" class="form-label">Password Attuale *</label>
+                                    <div class="input-group">
+                                        <input type="password" id="currentPassword" class="form-control" required>
+                                        <button class="btn btn-outline-secondary toggle-password-btn" type="button" data-target="currentPassword">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <div class="form-group mb-3">
+                                    <label for="newPassword" class="form-label">Nuova Password *</label>
+                                    <div class="input-group">
+                                        <input type="password" id="newPassword" class="form-control" 
+                                               minlength="6" required>
+                                        <button class="btn btn-outline-secondary toggle-password-btn" type="button" data-target="newPassword">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                    </div>
+                                    <div class="form-text">La password deve essere lunga almeno 6 caratteri</div>
+                                </div>
+                                
+                                <div class="form-group mb-3">
+                                    <label for="confirmPassword" class="form-label">Conferma Nuova Password *</label>
+                                    <div class="input-group">
+                                        <input type="password" id="confirmPassword" class="form-control" 
+                                               minlength="6" required>
+                                        <button class="btn btn-outline-secondary toggle-password-btn" type="button" data-target="confirmPassword">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <div id="passwordMessage" class="mt-3"></div>
+                            </form>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                            <button type="button" class="btn btn-primary" id="changePwdSaveBtn">
+                                <i class="fas fa-save me-1"></i>Cambia Password
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Rimuovi modal esistente e aggiungi il nuovo
+        const existingModal = document.getElementById('changePwdModal');
+        if (existingModal) {
+            existingModal.remove();
+        }
+        
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+    console.debug('[showChangePasswordModal] inserted modal; existing count for #changePwdModal =', document.querySelectorAll('#changePwdModal').length);
+        
+        // Aggiungi validazione in tempo reale
+        this.setupPasswordValidation();
+
+        // Registra i listener per i pulsanti "occhio" e per il salvataggio
+        const modalEl = document.getElementById('changePwdModal');
+        if (modalEl) {
+            // toggle password buttons
+            modalEl.querySelectorAll('.toggle-password-btn').forEach(btn => {
+                const target = btn.getAttribute('data-target');
+                btn.addEventListener('click', (ev) => {
+                    ev.preventDefault();
+                    this.togglePasswordVisibility(target, btn);
+                });
+            });
+
+            // save button
+            const saveBtn = modalEl.querySelector('#changePwdSaveBtn');
+            if (saveBtn) {
+                saveBtn.addEventListener('click', (ev) => {
+                    ev.preventDefault();
+                    this.changePassword();
+                });
+            }
+        }
+
+        // Mostra il modal
+        const modal = new bootstrap.Modal(document.getElementById('changePwdModal'));
+        modal.show();
+    }
+
+    setupPasswordValidation() {
+        const modalEl = document.getElementById('changePwdModal');
+        const newPasswordField = modalEl ? modalEl.querySelector('#newPassword') : document.getElementById('newPassword');
+        const confirmPasswordField = modalEl ? modalEl.querySelector('#confirmPassword') : document.getElementById('confirmPassword');
+        const messageDiv = modalEl ? modalEl.querySelector('#passwordMessage') : document.getElementById('passwordMessage');
+        if (!newPasswordField || !confirmPasswordField || !messageDiv) return;
+        
+        const validatePasswords = () => {
+            const newPassword = newPasswordField.value;
+            const confirmPassword = confirmPasswordField.value;
+            
+            messageDiv.innerHTML = '';
+            
+            // Controlla lunghezza minima
+            if (newPassword.length > 0 && newPassword.length < 6) {
+                messageDiv.innerHTML = '<div class="alert alert-warning">La password deve essere lunga almeno 6 caratteri</div>';
+                return false;
+            }
+            
+            // Controlla se le password coincidono
+            if (confirmPassword.length > 0 && newPassword !== confirmPassword) {
+                messageDiv.innerHTML = '<div class="alert alert-danger">Le password non coincidono</div>';
+                return false;
+            }
+            
+            // Password valide
+            if (newPassword.length >= 6 && newPassword === confirmPassword && confirmPassword.length > 0) {
+                messageDiv.innerHTML = '<div class="alert alert-success">Password valida e confermata</div>';
+                return true;
+            }
+
+            return false;
+        };
+        
+        newPasswordField.addEventListener('input', validatePasswords);
+        confirmPasswordField.addEventListener('input', validatePasswords);
+    }
+
+    async changePassword() {
+        const modalEl = document.getElementById('changePwdModal');
+        const curEl = modalEl ? modalEl.querySelector('#currentPassword') : document.getElementById('currentPassword');
+        const newEl = modalEl ? modalEl.querySelector('#newPassword') : document.getElementById('newPassword');
+        const confEl = modalEl ? modalEl.querySelector('#confirmPassword') : document.getElementById('confirmPassword');
+        const currentPassword = curEl ? curEl.value : undefined;
+        const newPassword = newEl ? newEl.value : undefined;
+        const confirmPassword = confEl ? confEl.value : undefined;
+        const messageDiv = document.getElementById('passwordMessage');
+        if (!messageDiv) return;
+    console.debug('[changePassword] elements (modal-scoped):', { curElExists: !!curEl, newElExists: !!newEl, confElExists: !!confEl });
+    console.debug('[changePassword] values (modal-scoped):', { currentPassword, newPassword, confirmPassword });
+        
+        // Validazioni lato client
+        if (!currentPassword || !newPassword || !confirmPassword) {
+            messageDiv.innerHTML = '<div class="alert alert-danger">Compila tutti i campi</div>';
+            return;
+        }
+        
+        if (newPassword.length < 6) {
+            messageDiv.innerHTML = '<div class="alert alert-danger">La password deve essere lunga almeno 6 caratteri</div>';
+            return;
+        }
+        
+        if (newPassword !== confirmPassword) {
+            messageDiv.innerHTML = '<div class="alert alert-danger">Le password non coincidono</div>';
+            return;
+        }
+        
+        // Disabilita il pulsante e mostra loading
+        const saveBtn = document.querySelector('#changePwdModal .btn-primary');
+        const originalText = saveBtn ? saveBtn.innerHTML : '';
+        if (saveBtn) {
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = '<span class="loading-spinner"></span> Cambiando password...';
+        }
+        
+        try {
+            const response = await fetch('API/auth.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    action: 'change_password',
+                    current_password: currentPassword,
+                    new_password: newPassword
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                // Chiudi modal
+                const modal = bootstrap.Modal.getInstance(document.getElementById('changePwdModal'));
+                if (modal) modal.hide();
+                
+                // Mostra messaggio di successo
+                alert('Password cambiata con successo! È stata inviata una email di conferma.');
+            } else {
+                messageDiv.innerHTML = `<div class="alert alert-danger">${result.message}</div>`;
+            }
+        } catch (error) {
+            console.error('Errore cambio password:', error);
+            messageDiv.innerHTML = '<div class="alert alert-danger">Errore durante il cambio password. Riprova.</div>';
+        } finally {
+            if (saveBtn) {
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = originalText;
+            }
+        }
+    }
+
+    /**
+     * Toggle visibility della password
+     */
+    togglePasswordVisibility(inputId, button) {
+        // prefer inputs inside the same modal as the button to avoid duplicate-id collisions
+        const modalAncestor = button && button.closest ? button.closest('#changePwdModal') : null;
+        const input = modalAncestor ? modalAncestor.querySelector('#' + inputId) : document.getElementById(inputId);
+        const icon = button ? button.querySelector('i') : null;
+        
+        if (!input) {
+            console.debug('[togglePasswordVisibility] input not found for', inputId);
+            return;
+        }
+        console.debug('[togglePasswordVisibility] target (modal-scoped):', inputId, 'inputFound:', !!input, 'typeBefore:', input.type);
+        
+        if (input.type === 'password') {
+            input.type = 'text';
+            if (icon) icon.className = 'fas fa-eye-slash';
+            button.title = 'Nascondi password';
+            console.debug('[togglePasswordVisibility] now visible');
+        } else {
+            input.type = 'password';
+            if (icon) icon.className = 'fas fa-eye';
+            button.title = 'Mostra password';
+            console.debug('[togglePasswordVisibility] now hidden');
+        }
+    }
+
     // ========================================================================
     // SEZIONE 2: LAYOUT E GESTIONE DELL'INTERFACCIA
     // ========================================================================
@@ -298,6 +539,12 @@ class ManagementApp {
             case 'forgot-password':
                 e.preventDefault();
                 this.handleForgotPasswordClick();
+                break;
+            // Gestione cambio password dalla sidebar
+            case 'show-change-password-modal':
+                e.preventDefault();
+                // Apri la maschera per cambiare password
+                if (typeof this.showChangePasswordModal === 'function') this.showChangePasswordModal();
                 break;
             
             default:
