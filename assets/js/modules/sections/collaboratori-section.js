@@ -30,7 +30,7 @@ class CollaboratoriSection extends BaseSection {
 
     render() {
         this.updatePageTitle('Gestione Collaboratori', 'Anagrafica, giornate e costi del personale');
-        this.updateTopbarActions(`<button class="btn btn-vp-primary" data-action="add-collaboratore"><i class="fas fa-user-plus me-2"></i>Nuovo Collaboratore</button>`);
+    this.updateTopbarActions(`<div class="d-flex gap-2"><button class="btn btn-vp-primary" data-action="add-collaboratore"><i class="fas fa-user-plus me-2"></i>Nuovo Collaboratore</button><button class="btn btn-outline-secondary" data-action="export-collaboratori"><i class="fas fa-file-export me-2"></i>Esporta Excel</button></div>`);
         
         const container = this.getContainer();
         // prepara le opzioni per anno e mese (riuso lo stesso pattern usato altrove)
@@ -69,6 +69,8 @@ class CollaboratoriSection extends BaseSection {
             </div>
         `;
 
+        // salva l'ultima lista mostrata (inizialmente tutte le collaboratori raggruppati)
+        this.lastFilteredCollaboratori = this.collaboratoriConGiornate;
         this.updateStats(this.collaboratoriConGiornate);
         this.bindEvents();
     }
@@ -117,6 +119,9 @@ class CollaboratoriSection extends BaseSection {
             case 'add-collaboratore':
                 this.showNewCollaboratoreModal();
                 break;
+            case 'export-collaboratori':
+                this.exportCollaboratoriToExcel();
+                break;
             case 'edit-collaboratore':
                 this.showEditCollaboratoreModal(id);
                 break;
@@ -126,6 +131,40 @@ class CollaboratoriSection extends BaseSection {
             default:
                 console.warn(`Azione non gestita: ${action}`);
         }
+    }
+
+    // Esporta i collaboratori attualmente visualizzati (filtrati) in CSV compatibile Excel
+    exportCollaboratoriToExcel() {
+    // Usa l'ultima vista filtrata se presente, altrimenti usa la lista completa raggruppata
+    const data = Array.isArray(this.lastFilteredCollaboratori) ? this.lastFilteredCollaboratori : (Array.isArray(this.collaboratoriConGiornate) ? this.collaboratoriConGiornate : this.groupGiornateByCollaboratore());
+
+        // Costruiamo una rappresentazione semplice: una riga per collaboratore e alcune colonne chiave
+        const headers = ['ID_COLLABORATORE','Collaboratore','Email','User','Ruolo','Commesse_Assegnate','Totale_Giornate','Giornate_Campo','Rimborso_Attivita','Valore_Monitoraggio','Accounting'];
+
+        const rows = (Array.isArray(data) ? data : []).map(coll => {
+            const giornateTot = coll.giornate.length;
+            const giornateCampo = coll.giornate.reduce((s,g) => s + ((g.Tipo === 'Campo') ? (parseFloat(g.gg) || 0) : 0), 0);
+            const rimborso = coll.giornate.reduce((s,g) => s + (g.costo_calcolato || 0), 0);
+            const monitor = this.computeMonitoraggioTotalForCollaboratore(coll) || 0;
+            const accounting = this.computeAccountingTotalForCollaboratore(coll) || 0;
+            return [coll.ID_COLLABORATORE, coll.Collaboratore, coll.Email || '', coll.User || '', coll.Ruolo || '', coll.statistics?.commesse_assegnate || 0, giornateTot, giornateCampo, rimborso, monitor, accounting];
+        });
+
+        const csvLines = [headers.join(';')];
+        rows.forEach(r => {
+            csvLines.push(r.map(v => typeof v === 'number' ? v.toString().replace('.', ',') : `"${(v||'').toString().replace(/"/g,'""')}"`).join(';'));
+        });
+
+        const blob = new Blob([csvLines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `collaboratori_export_${new Date().toISOString().slice(0,10)}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+        this.ui.showToast('Esportazione avviata.', 'success');
     }
 
     // ========================================================================
@@ -917,6 +956,8 @@ class CollaboratoriSection extends BaseSection {
         }
 
         document.getElementById('collaboratoriContainer').innerHTML = this.renderCollaboratoriCards(filteredData);
+        // memorizza l'ultima vista filtrata per l'export
+        this.lastFilteredCollaboratori = filteredData;
         this.updateStats(filteredData);
     }
     
