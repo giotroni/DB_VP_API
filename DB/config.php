@@ -5,10 +5,19 @@
  */
 
 // Configurazioni del database - MODIFICARE CON I PROPRI PARAMETRI
+
 define('DB_HOST', 'localhost');          // Indirizzo del server MySQL
-define('DB_NAME', 'vaglioty_DB_VP'); // Nome del database
-define('DB_USER', 'vaglioty_DB_VP');      // Username MySQL
-define('DB_PASS', 'busriMnyahh2Xc5');      // Password MySQL
+
+// DB PRODUZIONE
+// define('DB_NAME', 'vaglioty_DB_VP'); // Nome del database
+// define('DB_USER', 'vaglioty_DB_VP');      // Username MySQL
+// define('DB_PASS', 'busriMnyahh2Xc5');      // Password MySQL
+
+// DB TEST
+define('DB_NAME', 'vaglioty_DB_VP_TEST');   // Nome del database di test
+define('DB_USER', 'vaglioty_DB_VP_TEST');   // Username MySQL di test
+define('DB_PASS', '4X9X8sY2szynLPN');       // Password MySQL di test
+
 define('DB_CHARSET', 'utf8mb4');         // Charset del database
 
 // Classe per la gestione della connessione al database
@@ -19,26 +28,38 @@ class DatabaseConnection {
     private function __construct() {
         try {
             $dsn = "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=" . DB_CHARSET;
+
+            // Opzioni PDO di base
             $options = [
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-                PDO::ATTR_EMULATE_PREPARES => false
+                PDO::ATTR_EMULATE_PREPARES => false,
             ];
-            
-            // Aggiungi opzione MySQL solo se disponibile
+
+            // Aggiungi opzione MySQL in modo sicuro se la costante è definita
             if (defined('PDO::MYSQL_ATTR_INIT_COMMAND')) {
-                $options[PDO::MYSQL_ATTR_INIT_COMMAND] = "SET NAMES utf8mb4";
+                // Usa constant() per recuperare il valore della costante senza errore
+                $key = constant('PDO::MYSQL_ATTR_INIT_COMMAND');
+                $options[$key] = "SET NAMES " . DB_CHARSET;
             }
-            
+
             $this->connection = new PDO($dsn, DB_USER, DB_PASS, $options);
-            
-            // Imposta charset come query separata se l'opzione non è disponibile
+
+            // Fallback: forza SET NAMES se l'opzione di init non era disponibile
             if (!defined('PDO::MYSQL_ATTR_INIT_COMMAND')) {
-                $this->connection->exec("SET NAMES utf8mb4");
+                try {
+                    $this->connection->exec("SET NAMES " . DB_CHARSET);
+                } catch (PDOException $e) {
+                    // Log the error but don't expose credentials
+                    error_log("Failed to set names on DB connection: " . $e->getMessage());
+                }
             }
-            
+
         } catch(PDOException $e) {
-            die("Errore di connessione al database: " . $e->getMessage());
+            // Log utile per debug remoto (non stampare la password)
+            error_log("DB connection error in " . __FILE__ . ": " . $e->getMessage());
+            // Messaggio generico per l'utente
+            die("Errore di connessione al database. Vedi error log.");
         }
     }
     

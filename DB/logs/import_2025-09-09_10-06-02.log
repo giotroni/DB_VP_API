@@ -1,0 +1,466 @@
+[2025-09-09 10:06:02] === INIZIO IMPORTAZIONE CSV ===
+[2025-09-09 10:06:02] Data/Ora: 2025-09-09 10:06:02
+[2025-09-09 10:06:02] Cartella dati: /home2/vaglioty/public_html/test/DB/Dati
+[2025-09-09 10:06:02] Utente ha scelto di svuotare le tabelle
+[2025-09-09 10:06:02] Tabella FACT_FATTURE svuotata
+[2025-09-09 10:06:02] Tabella FACT_GIORNATE svuotata
+[2025-09-09 10:06:02] Tabella ANA_TARIFFE_COLLABORATORI svuotata
+[2025-09-09 10:06:02] Tabella ANA_TASK svuotata
+[2025-09-09 10:06:02] Tabella ANA_COMMESSE svuotata
+[2025-09-09 10:06:02] Tabella ANA_COLLABORATORI svuotata
+[2025-09-09 10:06:02] Tabella ANA_CLIENTI svuotata
+[2025-09-09 10:06:02] File trovato: ANA_CLIENTI.csv (907 bytes)
+[2025-09-09 10:06:02] File trovato: ANA_COLLABORATORI.csv (1020 bytes)
+[2025-09-09 10:06:02] File trovato: ANA_COMMESSE.csv (2543 bytes)
+[2025-09-09 10:06:02] File trovato: ANA_TASK.csv (3955 bytes)
+[2025-09-09 10:06:02] File trovato: ANA_TARIFFE_COLLABORATORI.csv (870 bytes)
+[2025-09-09 10:06:02] File trovato: FACT_GIORNATE.csv (13332 bytes)
+[2025-09-09 10:06:02] File trovato: FACT_FATTURE.csv (9528 bytes)
+[2025-09-09 10:06:02] Inizio importazione: ANA_CLIENTI.csv → ANA_CLIENTI
+[2025-09-09 10:06:02] === INIZIO IMPORTAZIONE ANA_CLIENTI ===
+[2025-09-09 10:06:02] File: /home2/vaglioty/public_html/test/DB/Dati/ANA_CLIENTI.csv
+[2025-09-09 10:06:02] Headers originali: ID_CLIENTE, Cliente, Ragione_Sociale, Indirizzo, Citta, CAP, Provincia, P_IVA, Data_Creazione, ID_UTENTE_CREAZIONE, Data_Modifica, ID_UTENTE_MODIFICA
+[2025-09-09 10:06:02] Headers puliti: ID_CLIENTE, Cliente, Ragione_Sociale, Indirizzo, Citta, CAP, Provincia, P_IVA, Data_Creazione, ID_UTENTE_CREAZIONE, Data_Modifica, ID_UTENTE_MODIFICA
+[2025-09-09 10:06:02] Numero di colonne header: 12
+[2025-09-09 10:06:02] Query preparata: INSERT IGNORE INTO `ANA_CLIENTI` (`ID_CLIENTE`, `Cliente`, `Ragione_Sociale`, `Indirizzo`, `Citta`, `CAP`, `Provincia`, `P_IVA`, `Data_Creazione`, `ID_UTENTE_CREAZIONE`, `Data_Modifica`, `ID_UTENTE_MODIFICA`) VALUES (:ID_CLIENTE, :Cliente, :Ragione_Sociale, :Indirizzo, :Citta, :CAP, :Provincia, :P_IVA, :Data_Creazione, :ID_UTENTE_CREAZIONE, :Data_Modifica, :ID_UTENTE_MODIFICA)
+[2025-09-09 10:06:02] Numero totale di righe dati da processare: 19
+[2025-09-09 10:06:02] Riga 2 dati grezzi: CLI0001 | ALBINI | ALBINI |  |  |  |  |  |  |  |  | 
+[2025-09-09 10:06:02] Numero di campi riga 2: 12
+[2025-09-09 10:06:02] Record 1 parametri: {"ID_CLIENTE":"CLI0001","Cliente":"ALBINI","Ragione_Sociale":"ALBINI","Indirizzo":null,"Citta":null,"CAP":null,"Provincia":null,"P_IVA":null,"Data_Creazione":null,"ID_UTENTE_CREAZIONE":null,"Data_Modifica":null,"ID_UTENTE_MODIFICA":null}
+[2025-09-09 10:06:02] Riga 3 dati grezzi: CLI0002 | AMGA | AMGA |  |  |  |  |  |  |  |  | 
+[2025-09-09 10:06:02] Numero di campi riga 3: 12
+[2025-09-09 10:06:02] Record 2 parametri: {"ID_CLIENTE":"CLI0002","Cliente":"AMGA","Ragione_Sociale":"AMGA","Indirizzo":null,"Citta":null,"CAP":null,"Provincia":null,"P_IVA":null,"Data_Creazione":null,"ID_UTENTE_CREAZIONE":null,"Data_Modifica":null,"ID_UTENTE_MODIFICA":null}
+[2025-09-09 10:06:02] Riga 4 dati grezzi: CLI0003 | CALVI | CALVI |  |  |  |  |  |  |  |  | 
+[2025-09-09 10:06:02] Numero di campi riga 4: 12
+[2025-09-09 10:06:02] Record 3 parametri: {"ID_CLIENTE":"CLI0003","Cliente":"CALVI","Ragione_Sociale":"CALVI","Indirizzo":null,"Citta":null,"CAP":null,"Provincia":null,"P_IVA":null,"Data_Creazione":null,"ID_UTENTE_CREAZIONE":null,"Data_Modifica":null,"ID_UTENTE_MODIFICA":null}
+[2025-09-09 10:06:02] ATTENZIONE: Formato data non riconosciuto: '2025-08-28 08:02:51'
+[2025-09-09 10:06:02] ATTENZIONE: Formato data non riconosciuto: '2025-08-28 07:50:29'
+[2025-09-09 10:06:02] Completata lettura file /home2/vaglioty/public_html/test/DB/Dati/ANA_CLIENTI.csv:
+[2025-09-09 10:06:02] - Righe totali processate: 19
+[2025-09-09 10:06:02] - Record importati con successo: 19
+[2025-09-09 10:06:02] - Record saltati/duplicati: 0
+[2025-09-09 10:06:02] - Errori: 0
+[2025-09-09 10:06:02] Completata importazione ANA_CLIENTI: 19 record importati, 0 errori, 0 saltati
+[2025-09-09 10:06:02] Inizio importazione: ANA_COLLABORATORI.csv → ANA_COLLABORATORI
+[2025-09-09 10:06:02] === INIZIO IMPORTAZIONE ANA_COLLABORATORI ===
+[2025-09-09 10:06:02] File: /home2/vaglioty/public_html/test/DB/Dati/ANA_COLLABORATORI.csv
+[2025-09-09 10:06:02] Headers originali: ID_COLLABORATORE, Collaboratore, Email, User, PWD, Ruolo, PIVA, Data_Creazione, ID_UTENTE_CREAZIONE, Data_Modifica, ID_UTENTE_MODIFICA
+[2025-09-09 10:06:02] Headers puliti: ID_COLLABORATORE, Collaboratore, Email, User, PWD, Ruolo, PIVA, Data_Creazione, ID_UTENTE_CREAZIONE, Data_Modifica, ID_UTENTE_MODIFICA
+[2025-09-09 10:06:02] Numero di colonne header: 11
+[2025-09-09 10:06:02] Query preparata: INSERT IGNORE INTO `ANA_COLLABORATORI` (`ID_COLLABORATORE`, `Collaboratore`, `Email`, `User`, `PWD`, `Ruolo`, `PIVA`, `Data_Creazione`, `ID_UTENTE_CREAZIONE`, `Data_Modifica`, `ID_UTENTE_MODIFICA`) VALUES (:ID_COLLABORATORE, :Collaboratore, :Email, :User, :PWD, :Ruolo, :PIVA, :Data_Creazione, :ID_UTENTE_CREAZIONE, :Data_Modifica, :ID_UTENTE_MODIFICA)
+[2025-09-09 10:06:02] Numero totale di righe dati da processare: 7
+[2025-09-09 10:06:02] Riga 2 dati grezzi: CONS001 | Alessandro Vaglio | avaglio@vaglioandpartners.com | avaglio | $2y$10$YokCDNG.En2sHzPRYXQKJ./c6vgvwO.nlpKJtsN0xuVvGDZLNia6a | Manager |  |  |  | 2025-08-24 17:08:40 | 
+[2025-09-09 10:06:02] Numero di campi riga 2: 11
+[2025-09-09 10:06:02] ATTENZIONE: Formato data non riconosciuto: '2025-08-24 17:08:40'
+[2025-09-09 10:06:02] Campo 'Data_Modifica': '2025-08-24 17:08:40' → ''
+[2025-09-09 10:06:02] Record 1 parametri: {"ID_COLLABORATORE":"CONS001","Collaboratore":"Alessandro Vaglio","Email":"avaglio@vaglioandpartners.com","User":"avaglio","PWD":"$2y$10$YokCDNG.En2sHzPRYXQKJ.\/c6vgvwO.nlpKJtsN0xuVvGDZLNia6a","Ruolo":"Manager","PIVA":null,"Data_Creazione":null,"ID_UTENTE_CREAZIONE":null,"Data_Modifica":null,"ID_UTENTE_MODIFICA":null}
+[2025-09-09 10:06:02] Riga 3 dati grezzi: CONS002 | Giorgio Bevilacqua | gbevilacqua@vaglioandpartners.com | gbevilacqua | CeoCeo02 | User |  |  |  |  | 
+[2025-09-09 10:06:02] Numero di campi riga 3: 11
+[2025-09-09 10:06:02] Record 2 parametri: {"ID_COLLABORATORE":"CONS002","Collaboratore":"Giorgio Bevilacqua","Email":"gbevilacqua@vaglioandpartners.com","User":"gbevilacqua","PWD":"CeoCeo02","Ruolo":"User","PIVA":null,"Data_Creazione":null,"ID_UTENTE_CREAZIONE":null,"Data_Modifica":null,"ID_UTENTE_MODIFICA":null}
+[2025-09-09 10:06:02] Riga 4 dati grezzi: CONS003 | Giorgio Troni | gtroni@vaglioandpartners.com | gtroni | $2y$10$2uHBf.iVhxqb61S2e5LgPOUJZZ4gmvWiwSHqu9Nd.bXwun/rpH3z2 | Admin |  |  |  | 2025-08-24 07:14:27 | 
+[2025-09-09 10:06:02] Numero di campi riga 4: 11
+[2025-09-09 10:06:02] ATTENZIONE: Formato data non riconosciuto: '2025-08-24 07:14:27'
+[2025-09-09 10:06:02] Campo 'Data_Modifica': '2025-08-24 07:14:27' → ''
+[2025-09-09 10:06:02] Record 3 parametri: {"ID_COLLABORATORE":"CONS003","Collaboratore":"Giorgio Troni","Email":"gtroni@vaglioandpartners.com","User":"gtroni","PWD":"$2y$10$2uHBf.iVhxqb61S2e5LgPOUJZZ4gmvWiwSHqu9Nd.bXwun\/rpH3z2","Ruolo":"Admin","PIVA":null,"Data_Creazione":null,"ID_UTENTE_CREAZIONE":null,"Data_Modifica":null,"ID_UTENTE_MODIFICA":null}
+[2025-09-09 10:06:02] ATTENZIONE: Formato data non riconosciuto: '2025-09-07 11:02:13'
+[2025-09-09 10:06:02] Campo 'Data_Modifica': '2025-09-07 11:02:13' → ''
+[2025-09-09 10:06:02] ATTENZIONE: Formato data non riconosciuto: '2025-09-07 07:40:58'
+[2025-09-09 10:06:02] ATTENZIONE: Formato data non riconosciuto: '2025-09-07 11:32:57'
+[2025-09-09 10:06:02] Completata lettura file /home2/vaglioty/public_html/test/DB/Dati/ANA_COLLABORATORI.csv:
+[2025-09-09 10:06:02] - Righe totali processate: 7
+[2025-09-09 10:06:02] - Record importati con successo: 7
+[2025-09-09 10:06:02] - Record saltati/duplicati: 0
+[2025-09-09 10:06:02] - Errori: 0
+[2025-09-09 10:06:02] Completata importazione ANA_COLLABORATORI: 7 record importati, 0 errori, 0 saltati
+[2025-09-09 10:06:02] Inizio importazione: ANA_COMMESSE.csv → ANA_COMMESSE
+[2025-09-09 10:06:02] === INIZIO IMPORTAZIONE ANA_COMMESSE ===
+[2025-09-09 10:06:02] File: /home2/vaglioty/public_html/test/DB/Dati/ANA_COMMESSE.csv
+[2025-09-09 10:06:02] Headers originali: ID_COMMESSA, Commessa, Desc_Commessa, Tipo_Commessa, ID_CLIENTE, Commissione, ID_COLLABORATORE, Data_Apertura_Commessa, Stato_Commessa, Documento_Offerta, Documento_Ordine, Data_Creazione, ID_UTENTE_CREAZIONE, Data_Modifica, ID_UTENTE_MODIFICA
+[2025-09-09 10:06:02] Headers puliti: ID_COMMESSA, Commessa, Desc_Commessa, Tipo_Commessa, ID_CLIENTE, Commissione, ID_COLLABORATORE, Data_Apertura_Commessa, Stato_Commessa, Documento_Offerta, Documento_Ordine, Data_Creazione, ID_UTENTE_CREAZIONE, Data_Modifica, ID_UTENTE_MODIFICA
+[2025-09-09 10:06:02] Numero di colonne header: 15
+[2025-09-09 10:06:02] Query preparata: INSERT IGNORE INTO `ANA_COMMESSE` (`ID_COMMESSA`, `Commessa`, `Desc_Commessa`, `Tipo_Commessa`, `ID_CLIENTE`, `Commissione`, `ID_COLLABORATORE`, `Data_Apertura_Commessa`, `Stato_Commessa`, `Documento_Offerta`, `Documento_Ordine`, `Data_Creazione`, `ID_UTENTE_CREAZIONE`, `Data_Modifica`, `ID_UTENTE_MODIFICA`) VALUES (:ID_COMMESSA, :Commessa, :Desc_Commessa, :Tipo_Commessa, :ID_CLIENTE, :Commissione, :ID_COLLABORATORE, :Data_Apertura_Commessa, :Stato_Commessa, :Documento_Offerta, :Documento_Ordine, :Data_Creazione, :ID_UTENTE_CREAZIONE, :Data_Modifica, :ID_UTENTE_MODIFICA)
+[2025-09-09 10:06:02] Numero totale di righe dati da processare: 18
+[2025-09-09 10:06:02] Riga 2 dati grezzi: COM0001 | CALVI SVIL MANAGERIALITA' | Sviluppo Manageriale | Cliente | CLI0003 | 0,2700 | CONS001 | 2024-12-01 | In corso |  |  |  |  | 2025-08-25 18:15:39 | 
+[2025-09-09 10:06:02] Numero di campi riga 2: 15
+[2025-09-09 10:06:02] ATTENZIONE: Formato data non riconosciuto: '2025-08-25 18:15:39'
+[2025-09-09 10:06:02] Campo 'Data_Modifica': '2025-08-25 18:15:39' → ''
+[2025-09-09 10:06:02] Record 1 parametri: {"ID_COMMESSA":"COM0001","Commessa":"CALVI SVIL MANAGERIALITA'","Desc_Commessa":"Sviluppo Manageriale","Tipo_Commessa":"Cliente","ID_CLIENTE":"CLI0003","Commissione":"0,2700","ID_COLLABORATORE":"CONS001","Data_Apertura_Commessa":"2024-12-01","Stato_Commessa":"In corso","Documento_Offerta":null,"Documento_Ordine":null,"Data_Creazione":null,"ID_UTENTE_CREAZIONE":null,"Data_Modifica":null,"ID_UTENTE_MODIFICA":null}
+[2025-09-09 10:06:02] Riga 3 dati grezzi: COM0002 | IK SVILUPPO | Analisi Organizzativa e progetti | Cliente | CLI0005 | 0,2700 | CONS001 | 2024-12-01 | Chiusa |  |  |  |  | 2025-08-29 17:16:16 | SYSTEM
+[2025-09-09 10:06:02] Numero di campi riga 3: 15
+[2025-09-09 10:06:02] ATTENZIONE: Formato data non riconosciuto: '2025-08-29 17:16:16'
+[2025-09-09 10:06:02] Campo 'Data_Modifica': '2025-08-29 17:16:16' → ''
+[2025-09-09 10:06:02] Record 2 parametri: {"ID_COMMESSA":"COM0002","Commessa":"IK SVILUPPO","Desc_Commessa":"Analisi Organizzativa e progetti","Tipo_Commessa":"Cliente","ID_CLIENTE":"CLI0005","Commissione":"0,2700","ID_COLLABORATORE":"CONS001","Data_Apertura_Commessa":"2024-12-01","Stato_Commessa":"Chiusa","Documento_Offerta":null,"Documento_Ordine":null,"Data_Creazione":null,"ID_UTENTE_CREAZIONE":null,"Data_Modifica":null,"ID_UTENTE_MODIFICA":"SYSTEM"}
+[2025-09-09 10:06:02] Riga 4 dati grezzi: COM0003 | MANTUA | Supporto Sviluppo | Cliente | CLI0006 | 0,2700 | CONS001 | 2024-12-01 | In corso |  |  |  |  | 2025-08-25 18:16:57 | 
+[2025-09-09 10:06:02] Numero di campi riga 4: 15
+[2025-09-09 10:06:02] ATTENZIONE: Formato data non riconosciuto: '2025-08-25 18:16:57'
+[2025-09-09 10:06:02] Campo 'Data_Modifica': '2025-08-25 18:16:57' → ''
+[2025-09-09 10:06:02] Record 3 parametri: {"ID_COMMESSA":"COM0003","Commessa":"MANTUA","Desc_Commessa":"Supporto Sviluppo","Tipo_Commessa":"Cliente","ID_CLIENTE":"CLI0006","Commissione":"0,2700","ID_COLLABORATORE":"CONS001","Data_Apertura_Commessa":"2024-12-01","Stato_Commessa":"In corso","Documento_Offerta":null,"Documento_Ordine":null,"Data_Creazione":null,"ID_UTENTE_CREAZIONE":null,"Data_Modifica":null,"ID_UTENTE_MODIFICA":null}
+[2025-09-09 10:06:02] ATTENZIONE: Formato data non riconosciuto: '2025-08-25 18:17:07'
+[2025-09-09 10:06:02] Campo 'Data_Modifica': '2025-08-25 18:17:07' → ''
+[2025-09-09 10:06:02] ATTENZIONE: Formato data non riconosciuto: '2025-08-25 18:17:13'
+[2025-09-09 10:06:02] Campo 'Data_Modifica': '2025-08-25 18:17:13' → ''
+[2025-09-09 10:06:02] ATTENZIONE: Formato data non riconosciuto: '2025-08-25 18:17:18'
+[2025-09-09 10:06:02] ATTENZIONE: Formato data non riconosciuto: '2025-08-29 17:16:41'
+[2025-09-09 10:06:02] ATTENZIONE: Formato data non riconosciuto: '2025-08-25 18:17:30'
+[2025-09-09 10:06:02] ATTENZIONE: Formato data non riconosciuto: '2025-08-25 18:17:35'
+[2025-09-09 10:06:02] ATTENZIONE: Formato data non riconosciuto: '2025-08-25 18:17:42'
+[2025-09-09 10:06:02] ATTENZIONE: Formato data non riconosciuto: '2025-08-28 07:46:05'
+[2025-09-09 10:06:02] ATTENZIONE: Formato data non riconosciuto: '2025-08-25 18:17:53'
+[2025-09-09 10:06:02] ATTENZIONE: Formato data non riconosciuto: '2025-08-25 18:17:59'
+[2025-09-09 10:06:02] ATTENZIONE: Formato data non riconosciuto: '2025-08-25 18:18:04'
+[2025-09-09 10:06:02] ATTENZIONE: Formato data non riconosciuto: '2025-08-29 17:17:42'
+[2025-09-09 10:06:02] ATTENZIONE: Formato data non riconosciuto: '2025-09-02 12:55:41'
+[2025-09-09 10:06:02] ATTENZIONE: Formato data non riconosciuto: '2025-08-24 16:26:52'
+[2025-09-09 10:06:02] ATTENZIONE: Formato data non riconosciuto: '2025-08-30 10:51:40'
+[2025-09-09 10:06:02] ATTENZIONE: Formato data non riconosciuto: '2025-08-26 17:18:07'
+[2025-09-09 10:06:02] ATTENZIONE: Formato data non riconosciuto: '2025-08-26 17:18:07'
+[2025-09-09 10:06:02] Completata lettura file /home2/vaglioty/public_html/test/DB/Dati/ANA_COMMESSE.csv:
+[2025-09-09 10:06:02] - Righe totali processate: 18
+[2025-09-09 10:06:02] - Record importati con successo: 18
+[2025-09-09 10:06:02] - Record saltati/duplicati: 0
+[2025-09-09 10:06:02] - Errori: 0
+[2025-09-09 10:06:02] Completata importazione ANA_COMMESSE: 18 record importati, 0 errori, 0 saltati
+[2025-09-09 10:06:02] Inizio importazione: ANA_TASK.csv → ANA_TASK
+[2025-09-09 10:06:02] === INIZIO IMPORTAZIONE ANA_TASK ===
+[2025-09-09 10:06:02] File: /home2/vaglioty/public_html/test/DB/Dati/ANA_TASK.csv
+[2025-09-09 10:06:02] Headers originali: ID_TASK, Task, Desc_Task, ID_COMMESSA, ID_COLLABORATORE, Tipo, Data_Apertura_Task, Stato_Task, gg_previste, Spese_Comprese, Valore_Spese_std, Valore_gg, Data_Creazione, ID_UTENTE_CREAZIONE, Data_Modifica, ID_UTENTE_MODIFICA
+[2025-09-09 10:06:02] Headers puliti: ID_TASK, Task, Desc_Task, ID_COMMESSA, ID_COLLABORATORE, Tipo, Data_Apertura_Task, Stato_Task, gg_previste, Spese_Comprese, Valore_Spese_std, Valore_gg, Data_Creazione, ID_UTENTE_CREAZIONE, Data_Modifica, ID_UTENTE_MODIFICA
+[2025-09-09 10:06:02] Numero di colonne header: 16
+[2025-09-09 10:06:02] Query preparata: INSERT IGNORE INTO `ANA_TASK` (`ID_TASK`, `Task`, `Desc_Task`, `ID_COMMESSA`, `ID_COLLABORATORE`, `Tipo`, `Data_Apertura_Task`, `Stato_Task`, `gg_previste`, `Spese_Comprese`, `Valore_Spese_std`, `Valore_gg`, `Data_Creazione`, `ID_UTENTE_CREAZIONE`, `Data_Modifica`, `ID_UTENTE_MODIFICA`) VALUES (:ID_TASK, :Task, :Desc_Task, :ID_COMMESSA, :ID_COLLABORATORE, :Tipo, :Data_Apertura_Task, :Stato_Task, :gg_previste, :Spese_Comprese, :Valore_Spese_std, :Valore_gg, :Data_Creazione, :ID_UTENTE_CREAZIONE, :Data_Modifica, :ID_UTENTE_MODIFICA)
+[2025-09-09 10:06:02] Numero totale di righe dati da processare: 33
+[2025-09-09 10:06:02] Riga 2 dati grezzi: TAS00001 | CALVI VAGLIO | Consulenza Vaglio | COM0001 |  | Campo | 2024-12-01 | In corso |  | Si |  | 1550,00 |  |  |  | 
+[2025-09-09 10:06:02] Numero di campi riga 2: 16
+[2025-09-09 10:06:02] Campo decimale 'Valore_gg': '1550,00' → '1550.00'
+[2025-09-09 10:06:02] Record 1 parametri: {"ID_TASK":"TAS00001","Task":"CALVI VAGLIO","Desc_Task":"Consulenza Vaglio","ID_COMMESSA":"COM0001","ID_COLLABORATORE":null,"Tipo":"Campo","Data_Apertura_Task":"2024-12-01","Stato_Task":"In corso","gg_previste":null,"Spese_Comprese":"Si","Valore_Spese_std":null,"Valore_gg":"1550.00","Data_Creazione":null,"ID_UTENTE_CREAZIONE":null,"Data_Modifica":null,"ID_UTENTE_MODIFICA":null}
+[2025-09-09 10:06:02] Riga 3 dati grezzi: TAS00002 | CALVI ALTRI | Formazione | COM0001 |  | Campo | 2024-12-01 | In corso |  | Si |  | 1450,00 |  |  |  | 
+[2025-09-09 10:06:02] Numero di campi riga 3: 16
+[2025-09-09 10:06:02] Campo decimale 'Valore_gg': '1450,00' → '1450.00'
+[2025-09-09 10:06:02] Record 2 parametri: {"ID_TASK":"TAS00002","Task":"CALVI ALTRI","Desc_Task":"Formazione","ID_COMMESSA":"COM0001","ID_COLLABORATORE":null,"Tipo":"Campo","Data_Apertura_Task":"2024-12-01","Stato_Task":"In corso","gg_previste":null,"Spese_Comprese":"Si","Valore_Spese_std":null,"Valore_gg":"1450.00","Data_Creazione":null,"ID_UTENTE_CREAZIONE":null,"Data_Modifica":null,"ID_UTENTE_MODIFICA":null}
+[2025-09-09 10:06:02] Riga 4 dati grezzi: TAS00003 | CALVI COORDINAMENTO | Coordinamento | COM0001 | CONS001 | Monitoraggio | 2024-12-01 | In corso |  | Si |  | 0,10 |  |  |  | 
+[2025-09-09 10:06:02] Numero di campi riga 4: 16
+[2025-09-09 10:06:02] Campo decimale 'Valore_gg': '0,10' → '0.10'
+[2025-09-09 10:06:02] Record 3 parametri: {"ID_TASK":"TAS00003","Task":"CALVI COORDINAMENTO","Desc_Task":"Coordinamento","ID_COMMESSA":"COM0001","ID_COLLABORATORE":"CONS001","Tipo":"Monitoraggio","Data_Apertura_Task":"2024-12-01","Stato_Task":"In corso","gg_previste":null,"Spese_Comprese":"Si","Valore_Spese_std":null,"Valore_gg":"0.10","Data_Creazione":null,"ID_UTENTE_CREAZIONE":null,"Data_Modifica":null,"ID_UTENTE_MODIFICA":null}
+[2025-09-09 10:06:02] Campo decimale 'Valore_gg': '1550,00' → '1550.00'
+[2025-09-09 10:06:02] Campo decimale 'Valore_Spese_std': '90,00' → '90.00'
+[2025-09-09 10:06:02] Campo decimale 'Valore_gg': '1450,00' → '1450.00'
+[2025-09-09 10:06:02] ATTENZIONE: Formato data non riconosciuto: '2025-08-28 07:44:23'
+[2025-09-09 10:06:02] ATTENZIONE: Formato data non riconosciuto: '2025-08-28 07:45:01'
+[2025-09-09 10:06:02] ATTENZIONE: Formato data non riconosciuto: '2025-09-02 12:03:24'
+[2025-09-09 10:06:02] ATTENZIONE: Formato data non riconosciuto: '2025-09-02 12:03:43'
+[2025-09-09 10:06:02] ATTENZIONE: Formato data non riconosciuto: '2025-09-02 12:03:59'
+[2025-09-09 10:06:02] ATTENZIONE: Formato data non riconosciuto: '2025-09-02 12:02:47'
+[2025-09-09 10:06:02] ATTENZIONE: Formato data non riconosciuto: '2025-09-02 13:04:00'
+[2025-09-09 10:06:02] ATTENZIONE: Formato data non riconosciuto: '2025-08-28 07:45:31'
+[2025-09-09 10:06:02] ATTENZIONE: Formato data non riconosciuto: '2025-09-02 12:19:17'
+[2025-09-09 10:06:02] ATTENZIONE: Formato data non riconosciuto: '2025-08-25 07:40:29'
+[2025-09-09 10:06:02] ATTENZIONE: Formato data non riconosciuto: '2025-08-25 14:04:25'
+[2025-09-09 10:06:02] ATTENZIONE: Formato data non riconosciuto: '2025-08-25 14:01:00'
+[2025-09-09 10:06:02] ATTENZIONE: Formato data non riconosciuto: '2025-08-25 14:01:00'
+[2025-09-09 10:06:02] ATTENZIONE: Formato data non riconosciuto: '2025-08-26 17:18:46'
+[2025-09-09 10:06:02] ATTENZIONE: Formato data non riconosciuto: '2025-08-26 17:18:46'
+[2025-09-09 10:06:02] ATTENZIONE: Formato data non riconosciuto: '2025-09-02 13:03:03'
+[2025-09-09 10:06:02] ATTENZIONE: Formato data non riconosciuto: '2025-09-02 13:03:03'
+[2025-09-09 10:06:02] Completata lettura file /home2/vaglioty/public_html/test/DB/Dati/ANA_TASK.csv:
+[2025-09-09 10:06:02] - Righe totali processate: 33
+[2025-09-09 10:06:02] - Record importati con successo: 33
+[2025-09-09 10:06:02] - Record saltati/duplicati: 0
+[2025-09-09 10:06:02] - Errori: 0
+[2025-09-09 10:06:02] Completata importazione ANA_TASK: 33 record importati, 0 errori, 0 saltati
+[2025-09-09 10:06:02] Inizio importazione: ANA_TARIFFE_COLLABORATORI.csv → ANA_TARIFFE_COLLABORATORI
+[2025-09-09 10:06:02] === INIZIO IMPORTAZIONE ANA_TARIFFE_COLLABORATORI ===
+[2025-09-09 10:06:02] File: /home2/vaglioty/public_html/test/DB/Dati/ANA_TARIFFE_COLLABORATORI.csv
+[2025-09-09 10:06:02] Headers originali: ID_TARIFFA, ID_COLLABORATORE, ID_COMMESSA, Tariffa_gg, Spese_comprese, Dal, Data_Creazione, ID_UTENTE_CREAZIONE, Data_Modifica, ID_UTENTE_MODIFICA
+[2025-09-09 10:06:02] Headers puliti: ID_TARIFFA, ID_COLLABORATORE, ID_COMMESSA, Tariffa_gg, Spese_comprese, Dal, Data_Creazione, ID_UTENTE_CREAZIONE, Data_Modifica, ID_UTENTE_MODIFICA
+[2025-09-09 10:06:02] Numero di colonne header: 10
+[2025-09-09 10:06:02] Query preparata: INSERT IGNORE INTO `ANA_TARIFFE_COLLABORATORI` (`ID_TARIFFA`, `ID_COLLABORATORE`, `ID_COMMESSA`, `Tariffa_gg`, `Spese_comprese`, `Dal`, `Data_Creazione`, `ID_UTENTE_CREAZIONE`, `Data_Modifica`, `ID_UTENTE_MODIFICA`) VALUES (:ID_TARIFFA, :ID_COLLABORATORE, :ID_COMMESSA, :Tariffa_gg, :Spese_comprese, :Dal, :Data_Creazione, :ID_UTENTE_CREAZIONE, :Data_Modifica, :ID_UTENTE_MODIFICA)
+[2025-09-09 10:06:02] Numero totale di righe dati da processare: 10
+[2025-09-09 10:06:02] Riga 2 dati grezzi: TAR00001 | CONS001 |  | 1100,00 | No | 2024-12-01 |  |  |  | 
+[2025-09-09 10:06:02] Numero di campi riga 2: 10
+[2025-09-09 10:06:02] Campo decimale 'Tariffa_gg': '1100,00' → '1100.00'
+[2025-09-09 10:06:02] Record 1 parametri: {"ID_TARIFFA":"TAR00001","ID_COLLABORATORE":"CONS001","ID_COMMESSA":null,"Tariffa_gg":"1100.00","Spese_comprese":"No","Dal":"2024-12-01","Data_Creazione":null,"ID_UTENTE_CREAZIONE":null,"Data_Modifica":null,"ID_UTENTE_MODIFICA":null}
+[2025-09-09 10:06:02] Riga 3 dati grezzi: TAR00002 | CONS002 | COM0001 | 850,00 | No | 2024-12-01 |  |  | 2025-09-07 11:24:00 | SYSTEM
+[2025-09-09 10:06:02] Numero di campi riga 3: 10
+[2025-09-09 10:06:02] Campo decimale 'Tariffa_gg': '850,00' → '850.00'
+[2025-09-09 10:06:02] ATTENZIONE: Formato data non riconosciuto: '2025-09-07 11:24:00'
+[2025-09-09 10:06:02] Campo 'Data_Modifica': '2025-09-07 11:24:00' → ''
+[2025-09-09 10:06:02] Record 2 parametri: {"ID_TARIFFA":"TAR00002","ID_COLLABORATORE":"CONS002","ID_COMMESSA":"COM0001","Tariffa_gg":"850.00","Spese_comprese":"No","Dal":"2024-12-01","Data_Creazione":null,"ID_UTENTE_CREAZIONE":null,"Data_Modifica":null,"ID_UTENTE_MODIFICA":"SYSTEM"}
+[2025-09-09 10:06:02] Riga 4 dati grezzi: TAR00003 | CONS003 |  | 1000,00 | No | 2024-12-01 |  |  | 2025-09-07 11:39:00 | SYSTEM
+[2025-09-09 10:06:02] Numero di campi riga 4: 10
+[2025-09-09 10:06:02] Campo decimale 'Tariffa_gg': '1000,00' → '1000.00'
+[2025-09-09 10:06:02] ATTENZIONE: Formato data non riconosciuto: '2025-09-07 11:39:00'
+[2025-09-09 10:06:02] Campo 'Data_Modifica': '2025-09-07 11:39:00' → ''
+[2025-09-09 10:06:02] Record 3 parametri: {"ID_TARIFFA":"TAR00003","ID_COLLABORATORE":"CONS003","ID_COMMESSA":null,"Tariffa_gg":"1000.00","Spese_comprese":"No","Dal":"2024-12-01","Data_Creazione":null,"ID_UTENTE_CREAZIONE":null,"Data_Modifica":null,"ID_UTENTE_MODIFICA":"SYSTEM"}
+[2025-09-09 10:06:02] Campo decimale 'Tariffa_gg': '1050,00' → '1050.00'
+[2025-09-09 10:06:02] Campo decimale 'Tariffa_gg': '900,00' → '900.00'
+[2025-09-09 10:06:02] ATTENZIONE: Formato data non riconosciuto: '2025-08-26 17:49:37'
+[2025-09-09 10:06:02] Campo 'Data_Modifica': '2025-08-26 17:49:37' → ''
+[2025-09-09 10:06:02] ATTENZIONE: Formato data non riconosciuto: '2025-08-26 17:53:13'
+[2025-09-09 10:06:02] ATTENZIONE: Formato data non riconosciuto: '2025-09-07 11:15:05'
+[2025-09-09 10:06:02] ATTENZIONE: Formato data non riconosciuto: '2025-09-07 11:24:37'
+[2025-09-09 10:06:02] ATTENZIONE: Formato data non riconosciuto: '2025-09-07 11:27:56'
+[2025-09-09 10:06:02] ATTENZIONE: Formato data non riconosciuto: '2025-09-07 11:30:57'
+[2025-09-09 10:06:02] ATTENZIONE: Formato data non riconosciuto: '2025-09-07 11:30:57'
+[2025-09-09 10:06:02] ATTENZIONE: Formato data non riconosciuto: '2025-09-07 11:31:40'
+[2025-09-09 10:06:02] ATTENZIONE: Formato data non riconosciuto: '2025-09-07 11:32:54'
+[2025-09-09 10:06:02] Completata lettura file /home2/vaglioty/public_html/test/DB/Dati/ANA_TARIFFE_COLLABORATORI.csv:
+[2025-09-09 10:06:02] - Righe totali processate: 10
+[2025-09-09 10:06:02] - Record importati con successo: 10
+[2025-09-09 10:06:02] - Record saltati/duplicati: 0
+[2025-09-09 10:06:02] - Errori: 0
+[2025-09-09 10:06:02] Completata importazione ANA_TARIFFE_COLLABORATORI: 10 record importati, 0 errori, 0 saltati
+[2025-09-09 10:06:02] Inizio importazione: FACT_GIORNATE.csv → FACT_GIORNATE
+[2025-09-09 10:06:02] === INIZIO IMPORTAZIONE FACT_GIORNATE ===
+[2025-09-09 10:06:02] File: /home2/vaglioty/public_html/test/DB/Dati/FACT_GIORNATE.csv
+[2025-09-09 10:06:02] Headers originali: ID_GIORNATA, Data, ID_COLLABORATORE, ID_TASK, Tipo, Desk, gg, Spese_Viaggi, Vitto_alloggio, Altri_costi, Spese_Fatturate_VP, Confermata, Note, Data_Creazione, ID_UTENTE_CREAZIONE, Data_Modifica, ID_UTENTE_MODIFICA
+[2025-09-09 10:06:02] Headers puliti: ID_GIORNATA, Data, ID_COLLABORATORE, ID_TASK, Tipo, Desk, gg, Spese_Viaggi, Vitto_alloggio, Altri_costi, Spese_Fatturate_VP, Confermata, Note, Data_Creazione, ID_UTENTE_CREAZIONE, Data_Modifica, ID_UTENTE_MODIFICA
+[2025-09-09 10:06:02] Numero di colonne header: 17
+[2025-09-09 10:06:02] Mapping colonna: Spese_Viaggi → Spese_Viaggi
+[2025-09-09 10:06:02] Mapping colonna: Altri_costi → Altri_costi
+[2025-09-09 10:06:02] Mapping colonna: Spese_Fatturate_VP → Spese_Fatturate_VP
+[2025-09-09 10:06:02] Query preparata: INSERT IGNORE INTO `FACT_GIORNATE` (`ID_GIORNATA`, `Data`, `ID_COLLABORATORE`, `ID_TASK`, `Tipo`, `Desk`, `gg`, `Spese_Viaggi`, `Vitto_alloggio`, `Altri_costi`, `Spese_Fatturate_VP`, `Confermata`, `Note`, `Data_Creazione`, `ID_UTENTE_CREAZIONE`, `Data_Modifica`, `ID_UTENTE_MODIFICA`) VALUES (:ID_GIORNATA, :Data, :ID_COLLABORATORE, :ID_TASK, :Tipo, :Desk, :gg, :Spese_Viaggi, :Vitto_alloggio, :Altri_costi, :Spese_Fatturate_VP, :Confermata, :Note, :Data_Creazione, :ID_UTENTE_CREAZIONE, :Data_Modifica, :ID_UTENTE_MODIFICA)
+[2025-09-09 10:06:02] Numero totale di righe dati da processare: 170
+[2025-09-09 10:06:02] Riga 2 dati grezzi: DAY000000001 | 2025-01-09 | CONS001 | TAS00006 | Campo |  | 1,00 | 250,00 |  |  |  | Si |  |  |  |  | 
+[2025-09-09 10:06:02] Numero di campi riga 2: 17
+[2025-09-09 10:06:02] Campo decimale 'gg': '1,00' → '1.00'
+[2025-09-09 10:06:02] Campo decimale 'Spese_Viaggi': '250,00' → '250.00'
+[2025-09-09 10:06:02] Record 1 parametri: {"ID_GIORNATA":"DAY000000001","Data":"2025-01-09","ID_COLLABORATORE":"CONS001","ID_TASK":"TAS00006","Tipo":"Campo","Desk":null,"gg":"1.00","Spese_Viaggi":"250.00","Vitto_alloggio":null,"Altri_costi":null,"Spese_Fatturate_VP":null,"Confermata":"Si","Note":null,"Data_Creazione":null,"ID_UTENTE_CREAZIONE":null,"Data_Modifica":null,"ID_UTENTE_MODIFICA":null}
+[2025-09-09 10:06:02] Riga 3 dati grezzi: DAY000000002 | 2024-12-10 | CONS001 | TAS00006 | Campo |  | 1,00 | 180,00 |  |  |  | Si | DATA FARLOCCA |  |  |  | 
+[2025-09-09 10:06:02] Numero di campi riga 3: 17
+[2025-09-09 10:06:02] Campo decimale 'gg': '1,00' → '1.00'
+[2025-09-09 10:06:02] Campo decimale 'Spese_Viaggi': '180,00' → '180.00'
+[2025-09-09 10:06:02] Record 2 parametri: {"ID_GIORNATA":"DAY000000002","Data":"2024-12-10","ID_COLLABORATORE":"CONS001","ID_TASK":"TAS00006","Tipo":"Campo","Desk":null,"gg":"1.00","Spese_Viaggi":"180.00","Vitto_alloggio":null,"Altri_costi":null,"Spese_Fatturate_VP":null,"Confermata":"Si","Note":"DATA FARLOCCA","Data_Creazione":null,"ID_UTENTE_CREAZIONE":null,"Data_Modifica":null,"ID_UTENTE_MODIFICA":null}
+[2025-09-09 10:06:02] Riga 4 dati grezzi: DAY000000003 | 2024-12-10 | CONS001 | TAS00007 | Campo |  | 1,00 | 250,00 | 38,00 |  |  | Si | DATA FARLOCCA |  |  |  | 
+[2025-09-09 10:06:02] Numero di campi riga 4: 17
+[2025-09-09 10:06:02] Campo decimale 'gg': '1,00' → '1.00'
+[2025-09-09 10:06:02] Campo decimale 'Spese_Viaggi': '250,00' → '250.00'
+[2025-09-09 10:06:02] Campo decimale 'Vitto_alloggio': '38,00' → '38.00'
+[2025-09-09 10:06:02] Record 3 parametri: {"ID_GIORNATA":"DAY000000003","Data":"2024-12-10","ID_COLLABORATORE":"CONS001","ID_TASK":"TAS00007","Tipo":"Campo","Desk":null,"gg":"1.00","Spese_Viaggi":"250.00","Vitto_alloggio":"38.00","Altri_costi":null,"Spese_Fatturate_VP":null,"Confermata":"Si","Note":"DATA FARLOCCA","Data_Creazione":null,"ID_UTENTE_CREAZIONE":null,"Data_Modifica":null,"ID_UTENTE_MODIFICA":null}
+[2025-09-09 10:06:02] Campo decimale 'gg': '0,50' → '0.50'
+[2025-09-09 10:06:02] Campo decimale 'gg': '1,00' → '1.00'
+[2025-09-09 10:06:03] ATTENZIONE: Formato data non riconosciuto: '2025-08-31 09:49:44'
+[2025-09-09 10:06:03] ATTENZIONE: Formato data non riconosciuto: '2025-09-02 15:41:41'
+[2025-09-09 10:06:03] ATTENZIONE: Formato data non riconosciuto: '2025-09-02 15:41:25'
+[2025-09-09 10:06:03] ATTENZIONE: Formato data non riconosciuto: '2025-08-25 18:03:29'
+[2025-09-09 10:06:03] ATTENZIONE: Formato data non riconosciuto: '2025-09-06 09:08:56'
+[2025-09-09 10:06:03] ATTENZIONE: Formato data non riconosciuto: '2025-08-26 09:10:14'
+[2025-09-09 10:06:03] ATTENZIONE: Formato data non riconosciuto: '2025-09-02 15:40:12'
+[2025-09-09 10:06:03] ATTENZIONE: Formato data non riconosciuto: '2025-08-26 17:13:44'
+[2025-09-09 10:06:03] ATTENZIONE: Formato data non riconosciuto: '2025-08-26 17:13:44'
+[2025-09-09 10:06:03] ATTENZIONE: Formato data non riconosciuto: '2025-08-26 17:50:35'
+[2025-09-09 10:06:03] ATTENZIONE: Formato data non riconosciuto: '2025-08-26 17:50:35'
+[2025-09-09 10:06:03] ATTENZIONE: Formato data non riconosciuto: '2025-08-27 16:17:25'
+[2025-09-09 10:06:03] ATTENZIONE: Formato data non riconosciuto: '2025-09-02 15:39:41'
+[2025-09-09 10:06:03] ATTENZIONE: Formato data non riconosciuto: '2025-09-02 12:59:43'
+[2025-09-09 10:06:03] ATTENZIONE: Formato data non riconosciuto: '2025-09-07 11:54:57'
+[2025-09-09 10:06:03] ATTENZIONE: Formato data non riconosciuto: '2025-09-02 13:01:23'
+[2025-09-09 10:06:03] ATTENZIONE: Formato data non riconosciuto: '2025-09-02 15:39:41'
+[2025-09-09 10:06:03] ATTENZIONE: Formato data non riconosciuto: '2025-09-02 13:01:56'
+[2025-09-09 10:06:03] ATTENZIONE: Formato data non riconosciuto: '2025-09-02 15:39:41'
+[2025-09-09 10:06:03] ATTENZIONE: Formato data non riconosciuto: '2025-09-04 18:19:37'
+[2025-09-09 10:06:03] ATTENZIONE: Formato data non riconosciuto: '2025-09-04 18:19:37'
+[2025-09-09 10:06:03] ATTENZIONE: Formato data non riconosciuto: '2025-09-04 18:39:54'
+[2025-09-09 10:06:03] ATTENZIONE: Formato data non riconosciuto: '2025-09-04 18:39:54'
+[2025-09-09 10:06:03] ATTENZIONE: Formato data non riconosciuto: '2025-09-04 18:41:22'
+[2025-09-09 10:06:03] ATTENZIONE: Formato data non riconosciuto: '2025-09-04 18:42:17'
+[2025-09-09 10:06:03] ATTENZIONE: Formato data non riconosciuto: '2025-09-04 18:42:52'
+[2025-09-09 10:06:03] ATTENZIONE: Formato data non riconosciuto: '2025-09-04 18:42:52'
+[2025-09-09 10:06:03] ATTENZIONE: Formato data non riconosciuto: '2025-09-04 18:44:34'
+[2025-09-09 10:06:03] ATTENZIONE: Formato data non riconosciuto: '2025-09-04 18:44:34'
+[2025-09-09 10:06:03] ATTENZIONE: Formato data non riconosciuto: '2025-09-04 18:44:51'
+[2025-09-09 10:06:03] ATTENZIONE: Formato data non riconosciuto: '2025-09-04 18:44:51'
+[2025-09-09 10:06:03] ATTENZIONE: Formato data non riconosciuto: '2025-09-04 18:45:08'
+[2025-09-09 10:06:03] ATTENZIONE: Formato data non riconosciuto: '2025-09-04 18:45:08'
+[2025-09-09 10:06:03] ATTENZIONE: Formato data non riconosciuto: '2025-09-04 18:45:20'
+[2025-09-09 10:06:03] ATTENZIONE: Formato data non riconosciuto: '2025-09-04 18:45:20'
+[2025-09-09 10:06:03] ATTENZIONE: Formato data non riconosciuto: '2025-09-04 18:46:37'
+[2025-09-09 10:06:03] ATTENZIONE: Formato data non riconosciuto: '2025-09-04 18:46:37'
+[2025-09-09 10:06:03] ATTENZIONE: Formato data non riconosciuto: '2025-09-06 08:56:18'
+[2025-09-09 10:06:03] ATTENZIONE: Formato data non riconosciuto: '2025-09-07 11:53:57'
+[2025-09-09 10:06:03] ATTENZIONE: Formato data non riconosciuto: '2025-09-07 11:54:29'
+[2025-09-09 10:06:03] ATTENZIONE: Formato data non riconosciuto: '2025-09-07 11:54:29'
+[2025-09-09 10:06:03] Completata lettura file /home2/vaglioty/public_html/test/DB/Dati/FACT_GIORNATE.csv:
+[2025-09-09 10:06:03] - Righe totali processate: 170
+[2025-09-09 10:06:03] - Record importati con successo: 170
+[2025-09-09 10:06:03] - Record saltati/duplicati: 0
+[2025-09-09 10:06:03] - Errori: 0
+[2025-09-09 10:06:03] Completata importazione FACT_GIORNATE: 170 record importati, 0 errori, 0 saltati
+[2025-09-09 10:06:03] Inizio importazione: FACT_FATTURE.csv → FACT_FATTURE
+[2025-09-09 10:06:03] === INIZIO IMPORTAZIONE FACT_FATTURE ===
+[2025-09-09 10:06:03] File: /home2/vaglioty/public_html/test/DB/Dati/FACT_FATTURE.csv
+[2025-09-09 10:06:03] Headers originali: ID_FATTURA, Data, ID_CLIENTE, TIPO, NR, ID_COMMESSA, Fatturato_gg, Fatturato_Spese, Fatturato_TOT, Note, Riferimento_Ordine, Data_Ordine, Tempi_Pagamento, Scadenza_Pagamento, Data_Pagamento, Valore_Pagato, Data_Creazione, ID_UTENTE_CREAZIONE, Data_Modifica, ID_UTENTE_MODIFICA
+[2025-09-09 10:06:03] Headers puliti: ID_FATTURA, Data, ID_CLIENTE, TIPO, NR, ID_COMMESSA, Fatturato_gg, Fatturato_Spese, Fatturato_TOT, Note, Riferimento_Ordine, Data_Ordine, Tempi_Pagamento, Scadenza_Pagamento, Data_Pagamento, Valore_Pagato, Data_Creazione, ID_UTENTE_CREAZIONE, Data_Modifica, ID_UTENTE_MODIFICA
+[2025-09-09 10:06:03] Numero di colonne header: 20
+[2025-09-09 10:06:03] Query preparata (senza auto-increment): INSERT IGNORE INTO `FACT_FATTURE` (`Data`, `ID_CLIENTE`, `TIPO`, `NR`, `ID_COMMESSA`, `Fatturato_gg`, `Fatturato_Spese`, `Fatturato_TOT`, `Note`, `Riferimento_Ordine`, `Data_Ordine`, `Tempi_Pagamento`, `Scadenza_Pagamento`, `Data_Pagamento`, `Valore_Pagato`, `Data_Creazione`, `ID_UTENTE_CREAZIONE`, `Data_Modifica`, `ID_UTENTE_MODIFICA`) VALUES (:Data, :ID_CLIENTE, :TIPO, :NR, :ID_COMMESSA, :Fatturato_gg, :Fatturato_Spese, :Fatturato_TOT, :Note, :Riferimento_Ordine, :Data_Ordine, :Tempi_Pagamento, :Scadenza_Pagamento, :Data_Pagamento, :Valore_Pagato, :Data_Creazione, :ID_UTENTE_CREAZIONE, :Data_Modifica, :ID_UTENTE_MODIFICA)
+[2025-09-09 10:06:03] Query preparata (con auto-increment): INSERT IGNORE INTO `FACT_FATTURE` (`ID_FATTURA`, `Data`, `ID_CLIENTE`, `TIPO`, `NR`, `ID_COMMESSA`, `Fatturato_gg`, `Fatturato_Spese`, `Fatturato_TOT`, `Note`, `Riferimento_Ordine`, `Data_Ordine`, `Tempi_Pagamento`, `Scadenza_Pagamento`, `Data_Pagamento`, `Valore_Pagato`, `Data_Creazione`, `ID_UTENTE_CREAZIONE`, `Data_Modifica`, `ID_UTENTE_MODIFICA`) VALUES (:ID_FATTURA, :Data, :ID_CLIENTE, :TIPO, :NR, :ID_COMMESSA, :Fatturato_gg, :Fatturato_Spese, :Fatturato_TOT, :Note, :Riferimento_Ordine, :Data_Ordine, :Tempi_Pagamento, :Scadenza_Pagamento, :Data_Pagamento, :Valore_Pagato, :Data_Creazione, :ID_UTENTE_CREAZIONE, :Data_Modifica, :ID_UTENTE_MODIFICA)
+[2025-09-09 10:06:03] Numero totale di righe dati da processare: 38
+[2025-09-09 10:06:03] Riga 2 dati grezzi: FAT25001 | 30/08/2025 | CLI0006 | Fattura | 33/25 | COM0003 | 1550 | 297 | 1847 | Attività di supporto consulenziale c/o il Vostro 
+stabilimento di Mantova. 
+Viaggio a/r 
+Spese |  |  | 30 | 29/09/2025 |  | 0 | 07/09/2025 10:07 | SYSTEM | 07/09/2025 10:07 | 
+[2025-09-09 10:06:03] Numero di campi riga 2: 20
+[2025-09-09 10:06:03] Conversione data: '30/08/2025' → '2025-08-30'
+[2025-09-09 10:06:03] Campo 'Data': '30/08/2025' → '2025-08-30'
+[2025-09-09 10:06:03] Conversione data: '29/09/2025' → '2025-09-29'
+[2025-09-09 10:06:03] Campo 'Scadenza_Pagamento': '29/09/2025' → '2025-09-29'
+[2025-09-09 10:06:03] ATTENZIONE: Formato data non riconosciuto: '07/09/2025 10:07'
+[2025-09-09 10:06:03] Campo 'Data_Creazione': '07/09/2025 10:07' → ''
+[2025-09-09 10:06:03] ATTENZIONE: Formato data non riconosciuto: '07/09/2025 10:07'
+[2025-09-09 10:06:03] Campo 'Data_Modifica': '07/09/2025 10:07' → ''
+[2025-09-09 10:06:03] Record 1 parametri: {"ID_FATTURA":"FAT25001","Data":"2025-08-30","ID_CLIENTE":"CLI0006","TIPO":"Fattura","NR":"33\/25","ID_COMMESSA":"COM0003","Fatturato_gg":"1550","Fatturato_Spese":"297","Fatturato_TOT":"1847","Note":"Attività di supporto consulenziale c\/o il Vostro \nstabilimento di Mantova. \nViaggio a\/r \nSpese","Riferimento_Ordine":null,"Data_Ordine":null,"Tempi_Pagamento":"30","Scadenza_Pagamento":"2025-09-29","Data_Pagamento":null,"Valore_Pagato":"0","Data_Creazione":null,"ID_UTENTE_CREAZIONE":"SYSTEM","Data_Modifica":null,"ID_UTENTE_MODIFICA":null}
+[2025-09-09 10:06:03] Record 1 auto-increment vuoto: NO
+[2025-09-09 10:06:03] Riga 3 dati grezzi: FATT000001 | 31/01/2025 | CLI0006 | Fattura | 01/25 | COM0003 | 1550 | 250 | 1800 | Attivit� di supporto consulenziale c/o il Vostro 
+stabilimento di Mantova. |  |  | 30 | 02/03/2025 | 12/03/2025 | 1800 |  |  |  | 
+[2025-09-09 10:06:03] Numero di campi riga 3: 20
+[2025-09-09 10:06:03] Conversione data: '31/01/2025' → '2025-01-31'
+[2025-09-09 10:06:03] Campo 'Data': '31/01/2025' → '2025-01-31'
+[2025-09-09 10:06:03] Conversione data: '02/03/2025' → '2025-03-02'
+[2025-09-09 10:06:03] Campo 'Scadenza_Pagamento': '02/03/2025' → '2025-03-02'
+[2025-09-09 10:06:03] Conversione data: '12/03/2025' → '2025-03-12'
+[2025-09-09 10:06:03] Campo 'Data_Pagamento': '12/03/2025' → '2025-03-12'
+[2025-09-09 10:06:03] Record 2 parametri: {"ID_FATTURA":"FATT000001","Data":"2025-01-31","ID_CLIENTE":"CLI0006","TIPO":"Fattura","NR":"01\/25","ID_COMMESSA":"COM0003","Fatturato_gg":"1550","Fatturato_Spese":"250","Fatturato_TOT":"1800","Note":"Attivit� di supporto consulenziale c\/o il Vostro \nstabilimento di Mantova.","Riferimento_Ordine":null,"Data_Ordine":null,"Tempi_Pagamento":"30","Scadenza_Pagamento":"2025-03-02","Data_Pagamento":"2025-03-12","Valore_Pagato":"1800","Data_Creazione":null,"ID_UTENTE_CREAZIONE":null,"Data_Modifica":null,"ID_UTENTE_MODIFICA":null}
+[2025-09-09 10:06:03] Record 2 auto-increment vuoto: NO
+[2025-09-09 10:06:03] Riga 4 dati grezzi: FATT000002 | 23/12/2024 | CLI0006 | Fattura | 01/24 | COM0003 | 1838 | 0 | 1838 | Attivit� di supporto consulenziale c/o il Vostro 
+stabilimento di Mantova. |  |  | 30 | 22/01/2025 | 20/02/2025 | 1838 |  |  | 07/09/2025 10:22 | SYSTEM
+[2025-09-09 10:06:03] Numero di campi riga 4: 20
+[2025-09-09 10:06:03] Conversione data: '23/12/2024' → '2024-12-23'
+[2025-09-09 10:06:03] Campo 'Data': '23/12/2024' → '2024-12-23'
+[2025-09-09 10:06:03] Conversione data: '22/01/2025' → '2025-01-22'
+[2025-09-09 10:06:03] Campo 'Scadenza_Pagamento': '22/01/2025' → '2025-01-22'
+[2025-09-09 10:06:03] Conversione data: '20/02/2025' → '2025-02-20'
+[2025-09-09 10:06:03] Campo 'Data_Pagamento': '20/02/2025' → '2025-02-20'
+[2025-09-09 10:06:03] ATTENZIONE: Formato data non riconosciuto: '07/09/2025 10:22'
+[2025-09-09 10:06:03] Campo 'Data_Modifica': '07/09/2025 10:22' → ''
+[2025-09-09 10:06:03] Record 3 parametri: {"ID_FATTURA":"FATT000002","Data":"2024-12-23","ID_CLIENTE":"CLI0006","TIPO":"Fattura","NR":"01\/24","ID_COMMESSA":"COM0003","Fatturato_gg":"1838","Fatturato_Spese":"0","Fatturato_TOT":"1838","Note":"Attivit� di supporto consulenziale c\/o il Vostro \nstabilimento di Mantova.","Riferimento_Ordine":null,"Data_Ordine":null,"Tempi_Pagamento":"30","Scadenza_Pagamento":"2025-01-22","Data_Pagamento":"2025-02-20","Valore_Pagato":"1838","Data_Creazione":null,"ID_UTENTE_CREAZIONE":null,"Data_Modifica":null,"ID_UTENTE_MODIFICA":"SYSTEM"}
+[2025-09-09 10:06:03] Record 3 auto-increment vuoto: NO
+[2025-09-09 10:06:03] Conversione data: '23/12/2024' → '2024-12-23'
+[2025-09-09 10:06:03] Campo 'Data': '23/12/2024' → '2024-12-23'
+[2025-09-09 10:06:03] Conversione data: '23/12/2024' → '2024-12-23'
+[2025-09-09 10:06:03] Campo 'Scadenza_Pagamento': '23/12/2024' → '2024-12-23'
+[2025-09-09 10:06:03] Conversione data: '27/02/2025' → '2025-02-27'
+[2025-09-09 10:06:03] Campo 'Data_Pagamento': '27/02/2025' → '2025-02-27'
+[2025-09-09 10:06:03] Conversione data: '23/12/2024' → '2024-12-23'
+[2025-09-09 10:06:03] Campo 'Data': '23/12/2024' → '2024-12-23'
+[2025-09-09 10:06:03] Conversione data: '22/01/2025' → '2025-01-22'
+[2025-09-09 10:06:03] Campo 'Scadenza_Pagamento': '22/01/2025' → '2025-01-22'
+[2025-09-09 10:06:03] Conversione data: '31/01/2025' → '2025-01-31'
+[2025-09-09 10:06:03] Campo 'Data_Pagamento': '31/01/2025' → '2025-01-31'
+[2025-09-09 10:06:03] Conversione data: '23/12/2024' → '2024-12-23'
+[2025-09-09 10:06:03] Conversione data: '23/12/2024' → '2024-12-23'
+[2025-09-09 10:06:03] Conversione data: '24/01/2025' → '2025-01-24'
+[2025-09-09 10:06:03] ATTENZIONE: Formato data non riconosciuto: '07/09/2025 09:18'
+[2025-09-09 10:06:03] Conversione data: '31/12/2024' → '2024-12-31'
+[2025-09-09 10:06:03] Conversione data: '31/12/2024' → '2024-12-31'
+[2025-09-09 10:06:03] Conversione data: '31/01/2025' → '2025-01-31'
+[2025-09-09 10:06:03] Conversione data: '31/01/2025' → '2025-01-31'
+[2025-09-09 10:06:03] Conversione data: '02/03/2025' → '2025-03-02'
+[2025-09-09 10:06:03] Conversione data: '12/03/2025' → '2025-03-12'
+[2025-09-09 10:06:03] Conversione data: '31/01/2025' → '2025-01-31'
+[2025-09-09 10:06:03] Conversione data: '31/01/2025' → '2025-01-31'
+[2025-09-09 10:06:03] Conversione data: '11/03/2025' → '2025-03-11'
+[2025-09-09 10:06:03] Conversione data: '31/01/2025' → '2025-01-31'
+[2025-09-09 10:06:03] Conversione data: '27/09/2024' → '2024-09-27'
+[2025-09-09 10:06:03] Conversione data: '31/01/2025' → '2025-01-31'
+[2025-09-09 10:06:03] Conversione data: '04/03/2025' → '2025-03-04'
+[2025-09-09 10:06:03] Conversione data: '28/02/2025' → '2025-02-28'
+[2025-09-09 10:06:03] Conversione data: '30/03/2025' → '2025-03-30'
+[2025-09-09 10:06:03] Conversione data: '14/04/2025' → '2025-04-14'
+[2025-09-09 10:06:03] Conversione data: '28/02/2025' → '2025-02-28'
+[2025-09-09 10:06:03] Conversione data: '30/03/2025' → '2025-03-30'
+[2025-09-09 10:06:03] Conversione data: '24/04/2025' → '2025-04-24'
+[2025-09-09 10:06:03] Conversione data: '28/02/2025' → '2025-02-28'
+[2025-09-09 10:06:03] Conversione data: '27/09/2024' → '2024-09-27'
+[2025-09-09 10:06:03] Conversione data: '28/02/2025' → '2025-02-28'
+[2025-09-09 10:06:03] Conversione data: '01/04/2025' → '2025-04-01'
+[2025-09-09 10:06:03] Conversione data: '31/03/2025' → '2025-03-31'
+[2025-09-09 10:06:03] Conversione data: '04/02/2025' → '2025-02-04'
+[2025-09-09 10:06:03] Conversione data: '31/03/2025' → '2025-03-31'
+[2025-09-09 10:06:03] Conversione data: '04/06/2025' → '2025-06-04'
+[2025-09-09 10:06:03] Conversione data: '31/03/2025' → '2025-03-31'
+[2025-09-09 10:06:03] Conversione data: '04/02/2025' → '2025-02-04'
+[2025-09-09 10:06:03] Conversione data: '31/03/2025' → '2025-03-31'
+[2025-09-09 10:06:03] Conversione data: '04/06/2025' → '2025-06-04'
+[2025-09-09 10:06:03] Conversione data: '31/03/2025' → '2025-03-31'
+[2025-09-09 10:06:03] Conversione data: '27/09/2024' → '2024-09-27'
+[2025-09-09 10:06:03] Conversione data: '31/03/2025' → '2025-03-31'
+[2025-09-09 10:06:03] Conversione data: '02/05/2025' → '2025-05-02'
+[2025-09-09 10:06:03] Conversione data: '31/03/2025' → '2025-03-31'
+[2025-09-09 10:06:03] Conversione data: '30/04/2025' → '2025-04-30'
+[2025-09-09 10:06:03] Conversione data: '08/05/2025' → '2025-05-08'
+[2025-09-09 10:06:03] Conversione data: '31/03/2025' → '2025-03-31'
+[2025-09-09 10:06:03] Conversione data: '30/04/2025' → '2025-04-30'
+[2025-09-09 10:06:03] Conversione data: '12/05/2025' → '2025-05-12'
+[2025-09-09 10:06:03] Conversione data: '31/03/2025' → '2025-03-31'
+[2025-09-09 10:06:03] Conversione data: '13/03/2025' → '2025-03-13'
+[2025-09-09 10:06:03] Conversione data: '30/04/2025' → '2025-04-30'
+[2025-09-09 10:06:03] Conversione data: '20/06/2025' → '2025-06-20'
+[2025-09-09 10:06:03] Conversione data: '30/04/2025' → '2025-04-30'
+[2025-09-09 10:06:03] Conversione data: '27/09/2024' → '2024-09-27'
+[2025-09-09 10:06:03] Conversione data: '30/05/2025' → '2025-05-30'
+[2025-09-09 10:06:03] Conversione data: '30/05/2025' → '2025-05-30'
+[2025-09-09 10:06:03] Conversione data: '30/04/2025' → '2025-04-30'
+[2025-09-09 10:06:03] Conversione data: '30/05/2025' → '2025-05-30'
+[2025-09-09 10:06:03] Conversione data: '09/06/2025' → '2025-06-09'
+[2025-09-09 10:06:03] Conversione data: '30/04/2025' → '2025-04-30'
+[2025-09-09 10:06:03] Conversione data: '30/05/2025' → '2025-05-30'
+[2025-09-09 10:06:03] Conversione data: '10/06/2025' → '2025-06-10'
+[2025-09-09 10:06:03] Conversione data: '31/05/2025' → '2025-05-31'
+[2025-09-09 10:06:03] Conversione data: '30/06/2025' → '2025-06-30'
+[2025-09-09 10:06:03] Conversione data: '30/06/2025' → '2025-06-30'
+[2025-09-09 10:06:03] Conversione data: '31/05/2025' → '2025-05-31'
+[2025-09-09 10:06:03] Conversione data: '27/09/2024' → '2024-09-27'
+[2025-09-09 10:06:03] Conversione data: '30/06/2025' → '2025-06-30'
+[2025-09-09 10:06:03] Conversione data: '04/07/2025' → '2025-07-04'
+[2025-09-09 10:06:03] Conversione data: '31/05/2025' → '2025-05-31'
+[2025-09-09 10:06:03] Conversione data: '04/02/2025' → '2025-02-04'
+[2025-09-09 10:06:03] Conversione data: '30/07/2025' → '2025-07-30'
+[2025-09-09 10:06:03] Conversione data: '04/08/2025' → '2025-08-04'
+[2025-09-09 10:06:03] Conversione data: '31/05/2025' → '2025-05-31'
+[2025-09-09 10:06:03] Conversione data: '17/04/2025' → '2025-04-17'
+[2025-09-09 10:06:03] Conversione data: '30/07/2025' → '2025-07-30'
+[2025-09-09 10:06:03] Conversione data: '04/08/2025' → '2025-08-04'
+[2025-09-09 10:06:03] Conversione data: '31/05/2025' → '2025-05-31'
+[2025-09-09 10:06:03] Conversione data: '17/04/2025' → '2025-04-17'
+[2025-09-09 10:06:03] Conversione data: '30/07/2025' → '2025-07-30'
+[2025-09-09 10:06:03] Conversione data: '31/05/2025' → '2025-05-31'
+[2025-09-09 10:06:03] Conversione data: '31/05/2025' → '2025-05-31'
+[2025-09-09 10:06:03] Conversione data: '30/07/2025' → '2025-07-30'
+[2025-09-09 10:06:03] Conversione data: '04/08/2025' → '2025-08-04'
+[2025-09-09 10:06:03] Conversione data: '30/06/2025' → '2025-06-30'
+[2025-09-09 10:06:03] Conversione data: '30/07/2025' → '2025-07-30'
+[2025-09-09 10:06:03] Conversione data: '06/08/2025' → '2025-08-06'
+[2025-09-09 10:06:03] Conversione data: '30/06/2025' → '2025-06-30'
+[2025-09-09 10:06:03] Conversione data: '30/07/2025' → '2025-07-30'
+[2025-09-09 10:06:03] Conversione data: '11/08/2025' → '2025-08-11'
+[2025-09-09 10:06:03] Conversione data: '30/06/2025' → '2025-06-30'
+[2025-09-09 10:06:03] Conversione data: '31/12/2024' → '2024-12-31'
+[2025-09-09 10:06:03] Conversione data: '30/07/2025' → '2025-07-30'
+[2025-09-09 10:06:03] Conversione data: '05/09/2025' → '2025-09-05'
+[2025-09-09 10:06:03] Conversione data: '30/06/2025' → '2025-06-30'
+[2025-09-09 10:06:03] Conversione data: '27/09/2024' → '2024-09-27'
+[2025-09-09 10:06:03] Conversione data: '30/07/2025' → '2025-07-30'
+[2025-09-09 10:06:03] Conversione data: '31/07/2025' → '2025-07-31'
+[2025-09-09 10:06:03] Conversione data: '30/07/2025' → '2025-07-30'
+[2025-09-09 10:06:03] Conversione data: '29/08/2025' → '2025-08-29'
+[2025-09-09 10:06:03] Conversione data: '05/09/2025' → '2025-09-05'
+[2025-09-09 10:06:03] Conversione data: '29/07/2025' → '2025-07-29'
+[2025-09-09 10:06:03] Conversione data: '28/08/2025' → '2025-08-28'
+[2025-09-09 10:06:03] Conversione data: '30/07/2025' → '2025-07-30'
+[2025-09-09 10:06:03] Conversione data: '27/09/2024' → '2024-09-27'
+[2025-09-09 10:06:03] Conversione data: '29/08/2025' → '2025-08-29'
+[2025-09-09 10:06:03] Conversione data: '01/09/2025' → '2025-09-01'
+[2025-09-09 10:06:03] Conversione data: '30/07/2025' → '2025-07-30'
+[2025-09-09 10:06:03] Conversione data: '28/09/2025' → '2025-09-28'
+[2025-09-09 10:06:03] Conversione data: '30/07/2025' → '2025-07-30'
+[2025-09-09 10:06:03] Conversione data: '29/08/2025' → '2025-08-29'
+[2025-09-09 10:06:03] Conversione data: '02/09/2025' → '2025-09-02'
+[2025-09-09 10:06:03] Conversione data: '31/07/2025' → '2025-07-31'
+[2025-09-09 10:06:03] Conversione data: '30/08/2025' → '2025-08-30'
+[2025-09-09 10:06:03] Conversione data: '05/09/2025' → '2025-09-05'
+[2025-09-09 10:06:03] Completata lettura file /home2/vaglioty/public_html/test/DB/Dati/FACT_FATTURE.csv:
+[2025-09-09 10:06:03] - Righe totali processate: 38
+[2025-09-09 10:06:03] - Record importati con successo: 38
+[2025-09-09 10:06:03] - Record saltati/duplicati: 0
+[2025-09-09 10:06:03] - Errori: 0
+[2025-09-09 10:06:03] Completata importazione FACT_FATTURE: 38 record importati, 0 errori, 0 saltati
+[2025-09-09 10:06:03] RIEPILOGO: 295 record importati, 0 saltati, 0 errori
+[2025-09-09 10:06:03] === IMPORTAZIONE COMPLETATA CON SUCCESSO ===

@@ -125,3 +125,49 @@ Stack trace:
 Stack trace:
 #0 {main}
   thrown in /home2/vaglioty/public_html/test/DB/api_fact_giornate.php on line 6
+[11-Sep-2025 14:05:16 Europe/Rome] PHP Fatal error:  Uncaught Error: Undefined constant "DB_NAME" in /home2/vaglioty/public_html/test/DB/config.php:31
+Stack trace:
+#0 /home2/vaglioty/public_html/test/DB/config.php(57): DatabaseConnection->__construct()
+#1 /home2/vaglioty/public_html/test/DB/config.php(79): DatabaseConnection::getInstance()
+#2 /home2/vaglioty/public_html/test/API/AuthAPI.php(12): getDatabase()
+#3 /home2/vaglioty/public_html/test/API/auth.php(24): AuthAPI->__construct()
+#4 {main}
+  thrown in /home2/vaglioty/public_html/test/DB/config.php on line 31
+[11-Sep-2025 14:05:24 Europe/Rome] PHP Fatal error:  Uncaught Error: Undefined constant "DB_NAME" in /home2/vaglioty/public_html/test/DB/config.php:31
+Stack trace:
+#0 /home2/vaglioty/public_html/test/DB/config.php(57): DatabaseConnection->__construct()
+#1 /home2/vaglioty/public_html/test/DB/config.php(79): DatabaseConnection::getInstance()
+#2 /home2/vaglioty/public_html/test/API/AuthAPI.php(12): getDatabase()
+#3 /home2/vaglioty/public_html/test/API/auth.php(24): AuthAPI->__construct()
+#4 {main}
+  thrown in /home2/vaglioty/public_html/test/DB/config.php on line 31
+[11-Sep-2025 14:07:06 Europe/Rome] PHP Fatal error:  Uncaught Error: Undefined constant "DB_USER" in /home2/vaglioty/public_html/test/DB/setup.php:31
+Stack trace:
+#0 /home2/vaglioty/public_html/test/DB/setup.php(14): DatabaseSetup->ensureDatabaseExists()
+#1 /home2/vaglioty/public_html/test/DB/setup.php(428): DatabaseSetup->__construct()
+#2 {main}
+  thrown in /home2/vaglioty/public_html/test/DB/setup.php on line 31
+[11-Sep-2025 14:08:21 Europe/Rome] PHP Fatal error:  Uncaught Error: Undefined constant "DB_USER" in /home2/vaglioty/public_html/test/DB/setup.php:31
+Stack trace:
+#0 /home2/vaglioty/public_html/test/DB/setup.php(14): DatabaseSetup->ensureDatabaseExists()
+#1 /home2/vaglioty/public_html/test/DB/setup.php(428): DatabaseSetup->__construct()
+#2 {main}
+  thrown in /home2/vaglioty/public_html/test/DB/setup.php on line 31
+[11-Sep-2025 14:10:03 Europe/Rome] PHP Fatal error:  Uncaught Error: Undefined constant "DB_USER" in /home2/vaglioty/public_html/test/DB/setup.php:31
+Stack trace:
+#0 /home2/vaglioty/public_html/test/DB/setup.php(14): DatabaseSetup->ensureDatabaseExists()
+#1 /home2/vaglioty/public_html/test/DB/setup.php(428): DatabaseSetup->__construct()
+#2 {main}
+  thrown in /home2/vaglioty/public_html/test/DB/setup.php on line 31
+[11-Sep-2025 14:13:21 Europe/Rome] PHP Fatal error:  Uncaught Error: Undefined constant "DB_USER" in /home2/vaglioty/public_html/test/DB/setup.php:31
+Stack trace:
+#0 /home2/vaglioty/public_html/test/DB/setup.php(14): DatabaseSetup->ensureDatabaseExists()
+#1 /home2/vaglioty/public_html/test/DB/setup.php(428): DatabaseSetup->__construct()
+#2 {main}
+  thrown in /home2/vaglioty/public_html/test/DB/setup.php on line 31
+[11-Sep-2025 14:15:53 Europe/Rome] PHP Fatal error:  Uncaught Error: Undefined constant "DB_USER" in /home2/vaglioty/public_html/test/DB/setup.php:31
+Stack trace:
+#0 /home2/vaglioty/public_html/test/DB/setup.php(14): DatabaseSetup->ensureDatabaseExists()
+#1 /home2/vaglioty/public_html/test/DB/setup.php(428): DatabaseSetup->__construct()
+#2 {main}
+  thrown in /home2/vaglioty/public_html/test/DB/setup.php on line 31
