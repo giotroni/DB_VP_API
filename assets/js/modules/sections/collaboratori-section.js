@@ -660,7 +660,13 @@ class CollaboratoriSection extends BaseSection {
         const accounting = computeAccountingByMonth();
         const accountingValue = accounting.total;
 
-        const accordionId = `accordion-${collaboratore.ID_COLLABORATORE}`;
+    // Valore Monitoraggio per i task assegnati a questo collaboratore
+    const monitoraggioValue = this.computeMonitoraggioTotalForCollaboratore(collaboratore);
+
+    const accordionId = `accordion-${collaboratore.ID_COLLABORATORE}`;
+    // breakdown Monitoraggio per UI (totale + per mese + per commessa)
+    const monitoraggioStruct = this.computeMonitoraggioByMonthForCollaboratore(collaboratore);
+    const hasMonitorTasks = Array.isArray(this.app.tasks) && this.app.tasks.some(t => t.Tipo === 'Monitoraggio' && String(t.ID_COLLABORATORE) === String(collaboratore.ID_COLLABORATORE));
 
         return `
             <div class="management-card mb-4">
@@ -673,7 +679,8 @@ class CollaboratoriSection extends BaseSection {
                             <span class="badge bg-success" title="Totale Giornate di Campo"><i class="fas fa-tractor me-1"></i>${totalGiornateCampo.toFixed(1)}</span>
                             ${typeof stats.tariffa_standard !== 'undefined' ? `<span class="badge bg-warning text-dark" title="Tariffa standard attuale"><i class="fas fa-money-bill-wave me-1"></i>${this.app.utils.formatCurrency(stats.tariffa_standard)}</span>` : ''}
                             <span class="badge bg-danger" title="RImborso Totale">${this.app.utils.formatCurrency(totalCosto)}</span>
-                            <span class="badge bg-secondary text-dark" title="Valore Accounting"><i class="fas fa-file-invoice-dollar me-1"></i>${this.app.utils.formatCurrency(accountingValue)}</span>
+                            ${monitoraggioValue > 0 ? `<span class="badge bg-info text-dark" title="Valore Monitoraggio"><i class="fas fa-bell me-1"></i>${this.app.utils.formatCurrency(monitoraggioValue)}</span>` : ''}
+                            ${accountingValue > 0 ? `<span class="badge bg-secondary text-dark" title="Accounting"><i class="fas fa-file-invoice-dollar me-1"></i>${this.app.utils.formatCurrency(accountingValue)}</span>` : ''}
                             <button class="btn btn-sm btn-outline-light" data-action="edit-collaboratore" data-id="${collaboratore.ID_COLLABORATORE}" title="Modifica Collaboratore"><i class="fas fa-pencil-alt"></i></button>
                             <button class="commessa-toggle-btn" id="toggleBtn-${collaboratore.ID_COLLABORATORE}"><i class="fas fa-chevron-down"></i></button>
                         </div>
@@ -702,9 +709,56 @@ class CollaboratoriSection extends BaseSection {
                             </div>
                         </div>
 
-                        <!-- Monitoraggio rimosso come richiesto -->
-
+                        ${hasMonitorTasks ? `
                         <div class="accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-monitoraggio-${collaboratore.ID_COLLABORATORE}" aria-expanded="false">
+                                    <i class="fas fa-bell me-2"></i> Monitoraggio
+                                </button>
+                            </h2>
+                            <div id="collapse-monitoraggio-${collaboratore.ID_COLLABORATORE}" class="accordion-collapse collapse" data-bs-parent="#${accordionId}">
+                                <div class="accordion-body">
+                                    <div class="row">
+                                        <div class="col-12 mb-2">
+                                            <dl class="row">
+                                                <dt class="col-sm-4">Valore Monitoraggio</dt>
+                                                <dd class="col-sm-8"><strong>${this.app.utils.formatCurrency(monitoraggioStruct.total || 0)}</strong></dd>
+                                            </dl>
+                                        </div>
+                                        <div class="col-12">
+                                            <h6 class="small text-muted">Dettaglio mensile</h6>
+                                            ${Object.keys(monitoraggioStruct.byMonth || {}).length === 0 ? '<p class="text-muted small">Nessun valore di monitoraggio per il periodo selezionato.</p>' : `
+                                                <div class="table-responsive">
+                                                    <table class="table table-sm table-striped">
+                                                        <thead class="table-light"><tr><th>Mese</th><th class="text-end">Monitoraggio</th></tr></thead>
+                                                        <tbody>
+                                                            ${Object.keys(monitoraggioStruct.byMonth).sort().reverse().map(mk => {
+                                                                const parts = mk.split('-');
+                                                                const label = (mk === '0000-00') ? mk : new Date(parts[0], parts[1]-1).toLocaleString('it-IT', { month: 'long', year: 'numeric' });
+                                                                const collapseId = `mon-${collaboratore.ID_COLLABORATORE}-${mk.replace('-', '_')}`;
+                                                                // build per-commessa rows for this month
+                                                                const commessaRows = Object.keys(monitoraggioStruct.byCommessa || {}).map(cid => {
+                                                                    const comm = monitoraggioStruct.byCommessa[cid];
+                                                                    const val = (comm && comm.byMonth && comm.byMonth[mk]) ? comm.byMonth[mk] : 0;
+                                                                    return val > 0 ? `<tr><td>${this.app.utils.escapeHtml(comm.name)}</td><td class="text-end">${this.app.utils.formatCurrency(val)}</td></tr>` : '';
+                                                                }).filter(r => r && r.trim() !== '').join('');
+
+                                                                const detailRow = commessaRows.length ? `<tr class="collapse" id="${collapseId}"><td colspan="2"><div class="table-responsive"><table class="table table-sm table-borderless mb-0"><tbody>${commessaRows}</tbody></table></div></td></tr>` : '';
+
+                                                                return `<tr><td><button class="btn btn-sm btn-outline-secondary me-2" data-bs-toggle="collapse" data-bs-target="#${collapseId}" aria-expanded="false"><i class="fas fa-chevron-down"></i></button>${label.charAt(0).toUpperCase() + label.slice(1)}</td><td class="text-end"><strong>${this.app.utils.formatCurrency(monitoraggioStruct.byMonth[mk])}</strong></td></tr>${detailRow}`;
+                                                            }).join('')}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            `}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        ` : ''}
+
+                        ${stats.commesse_assegnate && Number(stats.commesse_assegnate) > 0 ? `<div class="accordion-item">
                             <h2 class="accordion-header">
                                 <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-accounting-${collaboratore.ID_COLLABORATORE}" aria-expanded="false">
                                     <i class="fas fa-file-invoice-dollar me-2"></i> Accounting
@@ -715,7 +769,7 @@ class CollaboratoriSection extends BaseSection {
                                     <div class="row">
                                         <div class="col-12 mb-2">
                                             <dl class="row">
-                                                <dt class="col-sm-4">Valore Accounting (Responsabile Commessa)</dt>
+                                                <dt class="col-sm-4">Accounting (Responsabile Commessa)</dt>
                                                 <dd class="col-sm-8"><strong>${this.app.utils.formatCurrency(accountingValue)}</strong></dd>
                                             </dl>
                                         </div>
@@ -724,7 +778,7 @@ class CollaboratoriSection extends BaseSection {
                                             ${Object.keys(accounting.byMonth).length === 0 ? '<p class="text-muted small">Nessun valore di accounting per il periodo selezionato.</p>' : `
                                                 <div class="table-responsive">
                                                     <table class="table table-sm table-striped">
-                                                        <thead class="table-light"><tr><th>Mese</th><th class="text-end">Valore Accounting</th></tr></thead>
+                                                        <thead class="table-light"><tr><th>Mese</th><th class="text-end">Accounting</th></tr></thead>
                                                         <tbody>
                                                             ${Object.keys(accounting.byMonth).sort().reverse().map(mk => {
                                                                 const parts = mk.split('-');
@@ -749,7 +803,7 @@ class CollaboratoriSection extends BaseSection {
                                     </div>
                                 </div>
                             </div>
-                        </div>
+                        </div>` : ''}
 
                     </div>
                 </div>
@@ -971,10 +1025,123 @@ class CollaboratoriSection extends BaseSection {
 
         return total;
     }
+
+    // Calcola il valore totale di Monitoraggio per un collaboratore
+    // Regole:
+    // - Per ogni task di tipo 'Monitoraggio' assegnato al collaboratore (task.ID_COLLABORATORE)
+    //   calcolare: somma dei valori maturati delle giornate (di tutti i collaboratori) per i task
+    //   della stessa commessa * Valore_gg (tariffa indicata nel task di tipo Monitoraggio)
+    // - Rispetta i filtri di data attivi (this.activeDateFilter) quando presenti
+    computeMonitoraggioTotalForCollaboratore(collaboratore) {
+        const tasks = Array.isArray(this.app.tasks) ? this.app.tasks : [];
+        const giornateAll = Array.isArray(this.app.giornate) ? this.app.giornate : [];
+        let total = 0;
+
+        // Trova i task di tipo Monitoraggio assegnati a questo collaboratore
+        const monitorTasks = tasks.filter(t => t.Tipo === 'Monitoraggio' && String(t.ID_COLLABORATORE) === String(collaboratore.ID_COLLABORATORE));
+        if (monitorTasks.length === 0) return 0;
+
+        monitorTasks.forEach(mtask => {
+            const tariffa = parseFloat(mtask.Valore_gg) || 0;
+            if (tariffa <= 0) return;
+
+            // Prendi tutte le giornate associate alla commessa del task (non solo quelle del collaboratore)
+            const commessaId = mtask.ID_COMMESSA;
+            if (!commessaId) return;
+
+            // Trova tutti i task della commessa
+            const tasksOfCommessa = tasks.filter(t => String(t.ID_COMMESSA) === String(commessaId) && t.Tipo === 'Campo');
+
+            // Somma i valori maturati (valore_calcolato / Valore_calcolato) di tutte le giornate dei task della commessa
+            let sommaValoreCampo = 0;
+            tasksOfCommessa.forEach(t => {
+                const giornate = giornateAll.filter(g => String(g.ID_TASK) === String(t.ID_TASK));
+                const giornateConsiderate = this.activeDateFilter
+                    ? giornate.filter(g => {
+                        const d = new Date(g.Data);
+                        const yearMatch = this.activeDateFilter.years.length === 0 || this.activeDateFilter.years.includes(d.getFullYear());
+                        const monthMatch = this.activeDateFilter.months.length === 0 || this.activeDateFilter.months.includes(d.getMonth() + 1);
+                        return yearMatch && monthMatch;
+                    })
+                    : giornate;
+
+                giornateConsiderate.forEach(g => {
+                    const valore = parseFloat(g.valore_calcolato ?? g.Valore_calcolato ?? 0) || 0;
+                    sommaValoreCampo += valore;
+                });
+            });
+
+            total += sommaValoreCampo * tariffa;
+        });
+
+        return total;
+    }
+
+    // Ritorna struttura dettagliata del Monitoraggio per collaboratore:
+    // { total, byMonth: { 'YYYY-MM': value }, byCommessa: { commessaId: { name, total, byMonth: { 'YYYY-MM': value } } } }
+    computeMonitoraggioByMonthForCollaboratore(collaboratore) {
+        const tasks = Array.isArray(this.app.tasks) ? this.app.tasks : [];
+        const giornateAll = Array.isArray(this.app.giornate) ? this.app.giornate : [];
+        const commesse = Array.isArray(this.app.commesse) ? this.app.commesse : [];
+
+        const result = { total: 0, byMonth: {}, byCommessa: {} };
+
+        // tasks di monitoraggio assegnati al collaboratore
+        const monitorTasks = tasks.filter(t => t.Tipo === 'Monitoraggio' && String(t.ID_COLLABORATORE) === String(collaboratore.ID_COLLABORATORE));
+        if (monitorTasks.length === 0) return result;
+
+        monitorTasks.forEach(mtask => {
+            const tariffa = parseFloat(mtask.Valore_gg) || 0;
+            if (tariffa <= 0) return;
+            const commId = String(mtask.ID_COMMESSA || '');
+            const commObj = commesse.find(c => String(c.ID_COMMESSA) === commId) || { Commessa: commId };
+
+            // assicura struttura per la commessa
+            if (!result.byCommessa[commId]) result.byCommessa[commId] = { name: commObj.Commessa || commId, total: 0, byMonth: {} };
+
+            // prendi tutti i task di tipo 'Campo' della commessa
+            const tasksOfCommessa = tasks.filter(t => String(t.ID_COMMESSA) === commId && t.Tipo === 'Campo');
+
+            // somma valori dalle giornate di questi task rispettando filtri
+            let sommaValoreCampo = 0;
+            tasksOfCommessa.forEach(t => {
+                const giornate = giornateAll.filter(g => String(g.ID_TASK) === String(t.ID_TASK));
+                const giornateConsiderate = this.activeDateFilter
+                    ? giornate.filter(g => {
+                        const d = new Date(g.Data);
+                        const yearMatch = this.activeDateFilter.years.length === 0 || this.activeDateFilter.years.includes(d.getFullYear());
+                        const monthMatch = this.activeDateFilter.months.length === 0 || this.activeDateFilter.months.includes(d.getMonth() + 1);
+                        return yearMatch && monthMatch;
+                    })
+                    : giornate;
+
+                giornateConsiderate.forEach(g => {
+                    const valore = parseFloat(g.valore_calcolato ?? g.Valore_calcolato ?? 0) || 0;
+                    sommaValoreCampo += valore;
+                    const monthKey = (g.Data || '').substring(0,7) || '0000-00';
+                    // accumula a livello commessa per mese
+                    if (!result.byCommessa[commId].byMonth[monthKey]) result.byCommessa[commId].byMonth[monthKey] = 0;
+                    result.byCommessa[commId].byMonth[monthKey] += valore * tariffa;
+                    // accumula a livello globale per mese
+                    if (!result.byMonth[monthKey]) result.byMonth[monthKey] = 0;
+                    result.byMonth[monthKey] += valore * tariffa;
+                    // aggiungi al totale commessa e globale
+                    result.byCommessa[commId].total += valore * tariffa;
+                    result.total += valore * tariffa;
+                });
+            });
+        });
+
+        return result;
+    }
     
     updateStats(data) {
         const collaboratoriCount = data.length;
         const totalGiornate = data.reduce((sum, c) => sum + c.giornate.length, 0);
+        // Nuova statistica: giornate di campo (somma dei gg delle giornate Tipo 'Campo')
+        const giornateCampoCount = data.reduce((sumC, c) => {
+            return sumC + c.giornate.reduce((s, g) => s + ((g.Tipo === 'Campo') ? (parseFloat(g.gg) || 0) : 0), 0);
+        }, 0);
         const totalCosto = data.reduce((sum, c) => {
             return sum + c.giornate.reduce((s, g) => s + (g.costo_calcolato || 0), 0);
         }, 0);
@@ -988,14 +1155,21 @@ class CollaboratoriSection extends BaseSection {
             } catch (e) { return sum; }
         }, 0);
 
+        // Nuova statistica: valore totale Monitoraggio per i collaboratori mostrati
+        const totalMonitoraggio = data.reduce((sum, c) => {
+            try { return sum + (this.computeMonitoraggioTotalForCollaboratore(c) || 0); } catch (e) { return sum; }
+        }, 0);
+
         const statsContainer = document.getElementById('stats-row-container');
         if (statsContainer) {
             statsContainer.innerHTML = `
                 <div class="stats-row">
                     ${this.ui.createStatsCard('fas fa-users', collaboratoriCount, 'Collaboratori Visualizzati')}
                     ${this.ui.createStatsCard('fas fa-calendar-check', totalGiornate, "Totale Giornate Registrate")}
+                    ${this.ui.createStatsCard('fas fa-tractor', giornateCampoCount.toFixed(1), 'Giornate di Campo')}
                     ${this.ui.createStatsCard('fas fa-euro-sign', this.app.utils.formatCurrency(totalCosto), 'Rimborso attività')}
-                    ${this.ui.createStatsCard('fas fa-file-invoice-dollar', this.app.utils.formatCurrency(totalAccounting), 'Valore Accounting')}
+                    ${this.ui.createStatsCard('fas fa-bell', this.app.utils.formatCurrency(totalMonitoraggio), 'Valore Monitoraggio')}
+                    ${this.ui.createStatsCard('fas fa-file-invoice-dollar', this.app.utils.formatCurrency(totalAccounting), 'Accounting')}
                 </div>
             `;
         }

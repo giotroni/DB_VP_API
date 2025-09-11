@@ -110,7 +110,7 @@ class CommesseTaskSection extends BaseSection {
     }
 
     createCommessaCard(commessa) {
-        console.log('Creazione card per commessa:', commessa);
+        //console.log('Creazione card per commessa:', commessa);
         const totalTasks = commessa.tasks.length;
         const activeTasks = commessa.tasks.filter(t => t.Stato_Task === 'In corso').length;
         const totalGiornate = commessa.tasks.reduce((sum, task) => sum + (parseFloat(task.gg_effettuate) || 0), 0);
