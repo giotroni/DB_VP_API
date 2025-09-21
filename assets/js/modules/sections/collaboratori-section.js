@@ -189,12 +189,67 @@ class CollaboratoriSection extends BaseSection {
         const modalTitle = `Modifica Collaboratore: ${coll.Collaboratore}`;
         const modalId = `editCollaboratoreModal_${collaboratoreId}`;
         const modalBody = this.getCollaboratoreFormHTML(coll);
+        const deleteButton = {
+            html: `<button type="button" class="btn btn-danger me-auto" data-collaboratore-id="${collaboratoreId}" title="Elimina collaboratore">Elimina</button>`,
+            selector: `.btn-danger`,
+            handler: () => this.handleDeleteCollaboratore(collaboratoreId)
+        };
         const modalActions = [
+            deleteButton,
             { html: '<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>' },
             { html: `<button type="submit" form="${modalId}_form" class="btn btn-primary">Salva Modifiche</button>` }
         ];
         this.ui.createModal(modalId, modalTitle, modalBody, modalActions, { size: 'modal-lg' });
         this.addCollaboratoreFormListeners(`${modalId}_form`);
+    }
+
+    // Elimina collaboratore: consentita solo se non ci sono tariffe collegate
+    async handleDeleteCollaboratore(collaboratoreId) {
+        // Verifica tariffe locali (se presenti nella app)
+        const relatedTariffe = Array.isArray(this.app.tariffe) ? this.app.tariffe.filter(t => String(t.ID_COLLABORATORE) === String(collaboratoreId)) : [];
+        if (relatedTariffe.length > 0) {
+            this.ui.showToast('Impossibile eliminare: esistono tariffe collegate a questo collaboratore. Elimina prima le tariffe.', 'error');
+            return;
+        }
+
+        // Mostra modal di conferma forte (digita ELIMINA)
+        const modalId = `confirmDeleteCollaboratore_${collaboratoreId}`;
+        const modalHtml = `
+            <div class="modal-body">
+                <p>Sei sicuro di voler eliminare il collaboratore <strong>${collaboratoreId}</strong>? Questa operazione è irreversibile.</p>
+                <p>Per confermare, digita <strong>ELIMINA</strong> nella casella sottostante.</p>
+                <input type="text" id="confirmInputColl_${collaboratoreId}" class="form-control mb-2" placeholder="Digita ELIMINA per confermare">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                <button type="button" id="confirmBtnColl_${collaboratoreId}" class="btn btn-danger" disabled>Elimina</button>
+            </div>
+        `;
+        this.ui.createModal(modalId, 'Conferma Eliminazione Collaboratore', modalHtml, [], { size: 'modal-sm' });
+
+        const input = document.getElementById(`confirmInputColl_${collaboratoreId}`);
+        const btn = document.getElementById(`confirmBtnColl_${collaboratoreId}`);
+        input?.addEventListener('input', () => {
+            btn.disabled = input.value.trim().toUpperCase() !== 'ELIMINA';
+        });
+        btn?.addEventListener('click', async () => {
+            try {
+                if (!(this.api && typeof this.api.deleteCollaboratore === 'function')) {
+                    this.ui.showToast('Operazione non eseguita: endpoint API deleteCollaboratore non disponibile.', 'error');
+                    return;
+                }
+                const res = await this.api.deleteCollaboratore(collaboratoreId);
+                if (!res || !res.success) throw new Error(res?.message || 'Errore nella cancellazione del collaboratore');
+                this.ui.showToast('Collaboratore eliminato', 'success');
+                bootstrap.Modal.getInstance(document.getElementById(modalId))?.hide();
+                // Chiudi anche il modal di edit se aperto
+                const editModal = document.getElementById(`editCollaboratoreModal_${collaboratoreId}`);
+                if (editModal) bootstrap.Modal.getInstance(editModal)?.hide();
+                await this.app.loadInitialData();
+            } catch (err) {
+                this.ui.showToast(err.message, 'error');
+            }
+        });
     }
 
     getCollaboratoreFormHTML(collaboratore = {}) {

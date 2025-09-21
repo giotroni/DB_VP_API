@@ -246,6 +246,30 @@ class DatabaseSetup {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
         $this->executeSQL($sql, "FACT_FATTURE");
         
+        // 8. FACT_FATTURE_COLLABORATORI - fatture passive dei collaboratori
+        $sql = "CREATE TABLE IF NOT EXISTS FACT_FATTURE_COLLABORATORI (
+            ID_FATTURA VARCHAR(50) PRIMARY KEY,
+            Data DATE,
+            ID_COLLABORATORE VARCHAR(50),
+            Descrizione TEXT,
+            Importo_netto DECIMAL(12,2) DEFAULT 0,
+            Importo_IVA DECIMAL(12,2) DEFAULT 0,
+            Importo_Totale DECIMAL(12,2) DEFAULT 0,
+            Ritenuta_Acconto DECIMAL(12,2) DEFAULT 0,
+            Netto_pagare DECIMAL(12,2) DEFAULT 0,
+            Stato ENUM('Ricevuta','Pagata','Annullata') DEFAULT 'Ricevuta',
+            Data_Pagamento DATE DEFAULT NULL,
+            Data_Creazione TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            ID_UTENTE_CREAZIONE VARCHAR(50),
+            Data_Modifica TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            ID_UTENTE_MODIFICA VARCHAR(50),
+            FOREIGN KEY (ID_COLLABORATORE) REFERENCES ANA_COLLABORATORI(ID_COLLABORATORE) ON DELETE SET NULL,
+            INDEX idx_collaboratore (ID_COLLABORATORE),
+            INDEX idx_stato (Stato),
+            INDEX idx_data_pagamento (Data_Pagamento)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+        $this->executeSQL($sql, "FACT_FATTURE_COLLABORATORI");
+
         echo "Tutte le tabelle sono state create con successo!\n";
     }
     

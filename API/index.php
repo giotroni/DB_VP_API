@@ -49,6 +49,7 @@ require_once 'TaskAPI.php';
 require_once 'TariffeAPI.php';
 require_once 'GiornateAPI.php';
 require_once 'FattureAPI.php';
+require_once 'FattureCollaboratoriAPI.php';
 
 // Le funzioni di supporto sono definite in config.php
 
@@ -128,6 +129,10 @@ try {
             
         case 'fatture':
             $api = new FattureAPI();
+            break;
+
+        case 'fatture_collaboratori':
+            $api = new FattureCollaboratoriAPI();
             break;
             
         case 'status':

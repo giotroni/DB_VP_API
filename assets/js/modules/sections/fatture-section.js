@@ -298,9 +298,13 @@ class FattureSection extends BaseSection {
         const modalId = `editFatturaModal_${fatturaId}`;
         const modalBody = this.getFatturaFormHTML(fattura);
         
-        const canDelete = !fattura.Data_Pagamento;
+        // Il pulsante Elimina è sempre abilitato nell'interfaccia. La logica
+        // applicativa che blocca l'eliminazione per fatture già pagate è già
+        // gestita in `handleDeleteFattura` (mostra toast e impedisce l'azione).
+        // Qui manteniamo il pulsante sempre cliccabile ma aggiungiamo l'attributo
+        // data-fattura-id per facilitare eventuali selezioni dal DOM.
         const deleteButton = {
-            html: `<button type="button" class="btn btn-danger me-auto" ${!canDelete ? 'disabled' : ''} title="${!canDelete ? 'Impossibile eliminare: fattura già pagata' : 'Elimina fattura'}">Elimina</button>`,
+            html: `<button type="button" class="btn btn-danger me-auto" data-fattura-id="${fatturaId}" title="Elimina fattura">Elimina</button>`,
             selector: `.btn-danger`,
             handler: () => this.handleDeleteFattura(fatturaId)
         };
@@ -363,6 +367,67 @@ class FattureSection extends BaseSection {
         if (!form) return;
         const fatturaId = form.id.includes('editFatturaModal') ? form.id.split('_')[1] : null;
         form.addEventListener('submit', (e) => this.handleFatturaFormSubmit(e, fatturaId));
+
+        // Aggiungi listener per ricalcolare Totale e Scadenza quando si modificano
+        const inputGg = form.querySelector('#Fatturato_gg');
+        const inputSpese = form.querySelector('#Fatturato_Spese');
+        const inputTot = form.querySelector('#Fatturato_TOT');
+        const inputData = form.querySelector('#Data');
+        const inputTempi = form.querySelector('#Tempi_Pagamento');
+        const inputScadenza = form.querySelector('#Scadenza_Pagamento');
+
+        const computeTotal = () => {
+            const gg = parseFloat(inputGg?.value || 0) || 0;
+            const sp = parseFloat(inputSpese?.value || 0) || 0;
+            if (inputTot) {
+                inputTot.value = (gg + sp).toFixed(2);
+            }
+        };
+
+        const computeScadenza = () => {
+            if (!inputData || !inputTempi || !inputScadenza) return;
+            const dataVal = inputData.value;
+            const tempiVal = parseInt(inputTempi.value, 10);
+            if (!dataVal || isNaN(tempiVal)) {
+                inputScadenza.value = '';
+                return;
+            }
+            try {
+                const d = new Date(dataVal);
+                // Aggiungi i giorni di termini (tempiVal)
+                d.setDate(d.getDate() + tempiVal);
+                // Formatta YYYY-MM-DD della data risultante
+                const yyyy = d.getFullYear();
+                const mm = String(d.getMonth() + 1).padStart(2, '0');
+                const dd = String(d.getDate()).padStart(2, '0');
+                inputScadenza.value = `${yyyy}-${mm}-${dd}`;
+            } catch (err) {
+                inputScadenza.value = '';
+            }
+        };
+
+        // Bind eventi se gli elementi esistono
+        if (inputGg) inputGg.addEventListener('input', computeTotal);
+        if (inputSpese) inputSpese.addEventListener('input', computeTotal);
+        if (inputData) inputData.addEventListener('change', computeScadenza);
+        if (inputTempi) inputTempi.addEventListener('input', computeScadenza);
+
+        // Esegui inizializzazione al caricamento del modal
+        computeTotal();
+        computeScadenza();
+
+        // Inizializza i tooltip Bootstrap presenti nel form
+        try {
+            const tooltipEls = Array.from(form.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            tooltipEls.forEach(el => {
+                if (window.bootstrap && window.bootstrap.Tooltip) {
+                    window.bootstrap.Tooltip.getOrCreateInstance(el);
+                }
+            });
+        } catch (err) {
+            // fail silently se bootstrap non è disponibile
+            // console.debug('Tooltip init failed', err);
+        }
     }
     
     async handleFatturaFormSubmit(event, fatturaId = null) {
@@ -540,10 +605,19 @@ class FattureSection extends BaseSection {
 
     getFatturaFormHTML(fattura = {}) {
         const formId = fattura.ID_FATTURA ? `editFatturaModal_${fattura.ID_FATTURA}_form` : 'newFatturaModal_form';
-        const clientiOptions = this.app.clienti.map(c => `<option value="${c.ID_CLIENTE}" ${fattura.ID_CLIENTE == c.ID_CLIENTE ? 'selected' : ''}>${c.Ragione_Sociale || c.Cliente}</option>`).join('');
+        const isEdit = !!fattura.ID_FATTURA;
+        const clientiOptions = this.app.clienti
+            .map(c => `<option value="${c.ID_CLIENTE}" ${fattura.ID_CLIENTE == c.ID_CLIENTE ? 'selected' : ''}>${c.Cliente}</option>`)
+            .join('');
         const commesseOptions = this.app.commesse.map(c => `<option value="${c.ID_COMMESSA}" ${fattura.ID_COMMESSA == c.ID_COMMESSA ? 'selected' : ''}>${c.Commessa}</option>`).join('');
         const tipi = ['Fattura', 'Nota_Accredito'];
         const tipiOptions = tipi.map(t => `<option value="${t}" ${(fattura.TIPO || 'Fattura') === t ? 'selected' : ''}>${t}</option>`).join('');
+
+        // valori default e formattazioni
+        const defaultTempi = isEdit ? (fattura.Tempi_Pagamento || '') : (fattura.Tempi_Pagamento || '30');
+        const Fatturato_gg_val = fattura.Fatturato_gg || '0';
+        const Fatturato_Spese_val = fattura.Fatturato_Spese || '0';
+        const totCalculated = (parseFloat(Fatturato_gg_val || 0) + parseFloat(Fatturato_Spese_val || 0)).toFixed(2);
 
         return `
             <form id="${formId}" novalidate>
@@ -562,16 +636,16 @@ class FattureSection extends BaseSection {
                 <hr>
                 <h5>Dettagli Economici e Pagamento</h5>
                 <div class="row">
-                    <div class="col-md-4 mb-3"><label for="Fatturato_gg" class="form-label">Importo Giornate (€)</label><input type="number" step="0.01" class="form-control" id="Fatturato_gg" name="Fatturato_gg" value="${fattura.Fatturato_gg || '0'}"></div>
-                    <div class="col-md-4 mb-3"><label for="Fatturato_Spese" class="form-label">Importo Spese (€)</label><input type="number" step="0.01" class="form-control" id="Fatturato_Spese" name="Fatturato_Spese" value="${fattura.Fatturato_Spese || '0'}"></div>
-                    <div class="col-md-4 mb-3"><label for="Fatturato_TOT" class="form-label">Totale Fattura (€)</label><input type="number" step="0.01" class="form-control" id="Fatturato_TOT" name="Fatturato_TOT" value="${fattura.Fatturato_TOT || '0'}"></div>
+                    <div class="col-md-4 mb-3"><label for="Fatturato_gg" class="form-label">Importo Giornate (€)</label><input type="number" step="0.01" class="form-control" id="Fatturato_gg" name="Fatturato_gg" value="${Fatturato_gg_val}"></div>
+                    <div class="col-md-4 mb-3"><label for="Fatturato_Spese" class="form-label">Importo Spese (€)</label><input type="number" step="0.01" class="form-control" id="Fatturato_Spese" name="Fatturato_Spese" value="${Fatturato_Spese_val}"></div>
+                    <div class="col-md-4 mb-3"><label for="Fatturato_TOT" class="form-label">Totale Fattura (€) <i class="fas fa-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="Calcolato automaticamente come somma di Importo Giornate + Importo Spese"></i></label><input type="number" step="0.01" class="form-control" id="Fatturato_TOT" name="Fatturato_TOT" value="${fattura.Fatturato_TOT || totCalculated}" ${isEdit ? '' : 'readonly'}></div>
                 </div>
                 <div class="row">
-                    <div class="col-md-4 mb-3"><label for="Valore_Pagato" class="form-label">Valore Pagato (€)</label><input type="number" step="0.01" class="form-control" id="Valore_Pagato" name="Valore_Pagato" value="${fattura.Valore_Pagato || '0'}"></div>
-                    <div class="col-md-4 mb-3"><label for="Tempi_Pagamento" class="form-label">Tempi di Pagamento (gg)</label><input type="number" step="1" class="form-control" id="Tempi_Pagamento" name="Tempi_Pagamento" value="${fattura.Tempi_Pagamento || ''}"></div>
-                    <div class="col-md-4 mb-3"><label for="Scadenza_Pagamento" class="form-label">Scadenza</label><input type="date" class="form-control" id="Scadenza_Pagamento" name="Scadenza_Pagamento" value="${fattura.Scadenza_Pagamento || ''}"></div>
+                    ${isEdit ? `<div class="col-md-4 mb-3"><label for="Valore_Pagato" class="form-label">Valore Pagato (€)</label><input type="number" step="0.01" class="form-control" id="Valore_Pagato" name="Valore_Pagato" value="${fattura.Valore_Pagato || '0'}"></div>` : ''}
+                    <div class="col-md-4 mb-3"><label for="Tempi_Pagamento" class="form-label">Tempi di Pagamento (gg)</label><input type="number" step="1" class="form-control" id="Tempi_Pagamento" name="Tempi_Pagamento" value="${defaultTempi}"></div>
+                    <div class="col-md-4 mb-3"><label for="Scadenza_Pagamento" class="form-label">Scadenza <i class="fas fa-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="Calcolata automaticamente come fine mese dopo i Tempi di Pagamento impostati"></i></label><input type="date" class="form-control" id="Scadenza_Pagamento" name="Scadenza_Pagamento" value="${fattura.Scadenza_Pagamento || ''}" ${isEdit ? '' : 'readonly'}></div>
                 </div>
-                <div class="mb-3"><label for="Data_Pagamento" class="form-label">Data Pagamento</label><input type="date" class="form-control" id="Data_Pagamento" name="Data_Pagamento" value="${fattura.Data_Pagamento || ''}"></div>
+                ${isEdit ? `<div class="mb-3"><label for="Data_Pagamento" class="form-label">Data Pagamento</label><input type="date" class="form-control" id="Data_Pagamento" name="Data_Pagamento" value="${fattura.Data_Pagamento || ''}"></div>` : ''}
                 <div class="mb-3"><label for="Note" class="form-label">Note</label><textarea class="form-control" id="Note" name="Note" rows="2">${fattura.Note || ''}</textarea></div>
             </form>
         `;

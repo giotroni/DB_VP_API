@@ -9,14 +9,14 @@
 define('DB_HOST', 'localhost');          // Indirizzo del server MySQL
 
 // DB PRODUZIONE
-define('DB_NAME', 'vaglioty_DB_VP'); // Nome del database
-define('DB_USER', 'vaglioty_DB_VP');      // Username MySQL
-define('DB_PASS', 'busriMnyahh2Xc5');      // Password MySQL
+// define('DB_NAME', 'vaglioty_DB_VP'); // Nome del database
+// define('DB_USER', 'vaglioty_DB_VP');      // Username MySQL
+// define('DB_PASS', 'busriMnyahh2Xc5');      // Password MySQL
 
 // DB TEST
-// define('DB_NAME', 'vaglioty_DB_VP_TEST');   // Nome del database di test
-// define('DB_USER', 'vaglioty_DB_VP_TEST');   // Username MySQL di test
-// define('DB_PASS', '4X9X8sY2szynLPN');       // Password MySQL di test
+define('DB_NAME', 'vaglioty_DB_VP_TEST');   // Nome del database di test
+define('DB_USER', 'vaglioty_DB_VP_TEST');   // Username MySQL di test
+define('DB_PASS', '4X9X8sY2szynLPN');       // Password MySQL di test
 
 define('DB_CHARSET', 'utf8mb4');         // Charset del database
 
@@ -102,11 +102,25 @@ function setJSONHeaders() {
 function sendErrorResponse($message, $code = 400) {
     setJSONHeaders();
     http_response_code($code);
-    echo json_encode([
-        'success' => false,
-        'error' => $message,
-        'timestamp' => date('Y-m-d H:i:s')
-    ]);
+    // Normalize message: if an array/object is passed, extract 'message' and optional 'error_reason'
+    $payload = ['success' => false, 'timestamp' => date('Y-m-d H:i:s')];
+    if (is_array($message) || is_object($message)) {
+        $m = (array)$message;
+        $payload['error'] = isset($m['message']) ? $m['message'] : json_encode($m);
+        if (isset($m['error_reason'])) {
+            $payload['error_reason'] = $m['error_reason'];
+        }
+        // include any remaining fields under 'details' for debugging (non-sensitive)
+        $remaining = $m;
+        unset($remaining['message'], $remaining['error_reason']);
+        if (!empty($remaining)) {
+            $payload['details'] = $remaining;
+        }
+    } else {
+        $payload['error'] = $message;
+    }
+
+    echo json_encode($payload);
     exit;
 }
 

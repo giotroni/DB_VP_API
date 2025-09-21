@@ -24,12 +24,15 @@ class CommesseTaskSection extends BaseSection {
         for (let y = 2024; y <= currentYear + 1; y++) { yearOptions += `<li><label class="dropdown-item"><input type="checkbox" class="form-check-input me-2" value="${y}">${y}</label></li>`; }
         const months = ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"];
         let monthOptions = months.map((month, index) => `<li><label class="dropdown-item"><input type="checkbox" class="form-check-input me-2" value="${index + 1}">${month}</label></li>`).join('');
+        // Ordina le commesse alfabeticamente per il menu a tendina dei filtri
+        const commesseOptionsSorted = (this.app.commesse || []).slice().sort((a, b) => (a.Commessa || '').localeCompare(b.Commessa || ''));
+
         container.innerHTML = `
             <div id="stats-row-container"></div>
             <div class="search-filters">
                 <div class="row gy-3">
                     <div class="col-lg-3 col-md-6"><label class="form-label">Cerca</label><input type="text" class="form-control" id="searchCommesseTask" placeholder="Nome, codice, cliente..."></div>
-                    <div class="col-lg-2 col-md-6"><label class="form-label">Commessa</label><select class="form-select" id="filterCommesse"><option value="">Tutte</option>${this.app.commesse.map(c => `<option value="${c.ID_COMMESSA}">${c.Commessa}</option>`).join('')}</select></div>
+                    <div class="col-lg-2 col-md-6"><label class="form-label">Commessa</label><select class="form-select" id="filterCommesse"><option value="">Tutte</option>${commesseOptionsSorted.map(c => `<option value="${c.ID_COMMESSA}">${c.Commessa}</option>`).join('')}</select></div>
                     <div class="col-lg-2 col-md-6"><label class="form-label">Stato</label><select class="form-select" id="filterStatoCommesse"><option value="">Tutti</option><option value="In corso">In corso</option><option value="Chiusa">Chiusa</option><option value="Sospesa">Sospesa</option></select></div>
                     <div class="col-lg-1 col-md-3"><label class="form-label">Anno</label><div class="dropdown"><button class="btn btn-outline-secondary dropdown-toggle w-100" type="button" id="filterAnnoBtn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">Tutti</button><ul class="dropdown-menu" id="filterAnno" aria-labelledby="filterAnnoBtn"><li><a class="dropdown-item fw-bold" href="#" data-action="toggle-all-filter" data-target-filter="filterAnno">Seleziona/Deseleziona</a></li><li><hr class="dropdown-divider"></li>${yearOptions}</ul></div></div>
                     <div class="col-lg-2 col-md-3"><label class="form-label">Mese</label><div class="dropdown"><button class="btn btn-outline-secondary dropdown-toggle w-100" type="button" id="filterMeseBtn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">Tutti</button><ul class="dropdown-menu" id="filterMese" aria-labelledby="filterMeseBtn"><li><a class="dropdown-item fw-bold" href="#" data-action="toggle-all-filter" data-target-filter="filterMese">Seleziona/Deseleziona</a></li><li><hr class="dropdown-divider"></li>${monthOptions}</ul></div></div>
@@ -41,6 +44,8 @@ class CommesseTaskSection extends BaseSection {
         this.lastFilteredData = this.commesseConTask;
         this.updateStats(this.commesseConTask);
         this.bindEvents();
+        // Inizializza tooltip per i componenti renderizzati
+        this.initTooltips();
     }
 
     bindEvents() {
@@ -217,13 +222,29 @@ class CommesseTaskSection extends BaseSection {
             </div>`;
         }
 
+        // Calcoli aggiuntivi richiesti: totale giornate di tipo 'Campo', totale Vitto/Alloggio + Altre spese, totale Spese A/R (viaggi)
+        const giornateArray = task.giornate || [];
+        const totaleGgCampo = giornateArray.reduce((sum, g) => sum + ((g.Tipo === 'Campo') ? (parseFloat(g.gg) || 0) : 0), 0);
+        const totaleVittoAlloggioEAltre = giornateArray.reduce((sum, g) => {
+            const vitto = parseFloat(g.Vitto_alloggio ?? g.Vitto_Alloggio ?? g.vitto_alloggio ?? 0) || 0;
+            const altri = parseFloat(g.Altri_costi ?? g.altri_costi ?? g.Altri_Costi ?? 0) || 0;
+            return sum + vitto + altri;
+        }, 0);
+        const totaleSpeseAR = giornateArray.reduce((sum, g) => {
+            const speseViaggi = parseFloat(g.Spese_Viaggi ?? g.Spese_viaggi ?? g.spese_viaggi ?? g.SpeseViaggi ?? 0) || 0;
+            return sum + speseViaggi;
+        }, 0);
+
         const giornateHtml = task.giornate.length > 0
-            ? `<button class="btn btn-outline-primary btn-sm w-100 mt-3" data-action="view-giornate" data-id="${task.ID_TASK}"><i class="fas fa-calendar-alt me-1"></i> Visualizza ${task.giornate.length} Giornate</button>`
+            ? `<button class="btn btn-outline-primary btn-sm w-100 mt-3" data-action="view-giornate" data-id="${task.ID_TASK}"><i class="fas fa-calendar-alt me-1"></i> Visualizza ${task.giornate.length} Date</button>`
             : `<p class="text-muted text-center small mt-3 mb-0"><i class="fas fa-calendar-times me-1"></i> Nessuna giornata registrata</p>`;
 
         const valoreGgContent = `<div class="fw-bold text-success">${this.app.utils.formatCurrency(task.valore_gg_maturato || 0)}</div><small class="text-muted">Valore gg</small>`;
-        const valoreSpeseContent = `<div class="fw-bold text-danger">${this.app.utils.formatCurrency(task.valore_spese_maturato || 0)}</div><small class="text-muted">Valore Spese</small>`;
-        
+    const valoreSpeseContent = `<div class="fw-bold text-danger">${this.app.utils.formatCurrency(task.valore_spese_maturato || 0)}</div><small class="text-muted">Tot Spese</small>`;
+        //console.log('Tariffa giornaliera per task:', task);
+        const tariffaGg = parseFloat(task.Valore_gg ?? 0) || 0;
+        const tariffaGgContent = `<div class="fw-bold text-secondary">${this.app.utils.formatCurrency(tariffaGg)}</div><small class="text-muted">Tariffa gg</small>`;
+
         return `
             <div class="col-lg-6 col-xl-4 mb-3">
                 <div class="card h-100 border-0 shadow-sm d-flex flex-column">
@@ -231,11 +252,24 @@ class CommesseTaskSection extends BaseSection {
                     <div class="card-body">
                         <p class="card-text text-muted small">${task.Desc_Task || ''}</p>
                         <div class="row text-center">
-                            <div class="col-3"><div class="fw-bold text-primary">${(task.gg_effettuate || 0).toFixed(1)}</div><small class="text-muted">Tot. gg</small></div>
-                            <div class="col-3"><div class="fw-bold">${task.gg_previste || '-'}</div><small class="text-muted">Previsti</small></div>
-                            <div class="col-3">${valoreGgContent}</div>
-                            <div class="col-3">${valoreSpeseContent}</div>
+                            <div class="col-4"><div class="fw-bold text-primary" data-bs-toggle="tooltip" title="Somma dei giorni registrati come 'Campo' per questo task">${totaleGgCampo.toFixed(1)}</div><small class="text-muted">Tot. gg (Campo)</small></div>
+                            <div class="col-4"><div data-bs-toggle="tooltip" title="Tariffa giornaliera applicata al task">${tariffaGgContent}</div></div>
+                            <div class="col-4"><div data-bs-toggle="tooltip" title="Valore maturato dai giorni di lavoro">${valoreGgContent}</div></div>
                         </div>
+                        ${(() => {
+                            // Mostra la riga delle spese nella sequenza richiesta: Spese A/R, Vitto/Alloggio + Altre, Val. Spese
+                            const parts = [];
+                            if ((totaleSpeseAR || 0) > 0) {
+                                parts.push(`<div class="col-4"><div class="fw-bold text-info" data-bs-toggle="tooltip" title="Spese di viaggio andata/ritorno (A/R)"><i class="fas fa-plane me-1"></i>${this.app.utils.formatCurrency(totaleSpeseAR)}</div><small class="text-muted">Spese A/R</small></div>`);
+                            }
+                            if ((totaleVittoAlloggioEAltre || 0) > 0) {
+                                parts.push(`<div class="col-4"><div class="fw-bold text-danger" data-bs-toggle="tooltip" title="Vitto/Alloggio + Altre spese maturate nelle giornate">${this.app.utils.formatCurrency(totaleVittoAlloggioEAltre)}</div><small class="text-muted">Vitto/Alloggio + Altre</small></div>`);
+                            }
+                            if ((task.valore_spese_maturato || 0) > 0) {
+                                parts.push(`<div class="col-4"><div class="fw-bold text-danger" data-bs-toggle="tooltip" title="Totale spese maturate per questo task">${this.app.utils.formatCurrency(task.valore_spese_maturato || 0)}</div><small class="text-muted">Tot Spese</small></div>`);
+                            }
+                            return parts.length > 0 ? `<div class="row text-center mt-2">${parts.join('')}</div>` : '';
+                        })()}
                         ${giornateHtml}
                     </div>
                     <div class="card-footer bg-transparent border-0 mt-auto"><div class="action-buttons d-flex justify-content-end gap-2"><button class="btn btn-outline-secondary btn-sm" data-action="view-task" data-id="${task.ID_TASK}" title="Visualizza dettagli"><i class="fas fa-eye"></i></button><button class="btn btn-outline-primary btn-sm" data-action="edit-task" data-id="${task.ID_TASK}" title="Modifica task"><i class="fas fa-edit"></i></button></div></div>
@@ -376,6 +410,22 @@ class CommesseTaskSection extends BaseSection {
     // tieni traccia dei dati correnti mostrati per l'export
     this.lastFilteredData = filteredData;
     this.updateStats(filteredData);
+    // inizializza tooltip sui nuovi elementi
+    this.initTooltips();
+    }
+
+    // Inizializza i tooltip Bootstrap all'interno del contenitore dei task/commesse
+    initTooltips() {
+        try {
+            const container = document.getElementById('commesseTaskContainer');
+            if (!container) return;
+            const tooltipTriggerList = [].slice.call(container.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            tooltipTriggerList.forEach(el => {
+                try { new bootstrap.Tooltip(el); } catch (e) { /* ignore individual tooltip init errors */ }
+            });
+        } catch (err) {
+            console.debug('[initTooltips] failed to init tooltips', err);
+        }
     }
     
 
@@ -657,12 +707,31 @@ class CommesseTaskSection extends BaseSection {
         const formData = new FormData(form);
         const commessaData = Object.fromEntries(formData.entries());
 
+        // Client-side validation: se la commessa è di tipo 'Cliente' richiediamo un responsabile valido
+        if (commessaData.Tipo_Commessa === 'Cliente') {
+            const coll = commessaData.ID_COLLABORATORE;
+            if (!coll || coll === '') {
+                this.ui.showToast('Seleziona un responsabile per la commessa (Responsabile).', 'error');
+                const field = form.querySelector('#ID_COLLABORATORE');
+                if (field) field.focus();
+                return;
+            }
+        }
+
         if (commessaData.Tipo_Commessa === 'Interna') {
             commessaData.ID_CLIENTE = null;
             commessaData.ID_COLLABORATORE = null;
             commessaData.Commissione = null;
         }
-        if (!commessaId) { commessaData.ID_COMMESSA = this.generateCommessaCode(); }
+        // Do not generate ID_COMMESSA on the client: let the server assign a unique ID
+        // (client-side generation previously could produce duplicates / collisions)
+        if (!commessaId) {
+            // ensure we don't send an empty or placeholder ID
+            delete commessaData.ID_COMMESSA;
+        }
+
+        // Debug: log payload sent to server to help diagnose constraint errors
+        try { console.debug('Commessa payload:', commessaData); } catch (e) { /* ignore */ }
 
         try {
             const result = commessaId

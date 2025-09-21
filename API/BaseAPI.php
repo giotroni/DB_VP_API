@@ -172,36 +172,125 @@ abstract class BaseAPI {
             $data['Data_Creazione'] = date('Y-m-d H:i:s');
             $data['ID_UTENTE_CREAZIONE'] = $this->getCurrentUserId();
             
-            // Generazione ID se necessario
-            if (!isset($data[$this->primaryKey])) {
-                $data[$this->primaryKey] = $this->generateId();
+            // Generazione ID e inserimento con retry per evitare collisioni in scenari concorrenti
+            $providedId = isset($data[$this->primaryKey]) && !empty($data[$this->primaryKey]);
+
+            // Se la PK non è stata fornita dal client, proviamo più volte a generare un ID
+            if (!$providedId) {
+                $maxAttempts = 6; // numero tentativi (numero ragionevole per collisioni occasionali)
+                $attempt = 0;
+                $inserted = false;
+
+                while ($attempt < $maxAttempts && !$inserted) {
+                    $attempt++;
+                    // (ri)genera un ID univoco
+                    $data[$this->primaryKey] = $this->generateId();
+
+                    // Ricostruisci campi/placeholders SQL dopo aver inserito la PK
+                    $fields = array_keys($data);
+                    $placeholders = ':' . implode(', :', $fields);
+                    $sql = "INSERT INTO {$this->table} (" . implode(', ', $fields) . ") VALUES ($placeholders)";
+
+                    try {
+                        $stmt = $this->db->prepare($sql);
+                        // Bind dei parametri aggiornati (solo quelli presenti nei placeholders)
+                        foreach ($fields as $key) {
+                            $stmt->bindValue(':' . $key, $data[$key]);
+                        }
+                        $stmt->execute();
+                        $inserted = true;
+                        $newId = $data[$this->primaryKey];
+                        // Recupera il record appena creato
+                        $this->getById($newId);
+                        return; // terminare la funzione dopo successo
+                    } catch (PDOException $e) {
+                        // Se è un duplicate key, proviamo di nuovo (fino al maxAttempts)
+                        if ($e->getCode() == 23000 && $attempt < $maxAttempts) {
+                            // log e ritenta
+                            $this->logPDOException($e, "create_retry_attempt_{$attempt}");
+                            // piccolo sleep per ridurre probabilità di collisione in burst (microsecond)
+                            usleep(20000); // 20ms
+                            continue;
+                        }
+                        // altrimenti rilanciamo l'errore per il catch esterno
+                        throw $e;
+                    }
+                }
+
+                // Se non siamo riusciti ad inserire dopo i tentativi, segnaliamo errore
+                if (!$inserted) {
+                    sendErrorResponse('Impossibile generare un ID univoco per la risorsa (retry falliti)', 500);
+                    return;
+                }
+            } else {
+                // PK fornita dal client: comportamento tradizionale (nessun retry)
+                $fields = array_keys($data);
+                $placeholders = ':' . implode(', :', $fields);
+                $sql = "INSERT INTO {$this->table} (" . implode(', ', $fields) . ") VALUES ($placeholders)";
+                $stmt = $this->db->prepare($sql);
+                foreach ($fields as $key) {
+                    $stmt->bindValue(':' . $key, $data[$key]);
+                }
+                $stmt->execute();
+                $newId = $data[$this->primaryKey];
+                $this->getById($newId);
+                return;
             }
-            
-            // Costruzione query INSERT
-            $fields = array_keys($data);
-            $placeholders = ':' . implode(', :', $fields);
-            $sql = "INSERT INTO {$this->table} (" . implode(', ', $fields) . ") VALUES ($placeholders)";
-            
-            $stmt = $this->db->prepare($sql);
-            
-            // Bind dei parametri
-            foreach ($data as $key => $value) {
-                $stmt->bindValue(':' . $key, $value);
-            }
-            
-            $stmt->execute();
-            
-            // Recupera il record appena creato
-            $newId = $data[$this->primaryKey];
-            $this->getById($newId);
             
         } catch (PDOException $e) {
+            // Log exception for server-side debugging
+            $this->logPDOException($e, 'create');
+
             if ($e->getCode() == 23000) {
-                sendErrorResponse('Record già esistente o violazione constraint', 409);
+                // Try to extract a short reason from the SQLSTATE/driver message
+                $errorMsg = $e->getMessage();
+                $reason = $this->extractConstraintReason($errorMsg);
+                // Return a sanitized message and a machine-friendly reason field
+                sendErrorResponse(['message' => 'Record già esistente o violazione constraint', 'error_reason' => $reason], 409);
             } else {
                 sendErrorResponse('Errore durante la creazione: ' . $e->getMessage(), 500);
             }
         }
+    }
+
+    /**
+     * Log PDO exceptions to a file for debugging (non public)
+     */
+    protected function logPDOException(PDOException $e, $context = '') {
+        try {
+            $logDir = __DIR__ . '/logs';
+            if (!is_dir($logDir)) @mkdir($logDir, 0755, true);
+            $logFile = $logDir . '/api_errors.log';
+            $entry = date('c') . " [{$context}] PDOException code=" . $e->getCode() . " message=" . str_replace("\n", ' ', $e->getMessage()) . "\n";
+            @file_put_contents($logFile, $entry, FILE_APPEND | LOCK_EX);
+        } catch (Exception $ex) {
+            // ignore logging failures
+        }
+    }
+
+    /**
+     * Attempt to infer a short reason from a PDO message (sanitized)
+     */
+    protected function extractConstraintReason($msg) {
+        $lower = strtolower($msg);
+        if (strpos($lower, 'duplicate') !== false || strpos($lower, 'duplicate entry') !== false) {
+            // try to extract field/key name
+            if (preg_match("/for key '(.+?)'/i", $msg, $m)) {
+                return 'duplicate_key:' . $m[1];
+            }
+            return 'duplicate_key';
+        }
+        if (strpos($lower, 'foreign key') !== false || strpos($lower, 'constraint') !== false) {
+            // try to extract constraint name
+            if (preg_match("/constraint `?(.+?)`? failed/i", $msg, $m)) {
+                return 'fk_violation:' . $m[1];
+            }
+            if (preg_match("/a foreign key constraint fails/i", $lower)) {
+                return 'fk_violation';
+            }
+            return 'constraint_violation';
+        }
+        return 'constraint_violation';
     }
     
     /**

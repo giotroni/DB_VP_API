@@ -638,8 +638,13 @@ class ConsuntivazioneApp {
      * Determina se mostrare il form di consuntivazione
      */
     shouldShowConsuntivazioneForm() {
-        // Mostra il form solo se l'utente sta visualizzando le proprie consuntivazioni
-        return !this.selectedCollaboratore || this.selectedCollaboratore === this.currentUser.id;
+        // Mostra il form se l'utente sta visualizzando le proprie consuntivazioni
+        // oppure se è Admin/Manager che ha selezionato un collaboratore diverso (impersonazione)
+        if (!this.selectedCollaboratore) return true;
+        if (this.selectedCollaboratore === this.currentUser.id) return true;
+        // Se l'utente è Admin/Manager gli permettiamo di compilare il form per altri collaboratori
+        if (this.isAdminOrManager()) return true;
+        return false;
     }
     
     /**
@@ -1054,6 +1059,10 @@ class ConsuntivazioneApp {
         fd.append('altre_spese', parseFloat(document.getElementById('altreSpese').value || 0));
         fd.append('spese_fatturate_vp', parseFloat(document.getElementById('speseFattVP').value || 0));
         fd.append('note', document.getElementById('note').value.trim());
+
+    // Includi l'ID del collaboratore per cui si sta salvando la consuntivazione
+    const collaboratoreId = this.selectedCollaboratore || this.currentUser.id;
+    fd.append('collaboratore_id', collaboratoreId);
 
         // Allegati immagini (se presenti)
         const fileInput = document.getElementById('images');

@@ -161,6 +161,13 @@ class APIClient {
     async updateFattura(id, data) { return this.request('fatture', 'update', { data, params: { id } }); }
     async deleteFattura(id) { return this.request('fatture', 'delete', { params: { id } }); }
     
+    // Fatture Collaboratori (fatture passive)
+    async getFattureCollaboratori(params = {}) { return this.request('fatture_collaboratori', 'getAll', { params }); }
+    async createFatturaCollaboratore(data) { return this.request('fatture_collaboratori', 'create', { data }); }
+    async updateFatturaCollaboratore(id, data) { return this.request('fatture_collaboratori', 'update', { data, params: { id } }); }
+    async deleteFatturaCollaboratore(id) { return this.request('fatture_collaboratori', 'delete', { params: { id } }); }
+    async getTotalePagatoCollaboratore(params = {}) { return this.request('fatture_collaboratori', 'summary', { params }); }
+    
     // Giornate
     async getGiornate(options = {}) {
         const { limit = 100, page = 1, ...otherParams } = options;
