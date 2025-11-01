@@ -184,9 +184,20 @@ class CommesseTaskSection extends BaseSection {
             return acc;
         }, 0);
 
-    const costo_totale_attivita = costoCampoDalleGiornate + costoMonitoraggio;
-        // ==========================================================
-
+        const costo_totale_attivita = costoCampoDalleGiornate + costoMonitoraggio;
+        
+        // Calcolo marginalità come percentuale
+        const margineAssoluto = (valoreTotale || 0) - (costo_totale_attivita || 0) - (costoAccounting || 0);
+        const marginalitaPercentuale = valoreTotale > 0 ? ((margineAssoluto / valoreTotale) * 100) : 0;
+        
+        // Calcolo giorni previsti totali per i task di tipo 'Campo'
+        const totalGgPreviste = commessa.tasks.reduce((sum, task) => {
+            if (task.Tipo === 'Campo') {
+                return sum + (parseFloat(task.gg_previste) || 0);
+            }
+            return sum;
+        }, 0);
+        
         return `
             <div class="management-card mb-4">
                 <div class="management-card-header" data-action="toggle-commessa" data-id="${commessa.ID_COMMESSA}">
@@ -198,9 +209,9 @@ class CommesseTaskSection extends BaseSection {
                             <span class="badge bg-danger" title="Valore Spese">${this.app.utils.formatCurrency(valoreComplessivoSpese)}</span>
                             <!-- badge numero di task rimosso -->
                             <span class="badge bg-secondary text-dark" title="Costo totale attività">${this.app.utils.formatCurrency(costo_totale_attivita)}</span>
-                            <!-- Margine commessa = Valore TOTALE - Costo totale attività - Costo Accounting -->
-                            <span class="badge bg-info text-dark" title="Margine Commessa">${this.app.utils.formatCurrency((valoreTotale || 0) - (costo_totale_attivita || 0) - (costoAccounting || 0))}</span>
-                            <span class="badge bg-success">${totalGiornate.toFixed(1)} Giorni</span>
+                            <!-- Marginalità commessa come percentuale del valore totale -->
+                            <span class="badge ${marginalitaPercentuale >= 0 ? 'bg-info text-dark' : 'bg-danger text-white'}" title="Marginalità Commessa: ${this.app.utils.formatCurrency(margineAssoluto)}">${marginalitaPercentuale.toFixed(1)}%</span>
+                            <span class="badge bg-success" title="Giorni effettuati/previsti (Campo)">${totalGiornate.toFixed(1)}${totalGgPreviste > 0 ? ` su ${totalGgPreviste.toFixed(1)}` : ''} gg</span>
                             <button class="btn btn-sm btn-outline-light" data-action="edit-commessa" data-id="${commessa.ID_COMMESSA}" title="Modifica Commessa"><i class="fas fa-pencil-alt"></i></button>
                             <button class="btn btn-vp-primary btn-sm" data-action="add-task" data-id="${commessa.ID_COMMESSA}" title="Aggiungi nuovo task"><i class="fas fa-plus me-1"></i>Nuovo Task</button>
                             <button class="commessa-toggle-btn" id="toggleBtn-${commessa.ID_COMMESSA}"><i class="fas fa-chevron-down"></i></button>
@@ -700,7 +711,7 @@ class CommesseTaskSection extends BaseSection {
                     </div>`;
                 })();
 
-            const modalActions = [{ html: '<button type-button" class="btn btn-secondary" data-bs-dismiss="modal">Chiudi</button>' }];
+            const modalActions = [{ html: '<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Chiudi</button>' }];
             this.ui.createModal(`giornateModal_${taskId}`, modalTitle, modalBody, modalActions, { size: 'modal-xl' });
     }
         
@@ -987,9 +998,13 @@ class CommesseTaskSection extends BaseSection {
         const collaboratoriOptions = this.app.collaboratori.map(c => `<option value="${c.ID_COLLABORATORE}" ${task.ID_COLLABORATORE == c.ID_COLLABORATORE ? 'selected' : ''}>${c.Collaboratore}</option>`).join('');
         const dataAperturaFormatted = (task.Data_Apertura_Task ? new Date(task.Data_Apertura_Task) : new Date()).toISOString().split('T')[0];
 
+        // Aggiungi le opzioni per le commesse ordinate alfabeticamente
+        const commesseOrderedOptions = this.app.commesse.slice().sort((a, b) => (a.Commessa || '').localeCompare(b.Commessa || ''));
+        const commesseOptions = commesseOrderedOptions.map(c => `<option value="${c.ID_COMMESSA}" ${task.ID_COMMESSA == c.ID_COMMESSA ? 'selected' : ''}>${c.Commessa}</option>`).join('');
+
         return `
             <form id="${formId}" novalidate>
-                <input type="hidden" name="ID_COMMESSA" value="${task.ID_COMMESSA || ''}">
+                <div class="mb-3"><label for="ID_COMMESSA" class="form-label">Commessa</label><select class="form-select" id="ID_COMMESSA" name="ID_COMMESSA" required><option value="">Seleziona commessa...</option>${commesseOptions}</select></div>
                 <div class="row">
                     <div class="col-md-6 mb-3"><label for="Task" class="form-label">Nome Task</label><input type="text" class="form-control" id="Task" name="Task" value="${task.Task || ''}" required></div>
                     <div class="col-md-6 mb-3"><label for="Tipo" class="form-label">Tipo Task</label><select class="form-select" id="Tipo" name="Tipo">${tipiOptions}</select></div>
