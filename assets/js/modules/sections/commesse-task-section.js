@@ -808,6 +808,23 @@ class CommesseTaskSection extends BaseSection {
         const formData = new FormData(form);
         const taskData = Object.fromEntries(formData.entries());
         for (const key in taskData) { if (taskData[key] === '') { taskData[key] = null; } }
+        
+        // Se stiamo modificando un task esistente, controlla se la commessa è cambiata
+        if (taskId) {
+            const currentTask = this.commesseConTask.flatMap(c => c.tasks).find(t => t.ID_TASK == taskId);
+            if (currentTask && currentTask.ID_COMMESSA != taskData.ID_COMMESSA) {
+                // La commessa è cambiata, chiedi conferma
+                const oldCommessa = this.app.commesse.find(c => c.ID_COMMESSA == currentTask.ID_COMMESSA);
+                const newCommessa = this.app.commesse.find(c => c.ID_COMMESSA == taskData.ID_COMMESSA);
+                
+                const confirmMessage = `Attenzione! Stai spostando il task "${currentTask.Task}" dalla commessa "${oldCommessa?.Commessa || 'N/D'}" alla commessa "${newCommessa?.Commessa || 'N/D'}".\n\nQuesta operazione comporterà il trasferimento di tutte le giornate associate al task nella nuova commessa.\n\nSei sicuro di voler procedere?`;
+                
+                if (!confirm(confirmMessage)) {
+                    return; // L'utente ha annullato l'operazione
+                }
+            }
+        }
+        
         try {
             const result = taskId
                 ? await this.api.updateTask(taskId, taskData)
