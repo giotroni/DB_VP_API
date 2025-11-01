@@ -118,7 +118,29 @@ class CommesseTaskSection extends BaseSection {
         //console.log('Creazione card per commessa:', commessa);
         const totalTasks = commessa.tasks.length;
         const activeTasks = commessa.tasks.filter(t => t.Stato_Task === 'In corso').length;
-        const totalGiornate = commessa.tasks.reduce((sum, task) => sum + (parseFloat(task.gg_effettuate) || 0), 0);
+
+        const totalGiornate = commessa.tasks.reduce((sum, task) => {
+            // CORREZIONE: Considera solo i task di tipo 'Campo' per il calcolo delle giornate
+            if (task.Tipo !== 'Campo') {
+                return sum;
+            }
+            
+            // Se il task ha la proprietà gg_effettuate (impostata dal filterData), usala
+            if (task.hasOwnProperty('gg_effettuate')) {
+                return sum + (parseFloat(task.gg_effettuate) || 0);
+            }
+            
+            // Altrimenti calcola dalle giornate complete (quando non ci sono filtri attivi)
+            const giornateCampo = (task.giornate || [])
+                .filter(g => g.Tipo === 'Campo')
+                .reduce((gSum, g) => {
+                    return gSum + (parseFloat(g.gg?.toString().replace(',', '.')) || 0);
+                }, 0);
+            
+            return sum + giornateCampo;
+        }, 0);
+
+        // Calcolo Valore Totale, Lavori, Spese e Costo Accounting
         const sommaValoreCampo = commessa.tasks.reduce((sum, task) => (task.Tipo === 'Campo' ? sum + (parseFloat(task.valore_gg_maturato) || 0) : sum), 0);
         const sommaValoreMonitoraggio = commessa.tasks.reduce((sum, task) => (task.Tipo === 'Monitoraggio' && parseFloat(task.Valore_gg) > 0 ? sum + (sommaValoreCampo * (parseFloat(task.Valore_gg) || 0)) : sum), 0);
         const valoreComplessivoLavori = sommaValoreCampo + sommaValoreMonitoraggio;
@@ -340,6 +362,22 @@ class CommesseTaskSection extends BaseSection {
         toggleAllBtn.title = isAnyCollapsed ? 'Comprimi tutto' : 'Espandi tutto';
     }
 
+
+
+    // Inizializza i tooltip Bootstrap all'interno del contenitore dei task/commesse
+    initTooltips() {
+        try {
+            const container = document.getElementById('commesseTaskContainer');
+            if (!container) return;
+            const tooltipTriggerList = [].slice.call(container.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            tooltipTriggerList.forEach(el => {
+                try { new bootstrap.Tooltip(el); } catch (e) { /* ignore individual tooltip init errors */ }
+            });
+        } catch (err) {
+            console.debug('[initTooltips] failed to init tooltips', err);
+        }
+    }
+    
     filterData() {
         const searchText = document.getElementById('searchCommesseTask')?.value.toLowerCase() || '';
         const selectedCommessa = document.getElementById('filterCommesse')?.value || '';
@@ -354,7 +392,7 @@ class CommesseTaskSection extends BaseSection {
 
         if (searchText || selectedCommessa || selectedStato) {
             filteredData = allData.filter(commessa => {
-                const matchCommessaId = !selectedCommessa || commessa.ID_COMMESSA === selectedCommessa;
+                const matchCommessaId = !selectedCommessa || commessa.ID_COMMESSA == selectedCommessa;
                 const matchStato = !selectedStato || commessa.Stato_Commessa === selectedStato;
                 const matchSearch = !searchText ||
                     (commessa.Commessa || '').toLowerCase().includes(searchText) ||
@@ -370,19 +408,25 @@ class CommesseTaskSection extends BaseSection {
                 const activeTasksInPeriod = [];
                 
                 commessa.tasks.forEach(task => {
-                    const giornateNelPeriodo = task.giornate.filter(g => {
+                    const giornateNelPeriodo = task.giornate?.filter(g => {
                         const dataGiornata = new Date(g.Data);
                         const yearMatch = selectedYears.length === 0 || selectedYears.includes(dataGiornata.getFullYear());
                         const monthMatch = selectedMonths.length === 0 || selectedMonths.includes(dataGiornata.getMonth() + 1);
                         return yearMatch && monthMatch;
-                    });
+                    }) || [];
 
                     if (giornateNelPeriodo.length > 0) {
                         const giornateCampoNelPeriodo = giornateNelPeriodo.filter(g => g.Tipo === 'Campo');
-                        const gg_effettuate = giornateNelPeriodo.reduce((sum, g) => sum + (parseFloat(g.gg) || 0), 0);
+                        
+                        // CORREZIONE: Calcoliamo solo le giornate di tipo Campo per gg_effettuate
+                        const gg_effettuate = giornateCampoNelPeriodo.reduce((sum, g) => {
+                            const gg = parseFloat(g.gg) || 0;
+                            return sum + gg;
+                        }, 0);
+                        
                         const valore_gg_maturato = giornateCampoNelPeriodo.reduce((sum, g) => sum + (parseFloat(g.valore_calcolato) || 0), 0);
-                        //const valore_spese_maturato = giornateCampoNelPeriodo.reduce((sum, g) => sum + (parseFloat(g.spese_totali) || 0), 0);
                         const valore_spese_maturato = giornateNelPeriodo.reduce((sum, g) => sum + (parseFloat(g.Valore_spese) || 0), 0);
+                        
                         activeTasksInPeriod.push({
                             ...task,
                             giornate: giornateNelPeriodo,
@@ -400,35 +444,20 @@ class CommesseTaskSection extends BaseSection {
                             tasksToShow.push(task);
                         }
                     });
+                    
                     finalData.push({ ...commessa, tasks: tasksToShow });
                 }
             });
             filteredData = finalData;
         }
 
-    document.getElementById('commesseTaskContainer').innerHTML = this.renderCommesseCards(filteredData);
-    // tieni traccia dei dati correnti mostrati per l'export
-    this.lastFilteredData = filteredData;
-    this.updateStats(filteredData);
-    // inizializza tooltip sui nuovi elementi
-    this.initTooltips();
+        document.getElementById('commesseTaskContainer').innerHTML = this.renderCommesseCards(filteredData);
+        // tieni traccia dei dati correnti mostrati per l'export
+        this.lastFilteredData = filteredData;
+        this.updateStats(filteredData);
+        // inizializza tooltip sui nuovi elementi
+        this.initTooltips();
     }
-
-    // Inizializza i tooltip Bootstrap all'interno del contenitore dei task/commesse
-    initTooltips() {
-        try {
-            const container = document.getElementById('commesseTaskContainer');
-            if (!container) return;
-            const tooltipTriggerList = [].slice.call(container.querySelectorAll('[data-bs-toggle="tooltip"]'));
-            tooltipTriggerList.forEach(el => {
-                try { new bootstrap.Tooltip(el); } catch (e) { /* ignore individual tooltip init errors */ }
-            });
-        } catch (err) {
-            console.debug('[initTooltips] failed to init tooltips', err);
-        }
-    }
-    
-
 
     // ========================================================================
     // SEZIONE: GESTIONE MODALI
@@ -838,86 +867,88 @@ class CommesseTaskSection extends BaseSection {
         // Rimuoviamo la misura del numero totale di Task dalle statistiche
         const taskCount = null;
             
-            const giornateCount = data.reduce((commessaSum, commessa) => {
-                const taskSum = commessa.tasks.reduce((sum, task) => {
-                    const giornateCampo = task.giornate
-                        .filter(g => g.Tipo === 'Campo' && g.Desk !== 'Si')
-                        .reduce((gSum, g) => gSum + (parseFloat(g.gg?.toString().replace(',', '.')) || 0), 0);
-                    return sum + giornateCampo;
-                }, 0);
-                return commessaSum + taskSum;
+        // CORREZIONE DEFINITIVA: Usa esattamente la stessa logica del createCommessaCard
+        const giornateCount = data.reduce((commessaSum, commessa) => {
+            const taskSum = commessa.tasks.reduce((sum, task) => {
+                const giornateCampo = (task.giornate || [])
+                    .filter(g => g.Tipo === 'Campo')
+                    .reduce((gSum, g) => gSum + (parseFloat(g.gg?.toString().replace(',', '.')) || 0), 0);
+                return sum + giornateCampo;
+            }, 0);
+            return commessaSum + taskSum;
+    }, 0);
+
+
+        const valoreTotaleLavori = data.reduce((totalSum, commessa) => {
+            const sommaValoreCampo = commessa.tasks.reduce((sum, task) => {
+                if (task.Tipo === 'Campo') {
+                    return sum + (parseFloat(task.valore_gg_maturato) || 0);
+                }
+                return sum;
             }, 0);
 
-            const valoreTotaleLavori = data.reduce((totalSum, commessa) => {
-                const sommaValoreCampo = commessa.tasks.reduce((sum, task) => {
-                    if (task.Tipo === 'Campo') {
-                        return sum + (parseFloat(task.valore_gg_maturato) || 0);
-                    }
-                    return sum;
-                }, 0);
+            const sommaValoreMonitoraggio = commessa.tasks.reduce((sum, task) => {
+                if (task.Tipo === 'Monitoraggio' && parseFloat(task.Valore_gg) > 0) {
+                    return sum + (sommaValoreCampo * (parseFloat(task.Valore_gg) || 0));
+                }
+                return sum;
+            }, 0);
+            
+            return totalSum + sommaValoreCampo + sommaValoreMonitoraggio;
+        }, 0);
 
-                const sommaValoreMonitoraggio = commessa.tasks.reduce((sum, task) => {
-                    if (task.Tipo === 'Monitoraggio' && parseFloat(task.Valore_gg) > 0) {
-                        return sum + (sommaValoreCampo * (parseFloat(task.Valore_gg) || 0));
-                    }
-                    return sum;
+        const valoreTotaleSpese = data.reduce((totalSum, commessa) => {
+            return totalSum + commessa.tasks.reduce((sum, task) => sum + (parseFloat(task.valore_spese_maturato) || 0), 0);
+        }, 0);
+
+        // NUOVO: Calcolo del valore totale complessivo
+        const valoreTotaleComplessivo = valoreTotaleLavori + valoreTotaleSpese;
+
+        // NUOVO: Calcolo Costo Totale Attività e Margine Commessa a livello globale
+        const totaleCostoAttivita = data.reduce((sumComm, commessa) => {
+            const costoCampo = commessa.tasks.reduce((sumTask, task) => {
+                if (task.Tipo !== 'Campo') return sumTask;
+                const giornate = task.giornate || [];
+                const costoPerTask = giornate.reduce((accGg, g) => {
+                    const costoGg = parseFloat(g.Costo_gg ?? g.costo_gg ?? 0) || 0;
+                    const valoreSpese = parseFloat(g.Valore_spese ?? g.valore_spese ?? 0) || 0;
+                    return accGg + costoGg + valoreSpese;
                 }, 0);
-                
-                return totalSum + sommaValoreCampo + sommaValoreMonitoraggio;
+                return sumTask + costoPerTask;
             }, 0);
 
-            const valoreTotaleSpese = data.reduce((totalSum, commessa) => {
-                return totalSum + commessa.tasks.reduce((sum, task) => sum + (parseFloat(task.valore_spese_maturato) || 0), 0);
+            const sommaValoreCampo = commessa.tasks.reduce((sum, task) => (task.Tipo === 'Campo' ? sum + (parseFloat(task.valore_gg_maturato) || 0) : sum), 0);
+            const costoMonitor = commessa.tasks.reduce((acc, task) => {
+                if (task.Tipo === 'Monitoraggio' && parseFloat(task.Valore_gg) > 0) {
+                    return acc + (sommaValoreCampo * (parseFloat(task.Valore_gg) || 0));
+                }
+                return acc;
             }, 0);
 
-            // NUOVO: Calcolo del valore totale complessivo
-            const valoreTotaleComplessivo = valoreTotaleLavori + valoreTotaleSpese;
+            return sumComm + costoCampo + costoMonitor;
+        }, 0);
 
-            // NUOVO: Calcolo Costo Totale Attività e Margine Commessa a livello globale
-            const totaleCostoAttivita = data.reduce((sumComm, commessa) => {
-                const costoCampo = commessa.tasks.reduce((sumTask, task) => {
-                    if (task.Tipo !== 'Campo') return sumTask;
-                    const giornate = task.giornate || [];
-                    const costoPerTask = giornate.reduce((accGg, g) => {
-                        const costoGg = parseFloat(g.Costo_gg ?? g.costo_gg ?? 0) || 0;
-                        const valoreSpese = parseFloat(g.Valore_spese ?? g.valore_spese ?? 0) || 0;
-                        return accGg + costoGg + valoreSpese;
-                    }, 0);
-                    return sumTask + costoPerTask;
-                }, 0);
+        const totaleCostoAccounting = data.reduce((sumComm, commessa) => {
+            const sommaValoreCampo = commessa.tasks.reduce((sum, task) => (task.Tipo === 'Campo' ? sum + (parseFloat(task.valore_gg_maturato) || 0) : sum), 0);
+            const commissione = parseFloat(commessa.Commissione) || 0;
+            return sumComm + (sommaValoreCampo * commissione);
+        }, 0);
 
-                const sommaValoreCampo = commessa.tasks.reduce((sum, task) => (task.Tipo === 'Campo' ? sum + (parseFloat(task.valore_gg_maturato) || 0) : sum), 0);
-                const costoMonitor = commessa.tasks.reduce((acc, task) => {
-                    if (task.Tipo === 'Monitoraggio' && parseFloat(task.Valore_gg) > 0) {
-                        return acc + (sommaValoreCampo * (parseFloat(task.Valore_gg) || 0));
-                    }
-                    return acc;
-                }, 0);
+        const totaleMargine = valoreTotaleComplessivo - totaleCostoAttivita - totaleCostoAccounting;
 
-                return sumComm + costoCampo + costoMonitor;
-            }, 0);
-
-            const totaleCostoAccounting = data.reduce((sumComm, commessa) => {
-                const sommaValoreCampo = commessa.tasks.reduce((sum, task) => (task.Tipo === 'Campo' ? sum + (parseFloat(task.valore_gg_maturato) || 0) : sum), 0);
-                const commissione = parseFloat(commessa.Commissione) || 0;
-                return sumComm + (sommaValoreCampo * commissione);
-            }, 0);
-
-            const totaleMargine = valoreTotaleComplessivo - totaleCostoAttivita - totaleCostoAccounting;
-
-            const statsContainer = document.getElementById('stats-row-container');
-            if (statsContainer) {
-                statsContainer.innerHTML = `
-                    <div class="stats-row">
-                        ${this.ui.createStatsCard('fas fa-briefcase', commesseCount, 'Commesse')}
-                        ${this.ui.createStatsCard('fas fa-calendar-check', giornateCount.toFixed(1), "Giornate Campo")}
-                        ${this.ui.createStatsCard('fas fa-calculator', this.app.utils.formatCurrency(valoreTotaleComplessivo), 'Valore TOTALE')}
-                        ${this.ui.createStatsCard('fas fa-cogs', this.app.utils.formatCurrency(totaleCostoAttivita), 'Costo Totale Attività')}
-                        ${this.ui.createStatsCard('fas fa-building', this.app.utils.formatCurrency(totaleCostoAccounting), 'COSTO ACCOUNTING')}
-                        ${this.ui.createStatsCard('fas fa-chart-line', this.app.utils.formatCurrency(totaleMargine), 'MARGINE')}
-                    </div>
-                `;
-            }
+        const statsContainer = document.getElementById('stats-row-container');
+        if (statsContainer) {
+            statsContainer.innerHTML = `
+                <div class="stats-row">
+                    ${this.ui.createStatsCard('fas fa-briefcase', commesseCount, 'Commesse')}
+                    ${this.ui.createStatsCard('fas fa-calendar-check', giornateCount.toFixed(1), "Giornate Campo")}
+                    ${this.ui.createStatsCard('fas fa-calculator', this.app.utils.formatCurrency(valoreTotaleComplessivo), 'Valore TOTALE')}
+                    ${this.ui.createStatsCard('fas fa-cogs', this.app.utils.formatCurrency(totaleCostoAttivita), 'Costo Totale Attività')}
+                    ${this.ui.createStatsCard('fas fa-building', this.app.utils.formatCurrency(totaleCostoAccounting), 'COSTO ACCOUNTING')}
+                    ${this.ui.createStatsCard('fas fa-chart-line', this.app.utils.formatCurrency(totaleMargine), 'MARGINE')}
+                </div>
+            `;
+        }
     }
 
     getCommessaFormHTML(commessa = {}) {

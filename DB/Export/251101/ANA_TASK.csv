@@ -25,7 +25,7 @@ TAS00023;"LINDT FASE1";"Ingaggio ed Audit";COM0014;;Campo;2025-04-01;Chiuso;;No;
 TAS00024;"LINDT WORKSHOP";"Workshop finanziato";COM0014;;Campo;2025-04-01;"In corso";;No;;1600,00;;;;
 TAS00025;"LINDT COORDINAMENTO";Monitoraggio;COM0014;CONS001;Monitoraggio;2025-04-01;"In corso";;Si;;0,10;;;;
 TAS00026;"PERFETTI AUDIT";Consulenza;COM0005;;Campo;2024-12-01;Chiuso;;Si;;1550,00;;;;
-TAS00027;"PERFETTI WORKSHOP";Consulenza;COM0005;;Campo;2024-12-01;"In corso";;Si;;1550,00;;;;
+TAS00027;"PERFETTI WORKSHOP";Consulenza;COM0005;;Campo;2024-12-01;Chiuso;;Si;;1550,00;;;"2025-10-30 15:14:38";SYSTEM
 TAS00028;"SAMMONTANA FRANCIA ASSESSMENT";"Assessment Manutenzione stab. Francia";COM0015;;Campo;2025-07-01;Chiuso;8,00;No;;1600,00;;;;
 TAS00029;PROMOZIONE;"Attivita' promozionale";COM0016;;Promo;2024-12-01;"In corso";;Si;;0,00;;;;SYSTEM
 TAS00030;"sw gestionale";;COM2025001;;Sviluppo;2025-08-25;"In corso";;No;;0,00;;SYSTEM;;SYSTEM
@@ -35,3 +35,10 @@ TAS00033;"CORTEOLONA Affiancamento VP";;COM0013;;Formazione;2025-07-01;"In corso
 TAS00034;"CASTELLI - 4. SHOP FLOOR COACHING";;COM0012;;Campo;2025-09-11;"In corso";;No;;1550,00;"2025-09-11 13:28:04";SYSTEM;"2025-09-11 13:28:04";
 TAS00035;"CR Formazione e Coaching Vaglio";"Aula con capireparto e similari, coaching a capo produzione e 3 capi reparto";COM0014;;Campo;2025-09-01;"In corso";6,00;No;70,00;1600,00;"2025-09-19 20:03:04";SYSTEM;"2025-09-22 13:08:24";SYSTEM
 TAS00036;"CR Formazione e Coaching Colombo";"aula capireparto e similari";COM0014;;Campo;2025-09-01;"In corso";2,00;No;70,00;1600,00;"2025-09-19 20:04:19";SYSTEM;"2025-09-25 09:36:00";SYSTEM
+TAS00037;"EVOLUTION GAME";"Business Game";COM0001;;Campo;2025-10-01;"In corso";4,00;Si;;1450,00;"2025-10-12 13:10:28";SYSTEM;"2025-10-12 13:12:50";SYSTEM
+TAS00038;"SFC CT";"Shop floor coaching";COM2025006;;Campo;2025-10-31;"In corso";15,00;Si;;1550,00;"2025-10-17 17:55:11";SYSTEM;"2025-10-17 17:55:11";
+TAS00039;"AULA CT";;COM2025006;;Campo;2025-10-31;"In corso";4,00;Si;;1550,00;"2025-10-17 17:55:54";SYSTEM;"2025-10-17 17:55:54";
+TAS00040;"Corteolona Aula CT";;COM0013;;Campo;2025-11-01;"In corso";;No;;;"2025-11-01 14:32:56";SYSTEM;"2025-11-01 14:32:56";
+TAS00041;"Corteolona Shop Floor Coaching";;COM0013;;Campo;2025-11-01;"In corso";;No;;;"2025-11-01 14:33:29";SYSTEM;"2025-11-01 14:33:29";
+TAS00042;"Corteolona Prima Linea e CR";;COM0013;;Campo;2025-11-01;"In corso";;No;;;"2025-11-01 14:34:11";SYSTEM;"2025-11-01 14:34:11";
+TAS00043;"Castelli Consulenza Organizzativa";;COM0012;;Campo;2025-11-01;"In corso";;No;;;"2025-11-01 14:41:51";SYSTEM;"2025-11-01 14:41:51";
