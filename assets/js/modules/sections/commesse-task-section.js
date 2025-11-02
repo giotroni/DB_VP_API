@@ -202,7 +202,7 @@ class CommesseTaskSection extends BaseSection {
             <div class="management-card mb-4">
                 <div class="management-card-header" data-action="toggle-commessa" data-id="${commessa.ID_COMMESSA}">
                     <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
-                        <h5 class="management-card-title mb-0 me-2"><i class="fas fa-briefcase me-2"></i>${commessa.Commessa}</h5>
+                        <h5 class="management-card-title mb-0 me-2"><i class="fas fa-briefcase me-2"></i>${commessa.Commessa}${commessa.Stato_Commessa === 'Chiusa' ? ' <span class="badge bg-secondary ms-2">CHIUSA</span>' : ''}</h5>
                         <div class="d-flex align-items-center gap-2">
                             <span class="badge bg-dark" title="Valore TOTALE">${this.app.utils.formatCurrency(valoreTotale)}</span>
                             <span class="badge bg-warning text-dark" title="Valore Lavori">${this.app.utils.formatCurrency(valoreComplessivoLavori)}</span>
@@ -273,10 +273,16 @@ class CommesseTaskSection extends BaseSection {
             : `<p class="text-muted text-center small mt-3 mb-0"><i class="fas fa-calendar-times me-1"></i> Nessuna giornata registrata</p>`;
 
         const valoreGgContent = `<div class="fw-bold text-success">${this.app.utils.formatCurrency(task.valore_gg_maturato || 0)}</div><small class="text-muted">Valore gg</small>`;
-    const valoreSpeseContent = `<div class="fw-bold text-danger">${this.app.utils.formatCurrency(task.valore_spese_maturato || 0)}</div><small class="text-muted">Tot Spese</small>`;
+        const valoreSpeseContent = `<div class="fw-bold text-danger">${this.app.utils.formatCurrency(task.valore_spese_maturato || 0)}</div><small class="text-muted">Tot Spese</small>`;
         //console.log('Tariffa giornaliera per task:', task);
         const tariffaGg = parseFloat(task.Valore_gg ?? 0) || 0;
         const tariffaGgContent = `<div class="fw-bold text-secondary">${this.app.utils.formatCurrency(tariffaGg)}</div><small class="text-muted">Tariffa gg</small>`;
+        
+        // Calcolo giorni effettuati vs previsti
+        const ggPreviste = parseFloat(task.gg_previste) || 0;
+        const progressoGgContent = ggPreviste > 0 
+            ? `<div class="fw-bold text-primary" data-bs-toggle="tooltip" title="Giorni effettuati su giorni previsti per questo task">${totaleGgCampo.toFixed(1)} su ${ggPreviste.toFixed(1)}</div><small class="text-muted">Progresso gg</small>`
+            : `<div class="fw-bold text-primary" data-bs-toggle="tooltip" title="Giorni effettuati (nessun limite previsto)">${totaleGgCampo.toFixed(1)}</div><small class="text-muted">Tot. gg (Campo)</small>`;
 
         return `
             <div class="col-lg-6 col-xl-4 mb-3">
@@ -285,7 +291,7 @@ class CommesseTaskSection extends BaseSection {
                     <div class="card-body">
                         <p class="card-text text-muted small">${task.Desc_Task || ''}</p>
                         <div class="row text-center">
-                            <div class="col-4"><div class="fw-bold text-primary" data-bs-toggle="tooltip" title="Somma dei giorni registrati come 'Campo' per questo task">${totaleGgCampo.toFixed(1)}</div><small class="text-muted">Tot. gg (Campo)</small></div>
+                            <div class="col-4">${progressoGgContent}</div>
                             <div class="col-4"><div data-bs-toggle="tooltip" title="Tariffa giornaliera applicata al task">${tariffaGgContent}</div></div>
                             <div class="col-4"><div data-bs-toggle="tooltip" title="Valore maturato dai giorni di lavoro">${valoreGgContent}</div></div>
                         </div>
