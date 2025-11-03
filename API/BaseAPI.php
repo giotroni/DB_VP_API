@@ -441,7 +441,17 @@ abstract class BaseAPI {
     }
     
     protected function getCurrentUserId() {
-        // In futuro implementare autenticazione JWT
+        // Avvia la sessione se non è già attiva
+        if (session_status() !== PHP_SESSION_ACTIVE) {
+            session_start();
+        }
+        
+        // Se c'è un utente autenticato, usa il suo ID
+        if (isset($_SESSION['user_id']) && !empty($_SESSION['user_id'])) {
+            return $_SESSION['user_id'];
+        }
+        
+        // Fallback per compatibilità con operazioni di sistema
         return 'SYSTEM';
     }
 }
