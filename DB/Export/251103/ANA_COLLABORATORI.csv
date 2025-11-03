@@ -1,0 +1,9 @@
+ID_COLLABORATORE;Collaboratore;Email;User;PWD;Ruolo;PIVA;Data_Creazione;ID_UTENTE_CREAZIONE;Data_Modifica;ID_UTENTE_MODIFICA
+CONS001;"Alessandro Vaglio";avaglio@vaglioandpartners.com;avaglio;$2y$10$YokCDNG.En2sHzPRYXQKJ./c6vgvwO.nlpKJtsN0xuVvGDZLNia6a;Manager;;;;;
+CONS002;"Giorgio Bevilacqua";gbevilacqua@vaglioandpartners.com;gbevilacqua;$2y$10$zoeQKEihcYNMesWaeBSpx.mpGOJ0PSOp7QvYCTkcthcaWAouM1f1O;User;;;;"2025-09-12 10:17:00";
+CONS003;"Giorgio Troni";gtroni@vaglioandpartners.com;gtroni;$2y$10$2uHBf.iVhxqb61S2e5LgPOUJZZ4gmvWiwSHqu9Nd.bXwun/rpH3z2;Admin;;;;;
+CONS004;"Stefano Colombo";scolombo@vaglioandpartners.com;scolombo;$2y$10$SYrK4CtsE.8GK7yb.7/E5eMB/Ix2lgdXBRAnfGbE7x3iHybOGqgaG;User;;;;"2025-09-16 13:34:09";
+CONS005;"Francesco Silvestri";fsilverstri@vaglioandpartners.com;fsilverstri;Analista00;User;;;;;SYSTEM
+CONS006;Amministrazione;amministrazione@vaglioandpartners.com;amministrazione;$2y$10$di033lvpQFrHPGsB7hz2dehVhupXpF502I//XpfOyGB1hRx6wc9ku;Admin;;;;"2025-09-11 16:44:03";
+CONS008;Gestione;gestione@vaglioandpartners.com;gestione;$2y$10$PGPgwuo.JqVClzTwXqlAoOZxEusRmuHFuiusoKEMTHeqqamcEX3JO;Admin;;"2025-09-11 12:34:52";SYSTEM;"2025-09-11 16:44:23";
+CONS009;"Samantha Chichi";schichi@vaglioandpartners.com;schichi;;User;;"2025-10-11 19:22:32";SYSTEM;"2025-10-12 11:36:49";SYSTEM

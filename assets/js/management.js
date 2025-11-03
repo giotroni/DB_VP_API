@@ -23,7 +23,7 @@ class ManagementApp {
         this.collaboratori = [];
         this.tariffe = [];
         this.fatture = [];
-    this.fatture_collaboratori = [];
+        this.fatture_collaboratori = []; // DISABILITATO - non viene caricato
 
         // --- Inizializzazione delle Sezioni Modulari ---
         this.sections = {
@@ -31,7 +31,7 @@ class ManagementApp {
             'clienti': new ClientiSection(this),
             'collaboratori': new CollaboratoriSection(this),
             'fatture': new FattureSection(this),
-            'fatture-collaboratori': new FattureCollaboratoriSection(this),
+            // 'fatture-collaboratori': new FattureCollaboratoriSection(this), // DISABILITATO
             'giornate': new GiornateSection(this),
             'statistiche': new StatisticheSection(this),
         };
@@ -436,7 +436,7 @@ class ManagementApp {
                     <div class="nav-item"><button class="nav-link" data-action="navigate" data-section="clienti"><i class="fas fa-building"></i>Clienti</button></div>
                     <div class="nav-item"><button class="nav-link" data-action="navigate" data-section="collaboratori"><i class="fas fa-users"></i>Collaboratori</button></div>
                     <div class="nav-item"><button class="nav-link" data-action="navigate" data-section="fatture"><i class="fas fa-file-invoice"></i>Fatture</button></div>
-                    <div class="nav-item"><button class="nav-link" data-action="navigate" data-section="fatture-collaboratori"><i class="fas fa-file-invoice"></i>Fatture Collaboratori</button></div>
+                    <!-- <div class="nav-item"><button class="nav-link" data-action="navigate" data-section="fatture-collaboratori"><i class="fas fa-file-invoice"></i>Fatture Collaboratori</button></div> DISABILITATO -->
                     <div class="nav-item"><button class="nav-link" data-action="navigate" data-section="giornate"><i class="fas fa-calendar-alt"></i>Giornate</button></div>
                     <div class="nav-item"><button class="nav-link" data-action="navigate" data-section="statistiche"><i class="fas fa-chart-bar"></i>Statistiche</button></div>
                 </nav>
@@ -584,10 +584,10 @@ class ManagementApp {
 
         try {
             const responses = await Promise.all([
-                this.api.getCommesse(), this.api.getTasks({ limit: 1000 }), this.api.getAllGiornate(),
-                this.api.getClienti(), this.api.getCollaboratori(), this.api.getTariffe(), this.api.getFatture(), this.api.getFattureCollaboratori()
+                this.api.getCommesse({ limit: 1000 }), this.api.getTasks({ limit: 1000 }), this.api.getAllGiornate(),
+                this.api.getClienti({ limit: 1000 }), this.api.getCollaboratori({ limit: 1000 }), this.api.getTariffe({ limit: 1000 }), this.api.getFatture({ limit: 1000 }) // , this.api.getFattureCollaboratori() DISABILITATO
             ]);
-            [ this.commesse, this.tasks, this.giornate, this.clienti, this.collaboratori, this.tariffe, this.fatture, this.fatture_collaboratori ] = responses.map(res => (res.success && res.data.data) ? res.data.data : []);
+            [ this.commesse, this.tasks, this.giornate, this.clienti, this.collaboratori, this.tariffe, this.fatture /* , this.fatture_collaboratori */ ] = responses.map(res => (res.success && res.data.data) ? res.data.data : []);
             console.log('✅ Dati iniziali caricati.');
             await this.showSection(this.currentSection);
         } catch (error) {

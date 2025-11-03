@@ -47,7 +47,7 @@ class TaskAPI extends BaseAPI {
             
             // Paginazione
             $page = max(1, intval($_GET['page'] ?? 1));
-            $limit = max(1, min(1000, intval($_GET['limit'] ?? 20))); // Aumentato limite max
+            $limit = max(1, min(1000, intval($_GET['limit'] ?? 1000))); // Aumentato limite di default
             $offset = ($page - 1) * $limit;
             
             $sql .= " LIMIT $limit OFFSET $offset";

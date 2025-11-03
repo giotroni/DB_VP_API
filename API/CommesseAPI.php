@@ -123,6 +123,32 @@ class CommesseAPI extends BaseAPI {
             }
         }
         
+        // Verifica unicità del nome della commessa
+        if (isset($data['Commessa']) && !empty($data['Commessa'])) {
+            $sql = "SELECT COUNT(*) FROM {$this->table} WHERE Commessa = :commessa";
+            // Se stiamo aggiornando, escludiamo la commessa corrente dal controllo
+            if (isset($data['ID_COMMESSA']) && !empty($data['ID_COMMESSA'])) {
+                $sql .= " AND ID_COMMESSA != :id_commessa";
+            }
+            
+            try {
+                $stmt = $this->db->prepare($sql);
+                $stmt->bindValue(':commessa', $data['Commessa']);
+                if (isset($data['ID_COMMESSA']) && !empty($data['ID_COMMESSA'])) {
+                    $stmt->bindValue(':id_commessa', $data['ID_COMMESSA']);
+                }
+                $stmt->execute();
+                $count = $stmt->fetchColumn();
+                
+                if ($count > 0) {
+                    $errors[] = "Esiste già una commessa con il nome '{$data['Commessa']}'. Scegli un nome diverso.";
+                }
+            } catch (PDOException $e) {
+                error_log("Errore controllo unicità nome commessa: " . $e->getMessage());
+                $errors[] = "Errore durante la verifica del nome della commessa";
+            }
+        }
+        
         return [
             'valid' => empty($errors),
             'errors' => $errors
@@ -213,7 +239,7 @@ class CommesseAPI extends BaseAPI {
             
             // Paginazione
             $page = max(1, intval($_GET['page'] ?? 1));
-            $limit = max(1, min(100, intval($_GET['limit'] ?? 20)));
+            $limit = max(1, min(1000, intval($_GET['limit'] ?? 1000))); // Aumentato limite per caricare tutte le commesse
             $offset = ($page - 1) * $limit;
             
             $sql .= " LIMIT $limit OFFSET $offset";

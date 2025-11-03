@@ -1,0 +1,130 @@
+ID_FATTURA;Data;ID_CLIENTE;TIPO;NR;ID_COMMESSA;Fatturato_gg;Fatturato_Spese;Fatturato_TOT;Note;Riferimento_Ordine;Data_Ordine;Tempi_Pagamento;Scadenza_Pagamento;Data_Pagamento;Valore_Pagato;Data_Creazione;ID_UTENTE_CREAZIONE;Data_Modifica;ID_UTENTE_MODIFICA
+FAT25001;2025-08-30;CLI0006;Fattura;33/25;COM0003;1550,00;297,00;1847,00;"Attività di supporto consulenziale c/o il Vostro 
+stabilimento di Mantova. 
+Viaggio a/r 
+Spese";;;30;2025-09-29;;0,00;;SYSTEM;;
+FAT25002;2025-09-30;CLI0014;Fattura;34/25;COM0014;18300,00;0,00;18300,00;"Attività di formazione relativa al “Piano  formazione 2025  parte 2- ”ID 445058 come da Vs ordine n. 4500238831
+Coordinamento (10%)";4500238831;;60;2025-11-29;;0,00;"2025-09-29 21:31:59";SYSTEM;"2025-09-29 21:36:35";SYSTEM
+FAT25003;2025-09-30;CLI0016;Fattura;35/25;COM0005;2325,00;0,00;2325,00;"Attività di supporto alla progettazione dell’evoluzione organizzativa come da Vostro ordine n. 9000124038 del 22/09/2025.";9000124038;;30;2025-10-30;;0,00;"2025-09-29 22:20:33";SYSTEM;"2025-10-01 22:30:22";SYSTEM
+FAT25004;2025-09-30;CLI0012;Fattura;36/25;COM0013;11486,00;0,00;11486,00;"Audit Culturale Reggio Emilia e Corteolona come da Vostro ordine";;;60;2025-11-29;;0,00;"2025-09-29 22:22:04";SYSTEM;"2025-10-01 22:30:00";SYSTEM
+FAT25005;2025-09-30;CLI0008;Fattura;37/25;COM2025004;3780,00;0,00;3780,00;;;;30;2025-10-30;;0,00;"2025-09-29 22:23:04";SYSTEM;"2025-10-01 22:28:01";SYSTEM
+FATT000001;2025-01-31;CLI0006;Fattura;01/25;COM0003;1550,00;250,00;1800,00;"Attivit� di supporto consulenziale c/o il Vostro 
+stabilimento di Mantova.";;;30;2025-03-02;2025-03-12;1800,00;;;;
+FATT000002;2024-12-23;CLI0006;Fattura;01/24;COM0003;1838,00;0,00;1838,00;"Attivit� di supporto consulenziale c/o il Vostro 
+stabilimento di Mantova.";;;30;2025-01-22;2025-02-20;1838,00;;;;SYSTEM
+FATT000003;2024-12-23;CLI0005;Fattura;02/24;COM0002;725,00;;725,00;;;;;2024-12-23;2025-02-27;725,00;;;;
+FATT000004;2024-12-23;CLI0007;Fattura;03/24;COM0004;1730,00;;1730,00;"Attivit� di supporto consulenziale c/o il Vostro stabilimento 
+di Modena.";;;30;2025-01-22;2025-01-31;1730,00;;;;
+FATT000005;2024-12-23;CLI0003;Fattura;04/24;COM0001;3987,00;0,00;3987,00;"Attivit� di consulenza svolta da Alessandro Vaglio come da 
+Vostro ordine n. 7130017952 del 27/09/2024. 
+Attivit� di consulenza svolta da Giorgio Bevilacqua come da 
+Vostro ordine n. 7130017952 del 27/09/2024. 
+Attivit� di consulenza svolta da Stefano Colombo come da 
+Vostro ordine n. 7130017952 del 27/09/2024. 
+Coordinamento (10% attivit� svolta)";;;;2024-12-23;2025-01-24;3987,00;;;;SYSTEM
+FATT000006;2024-12-31;CLI0016;Fattura;05/24;COM0005;5425,00;;5425,00;;;;;2024-12-31;2025-01-31;5425,00;;;;
+FATT000007;2025-01-31;CLI0007;Fattura;02/25;COM0004;1550,00;250,00;1800,00;"Attivit� di supporto consulenziale c/o il Vostro stabilimento 
+di Modena.";;;30;2025-03-02;2025-03-12;1800,00;;;;
+FATT000008;2025-01-31;CLI0005;Fattura;04/25;COM0002;725,00;90,00;815,00;"Attivit� di consulenza svolta da Giorgio Troni come da nostra 
+offerta del 26/07/24.";;;;2025-01-31;2025-03-11;815,00;;;;
+FATT000009;2025-01-31;CLI0003;Fattura;03/25;COM0001;5637,50;;5637,50;"Attivit� di consulenza svolta da Alessandro Vaglio come da 
+Vostro ordine n. 7130017952 del 27/09/2024. 
+Attivit� di consulenza svolta da Giorgio Bevilacqua come da 
+Vostro ordine n. 7130017952 del 27/09/2024. 
+Attivit� di consulenza svolta da Stefano Colombo come da 
+Vostro ordine n. 7130017952 del 27/09/2024. 
+Coordinamento (10% attivit� svolta)";"n. 7130017952";2024-09-27;;2025-01-31;2025-03-04;5637,50;;;;
+FATT000010;2025-02-28;CLI0007;Fattura;05/25;COM0004;775,00;90,00;865,00;"Attivit� di supporto consulenziale c/o il Vostro stabilimento 
+di Modena.";;;30;2025-03-30;2025-04-14;865,00;;;;
+FATT000011;2025-02-28;CLI0006;Fattura;06/25;COM0003;1550,00;250,00;1800,00;"Attivit� di supporto consulenziale c/o il Vostro 
+stabilimento di Mantova.";;;30;2025-03-30;2025-04-24;1800,00;;;;
+FATT000012;2025-02-28;CLI0003;Fattura;07/25;COM0001;17710,00;;17710,00;"Attivit� di consulenza svolta da Alessandro Vaglio come 
+da Vostro ordine n. 7130017952 del 27/09/2024. 
+ 
+Attivit� di consulenza svolta da Giorgio Bevilacqua 
+come da Vostro ordine n. 7130017952 del 27/09/2024. 
+ 
+Attivit� di consulenza svolta da Stefano Colombo come 
+da Vostro ordine n. 7130017952 del 27/09/2024. 
+ 
+Coordinamento (10% attivit� svolta)";"n. 7130017952";2024-09-27;;2025-02-28;2025-04-01;17710,00;;;;
+FATT000013;2025-03-31;CLI0011;Fattura;08/25;COM0010;6200,00;;6200,00;"Attivit� di coaching individuale Bertagni come da Vostro 
+ordine 4511977261 del 04/02/25.";"n. 4511977261";2025-02-04;;2025-03-31;2025-06-04;6200,00;;;;
+FATT000014;2025-03-31;CLI0009;Fattura;09/25;COM0009;22320,00;;22320,00;"Attivit� di Leading the future 1 come da Vostro ordine 
+4511977300 del 04/02/25.";"n. 4511977300";2025-02-04;;2025-03-31;2025-06-04;22320,00;;;;
+FATT000015;2025-03-31;CLI0003;Fattura;10/25;COM0001;8827,50;;8827,50;"Attivit� di consulenza svolta da Alessandro Vaglio come 
+da Vostro ordine n. 7130017952 del 27/09/2024. 
+ 
+Attivit� di consulenza svolta da Giorgio Bevilacqua 
+come da Vostro ordine n. 7130017952 del 27/09/2024. 
+ 
+Attivit� di consulenza svolta da Stefano Colombo come 
+da Vostro ordine n. 7130017952 del 27/09/2024. 
+ 
+Coordinamento (10% attivit� svolta)";"n. 7130017952";2024-09-27;;2025-03-31;2025-05-02;8827,50;;;;
+FATT000016;2025-03-31;CLI0007;Fattura;11/25;COM0004;1550,00;90,00;1640,00;"Attivit� di supporto consulenziale c/o il Vostro stabilimento 
+di Modena.";;;30;2025-04-30;2025-05-08;1640,00;;;;
+FATT000017;2025-03-31;CLI0006;Fattura;12/25;COM0003;1550,00;290,00;1840,00;"Attivit� di supporto consulenziale c/o il Vostro 
+stabilimento di Mantova.";;;30;2025-04-30;2025-05-12;1840,00;;;;
+FATT000018;2025-03-31;CLI0013;Fattura;13/25;COM0007;11550,00;1000,00;12550,00;"Attivit� di formazione Team Naturale come va Vs ordine 
+1020201558 del 13/03/25.";"n. 1020201558";2025-03-13;30;2025-04-30;2025-06-20;12550,00;;;;
+FATT000019;2025-04-30;CLI0003;Fattura;14/25;COM0001;3300,00;;3300,00;"Attivit� di consulenza svolta da Alessandro Vaglio come 
+da Vostro ordine n. 7130017952 del 27/09/2024. 
+Attivit� di consulenza svolta da Stefano Colombo come 
+da Vostro ordine n. 7130017952 del 27/09/2024.";"n. 7130017952";2024-09-27;30;2025-05-30;2025-05-30;3300,00;;;;
+FATT000020;2025-04-30;CLI0007;Fattura;15/25;COM0004;1550,00;90,00;1640,00;"Attivit� di supporto consulenziale c/o il Vostro stabilimento 
+di Modena.";;;30;2025-05-30;2025-06-09;1640,00;;;;
+FATT000021;2025-04-30;CLI0006;Fattura;16/25;COM0003;1550,00;279,50;1829,50;"Attivit� di supporto consulenziale c/o il Vostro 
+stabilimento di Mantova.";;;30;2025-05-30;2025-06-10;1829,50;;;;
+FATT000022;2025-05-31;CLI0013;Fattura;17/25;COM0006;21450,00;;21450,00;"Attivit� di supporto consulenziale come da vs ordine   
+1020203362.";"n. 1020203362";;30;2025-06-30;2025-06-30;21450,00;;;;
+FATT000023;2025-05-31;CLI0003;Fattura;18/25;COM0001;4840,00;;4840,00;"Attivit� di consulenza svolta da Alessandro Vaglio come 
+da Vostro ordine n. 7130017952 del 27/09/2024. 
+Attivit� di consulenza svolta da Giorgio Bevilacqua 
+come da Vostro ordine n. 7130017952 del 27/09/2024. 
+Attivit� di consulenza svolta da Stefano Colombo come 
+da Vostro ordine n. 7130017952 del 27/09/2024. 
+Coordinamento (10% attivit� svolta)";"n. 7130017952";2024-09-27;30;2025-06-30;2025-07-04;4840,00;;;;
+FATT000024;2025-05-31;CLI0009;Fattura;19/25;COM0009;16740,00;;16740,00;"Attivit� di Leading the future 2 come da Vostro ordine 
+4511977300 del 04/02/25.";"n. 4511977300";2025-02-04;60;2025-07-30;2025-08-04;16740,00;;;;
+FATT000025;2025-05-31;CLI0010;Fattura;20/25;COM0011;9832,50;;9832,50;"Attivit� di Coaching individuale  come da nostra offerta 
+del 17/04/25.";;2025-04-17;60;2025-07-30;2025-08-04;9832,50;;;;
+FATT000026;2025-05-31;CLI0010;Nota_Accredito;21/25;COM0011;-9832,50;;-9832,50;"Nota di credito a storno totale nostra fattura n. 20 del 
+31/05/25 per errata fatturazione.";;2025-04-17;60;2025-07-30;2025-05-31;-9832,50;;;;
+FATT000027;2025-05-31;CLI0010;Fattura;22/25;COM0011;9832,50;;9832,50;"Attivit� di Coaching individuale come da Vostro ordine 
+n. 4512037132.";"n. 4512037132";;60;2025-07-30;2025-08-04;9832,50;;;;
+FATT000028;2025-06-30;CLI0006;Fattura;24/25;COM0003;1550,00;250,00;1800,00;"Attivit� di supporto consulenziale c/o il Vostro 
+stabilimento di Mantova. 
+Viaggio a/r";;;30;2025-07-30;2025-08-06;1800,00;;;;
+FATT000029;2025-06-30;CLI0007;Fattura;23/25;COM0004;1550,00;137,00;1687,00;"Attivit� di supporto consulenziale c/o il Vostro stabilimento 
+di Modena. 
+Viaggio a/r  
+Spese";;;30;2025-07-30;2025-08-11;1687,00;;;;
+FATT000030;2025-06-30;CLI0014;Fattura;25/25;COM0014;7920,00;140,00;8060,00;"Attivit� di analisi culturale come da nostra offerta del 11   
+dicembre 2024  (come  da accordi c/Vs Sirio Pari). 
+Viaggio a/r  
+Coordinamento (10%)";;2024-12-31;30;2025-07-30;2025-09-05;8060,00;;;;
+FATT000031;2025-06-30;CLI0003;Fattura;26/25;COM0001;4785,00;;4785,00;"Attivit� di consulenza svolta da Giorgio Bevilacqua come da Vostro ordine n. 7130017952 del 27/09/2024.  
+Attivit� di consulenza svolta da Stefano Colombo come 
+da Vostro ordine n. 7130017952 del 27/09/2024. 
+Coordinamento (10% attivit� svolta)";"n. 7130017952";2024-09-27;30;2025-07-30;2025-07-31;4785,00;;;;
+FATT000032;2025-07-30;CLI0007;Fattura;27/25;COM0004;1550,00;250,00;1800,00;"Attivit� di supporto consulenziale c/o il Vostro stabilimento 
+di Modena. 
+Viaggio a/r";;;30;2025-08-29;2025-09-05;1800,00;;;;
+FATT000033;2025-07-29;CLI0014;Fattura;28/25;COM0014;7040,00;140,00;7180,00;"Attivit� di formazione relativa al ?Piano  formazione 2025 ? 
+ID 438026 . 
+Viaggio a/r  
+Coordinamento (10%)";"n. 438026";;30;2025-08-28;;;;;;
+FATT000034;2025-07-30;CLI0003;Fattura;29/25;COM0001;5692,50;;5692,50;"Attivit� di consulenza svolta da Alessandro Vaglio come 
+da Vostro ordine n. 7130017952 del 27/09/2024. 
+Attivit� di consulenza svolta da Giorgio Bevilacqua 
+come da Vostro ordine n. 7130017952 del 27/09/2024. 
+Coordinamento (10% attivit� svolta)";"n. 7130017952";2024-09-27;30;2025-08-29;2025-09-01;5692,50;;;;
+FATT000035;2025-07-30;CLI0012;Fattura;30/25;COM0012;14416,50;;14416,50;"Audit Culturale Reggio Emilia e Corteolona come da 
+Vostro ordine n. 4512064618.";"n. 4512064618";;60;2025-09-28;;;;;;
+FATT000036;2025-07-30;CLI0013;Fattura;31/25;COM0008;4125,00;;4125,00;"Attivit� di Audit Culturale Direzione HSEE come da Vs. 
+ordine n. 1020205239.";"n. 1020205239";;30;2025-08-29;2025-09-02;4125,00;;;;
+FATT000037;2025-07-31;CLI0017;Fattura;32/25;COM0015;12800,00;290,00;13090,00;"Attivit� di Project Ceres Assessment della 
+manutenzione e dell?Engineering. 
+Viaggio a/r  
+Park";;;30;2025-08-30;2025-09-05;13090,00;;;;

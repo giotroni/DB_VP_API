@@ -63,7 +63,7 @@ abstract class BaseAPI {
         try {
             // Parse dei parametri di query
             $page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
-            $limit = isset($_GET['limit']) ? min(100, max(1, intval($_GET['limit']))) : 50;
+            $limit = isset($_GET['limit']) ? min(1000, max(1, intval($_GET['limit']))) : 1000; // Aumentato limite di default
             $offset = ($page - 1) * $limit;
             
             // Costruzione query base

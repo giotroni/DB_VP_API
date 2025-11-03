@@ -170,7 +170,7 @@ class APIClient {
     
     // Giornate
     async getGiornate(options = {}) {
-        const { limit = 100, page = 1, ...otherParams } = options;
+        const { limit = 1000, page = 1, ...otherParams } = options;
         return this.request('giornate', 'getAll', {
             params: { limit, page, ...otherParams }
         });
@@ -213,7 +213,7 @@ class APIClient {
         try {
             do {
                 const result = await this.getGiornate({ 
-                    limit: 100, 
+                    limit: 1000, 
                     page: currentPage 
                 });
                 
