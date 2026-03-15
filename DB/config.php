@@ -9,14 +9,14 @@
 define('DB_HOST', 'localhost');          // Indirizzo del server MySQL
 
 // DB PRODUZIONE
-define('DB_NAME', 'vaglioty_DB_VP'); // Nome del database
-define('DB_USER', 'vaglioty_DB_VP');      // Username MySQL
-define('DB_PASS', 'busriMnyahh2Xc5');      // Password MySQL
+// define('DB_NAME', 'vaglioty_DB_VP'); // Nome del database
+// define('DB_USER', 'vaglioty_DB_VP');      // Username MySQL
+// define('DB_PASS', 'busriMnyahh2Xc5');      // Password MySQL
 
 // DB TEST
-// define('DB_NAME', 'vaglioty_DB_VP_TEST');   // Nome del database di test
-// define('DB_USER', 'vaglioty_DB_VP_TEST');   // Username MySQL di test
-// define('DB_PASS', '4X9X8sY2szynLPN');       // Password MySQL di test
+define('DB_NAME', 'vaglioty_DB_VP_TEST');   // Nome del database di test
+define('DB_USER', 'vaglioty_DB_VP_TEST');   // Username MySQL di test
+define('DB_PASS', '4X9X8sY2szynLPN');       // Password MySQL di test
 
 define('DB_CHARSET', 'utf8mb4');         // Charset del database
 

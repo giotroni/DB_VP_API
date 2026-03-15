@@ -21,7 +21,10 @@ class CommesseTaskSection extends BaseSection {
         const container = this.getContainer();
         const currentYear = new Date().getFullYear();
         let yearOptions = '';
-        for (let y = 2024; y <= currentYear + 1; y++) { yearOptions += `<li><label class="dropdown-item"><input type="checkbox" class="form-check-input me-2" value="${y}">${y}</label></li>`; }
+        for (let y = 2024; y <= currentYear + 1; y++) { 
+            const isChecked = (y === currentYear) ? 'checked' : '';
+            yearOptions += `<li><label class="dropdown-item"><input type="checkbox" class="form-check-input me-2" value="${y}" ${isChecked}>${y}</label></li>`; 
+        }
         const months = ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"];
         let monthOptions = months.map((month, index) => `<li><label class="dropdown-item"><input type="checkbox" class="form-check-input me-2" value="${index + 1}">${month}</label></li>`).join('');
         // Ordina le commesse alfabeticamente per il menu a tendina dei filtri
@@ -34,7 +37,7 @@ class CommesseTaskSection extends BaseSection {
                     <div class="col-lg-3 col-md-6"><label class="form-label">Cerca</label><input type="text" class="form-control" id="searchCommesseTask" placeholder="Nome, codice, cliente..."></div>
                     <div class="col-lg-2 col-md-6"><label class="form-label">Commessa</label><select class="form-select" id="filterCommesse"><option value="">Tutte</option>${commesseOptionsSorted.map(c => `<option value="${c.ID_COMMESSA}">${c.Commessa}</option>`).join('')}</select></div>
                     <div class="col-lg-2 col-md-6"><label class="form-label">Stato</label><select class="form-select" id="filterStatoCommesse"><option value="">Tutti</option><option value="In corso">In corso</option><option value="Chiusa">Chiusa</option><option value="Sospesa">Sospesa</option></select></div>
-                    <div class="col-lg-1 col-md-3"><label class="form-label">Anno</label><div class="dropdown"><button class="btn btn-outline-secondary dropdown-toggle w-100" type="button" id="filterAnnoBtn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">Tutti</button><ul class="dropdown-menu" id="filterAnno" aria-labelledby="filterAnnoBtn"><li><a class="dropdown-item fw-bold" href="#" data-action="toggle-all-filter" data-target-filter="filterAnno">Seleziona/Deseleziona</a></li><li><hr class="dropdown-divider"></li>${yearOptions}</ul></div></div>
+                    <div class="col-lg-1 col-md-3"><label class="form-label">Anno</label><div class="dropdown"><button class="btn btn-outline-secondary dropdown-toggle w-100" type="button" id="filterAnnoBtn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">${currentYear}</button><ul class="dropdown-menu" id="filterAnno" aria-labelledby="filterAnnoBtn"><li><a class="dropdown-item fw-bold" href="#" data-action="toggle-all-filter" data-target-filter="filterAnno">Seleziona/Deseleziona</a></li><li><hr class="dropdown-divider"></li>${yearOptions}</ul></div></div>
                     <div class="col-lg-2 col-md-3"><label class="form-label">Mese</label><div class="dropdown"><button class="btn btn-outline-secondary dropdown-toggle w-100" type="button" id="filterMeseBtn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">Tutti</button><ul class="dropdown-menu" id="filterMese" aria-labelledby="filterMeseBtn"><li><a class="dropdown-item fw-bold" href="#" data-action="toggle-all-filter" data-target-filter="filterMese">Seleziona/Deseleziona</a></li><li><hr class="dropdown-divider"></li>${monthOptions}</ul></div></div>
                     <div class="col-lg-2 col-md-6"><label class="form-label">&nbsp;</label><div class="d-flex gap-2"><button class="btn btn-vp-primary" data-action="filter" title="Applica Filtri"><i class="fas fa-search"></i></button><button class="btn btn-outline-primary" data-action="toggle-all-commesse" id="toggleAllBtn" title="Espandi/Comprimi tutto"><i class="fas fa-expand-arrows-alt"></i></button></div></div>
                 </div>
@@ -44,6 +47,8 @@ class CommesseTaskSection extends BaseSection {
         this.lastFilteredData = this.commesseConTask;
         this.updateStats(this.commesseConTask);
         this.bindEvents();
+        // Applica i filtri iniziali (incluso l'anno corrente)
+        this.filterData();
         // Inizializza tooltip per i componenti renderizzati
         this.initTooltips();
     }
@@ -671,7 +676,8 @@ class CommesseTaskSection extends BaseSection {
                         const valore = parseFloat(g.valore_calcolato ?? g.Valore_calcolato ?? 0) || 0;
                         const costoGg = parseFloat(g.Costo_gg ?? g.costo_gg ?? g.Valore_gg ?? 0) || 0;
                         const valoreSpese = parseFloat(g.Valore_spese ?? g.valore_spese ?? 0) || 0;
-                        acc.num_gg += gg;
+                        // CORREZIONE: conta solo le giornate di tipo 'Campo' nel totale gg
+                        acc.num_gg += (g.Tipo === 'Campo' ? gg : 0);
                         acc.valore_tot += valore;
                         acc.costo_gg += costoGg;
                         acc.valore_spese += valoreSpese;
@@ -1082,8 +1088,11 @@ class CommesseTaskSection extends BaseSection {
         this.app.tasks.forEach(task => {
             if (commesseMap.has(task.ID_COMMESSA)) {
                 const giornateTask = this.app.giornate.filter(g => String(g.ID_TASK) === String(task.ID_TASK));
-                const totaleGiornate = giornateTask.reduce((sum, g) => sum + (parseFloat(g.gg?.toString().replace(',', '.')) || 0), 0);
-                commesseMap.get(task.ID_COMMESSA).tasks.push({ ...task, giornate: giornateTask, totale_giornate: totaleGiornate });
+                // CORREZIONE: conta solo le giornate di tipo 'Campo' (esclude Promo, Formazione, ecc.)
+                const totaleGiornate = giornateTask.filter(g => g.Tipo === 'Campo').reduce((sum, g) => sum + (parseFloat(g.gg?.toString().replace(',', '.')) || 0), 0);
+                // Rimuovi gg_effettuate dall'API (include tutti i tipi) per forzare il ricalcolo Campo-only nel badge
+                const { gg_effettuate: _apiGgEffettuate, gg_effettuate_filtrate: _apiGgFiltrate, ...taskProps } = task;
+                commesseMap.get(task.ID_COMMESSA).tasks.push({ ...taskProps, giornate: giornateTask, totale_giornate: totaleGiornate });
             }
         });
         return Array.from(commesseMap.values()).sort((a, b) => (a.Commessa || '').localeCompare(b.Commessa || ''));

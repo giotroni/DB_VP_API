@@ -142,6 +142,9 @@ class APIClient {
 
     // Clienti
     async getClienti(params = {}) { return this.request('clienti', 'getAll', { params }); }
+    async createCliente(data) { return this.request('clienti', 'create', { data }); }
+    async updateCliente(id, data) { return this.request('clienti', 'update', { data, params: { id } }); }
+    async deleteCliente(id) { return this.request('clienti', 'delete', { params: { id } }); }
     
     // Collaboratori
     async getCollaboratori(params = {}) { return this.request('collaboratori', 'getAll', { params }); }

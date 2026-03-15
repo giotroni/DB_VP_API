@@ -472,9 +472,10 @@ class TaskAPI extends BaseAPI {
             $debug = $debugStmt->fetch();
             
             // Query principale con gestione del formato decimale italiano
+            // CORREZIONE: conta solo le giornate di tipo 'Campo' (Promo, Formazione etc. non concorrono alla quota)
             $sql = "SELECT SUM(CAST(REPLACE(gg, ',', '.') AS DECIMAL(10,2))) as total 
                     FROM FACT_GIORNATE 
-                    WHERE ID_TASK = :id";
+                    WHERE ID_TASK = :id AND Tipo = 'Campo'";
             $stmt = $this->db->prepare($sql);
             $stmt->bindValue(':id', $taskId);
             $stmt->execute();

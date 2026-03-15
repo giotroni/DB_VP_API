@@ -21,7 +21,7 @@
  * 7. FACT_FATTURE (dipende da CLIENTI, COMMESSE)
  */
 
-require_once 'config.php';
+require_once __DIR__ . '/../config.php';
 
 class CSVImporter {
     private $db;
@@ -69,7 +69,7 @@ class CSVImporter {
     
     public function __construct() {
         $this->db = getDatabase();
-        $this->dataDir = __DIR__ . '/Dati';
+        $this->dataDir = __DIR__ . '/../Dati';
         $this->logFile = __DIR__ . '/logs/import_' . date('Y-m-d_H-i-s') . '.log';
         
         if (!is_dir($this->dataDir)) {
@@ -1030,7 +1030,7 @@ if (basename(__FILE__) == basename($_SERVER["SCRIPT_FILENAME"])) {
             echo ".container { background-color: #f8f9fa; padding: 20px; border-radius: 10px; }";
             echo "</style>";
             echo "</head><body>";
-            echo "<h1>🗂️ Importazione Dati CSV - Database VP</h1>";
+            echo "<h1>🗂️ Importazione Dati CSV - Database: " . DB_NAME . "</h1>";
             echo "<div class='container'>";
         }
         
