@@ -34,22 +34,59 @@ class ClientiSection extends BaseSection {
         `);
         
         const container = this.getContainer();
-        
+        const currentYear = new Date().getFullYear();
+        let yearOptions = '';
+        for (let y = 2024; y <= currentYear + 1; y++) {
+            const isChecked = (y === currentYear) ? 'checked' : '';
+            yearOptions += `<li><label class="dropdown-item"><input type="checkbox" class="form-check-input me-2" value="${y}" ${isChecked}>${y}</label></li>`;
+        }
+        const months = ["Gennaio","Febbraio","Marzo","Aprile","Maggio","Giugno","Luglio","Agosto","Settembre","Ottobre","Novembre","Dicembre"];
+        const monthOptions = months.map((m, i) => `<li><label class="dropdown-item"><input type="checkbox" class="form-check-input me-2" value="${i + 1}">${m}</label></li>`).join('');
+
         container.innerHTML = `
             <div class="stats-row">
                 ${this.ui.createStatsCard('fas fa-building', this.data.length, 'Clienti Totali')}
                 ${this.ui.createStatsCard('fas fa-handshake', this.getActiveClients(), 'Clienti Attivi')}
-                ${this.ui.createStatsCard('fas fa-chart-line', this.getCommessePerCliente(), 'Media Commesse')}
+                <div id="statValoreTotaleWrapper">${this.ui.createStatsCard('fas fa-euro-sign', this.app.utils.formatCurrency(this.getTotaleClienti()), 'Valore Totale')}</div>
             </div>
 
             <div class="search-filters">
-                <div class="row">
-                    <div class="col-md-10">
+                <div class="row gy-2 align-items-end">
+                    <div class="col-lg-4 col-md-6">
                         <label class="form-label">Cerca cliente</label>
-                        <input type="text" class="form-control" id="searchClienti" 
-                               placeholder="Nome, email, telefono..." value="${this.filters.search || ''}">
+                        <input type="text" class="form-control" id="searchClienti"
+                               placeholder="Nome, ragione sociale, città..." value="${this.filters.search || ''}">
                     </div>
-                    <div class="col-md-2">
+                    <div class="col-lg-1 col-md-3">
+                        <label class="form-label">Anno</label>
+                        <div class="dropdown">
+                            <button class="btn btn-outline-secondary dropdown-toggle w-100" type="button" id="filterAnnoClientiBtn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">${currentYear}</button>
+                            <ul class="dropdown-menu" id="filterAnnoClienti" aria-labelledby="filterAnnoClientiBtn">
+                                <li><a class="dropdown-item fw-bold" href="#" data-action="toggle-all-filter" data-target-filter="filterAnnoClienti">Seleziona/Deseleziona</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                ${yearOptions}
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="col-lg-2 col-md-3">
+                        <label class="form-label">Mese</label>
+                        <div class="dropdown">
+                            <button class="btn btn-outline-secondary dropdown-toggle w-100" type="button" id="filterMeseClientiBtn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">Tutti</button>
+                            <ul class="dropdown-menu" id="filterMeseClienti" aria-labelledby="filterMeseClientiBtn">
+                                <li><a class="dropdown-item fw-bold" href="#" data-action="toggle-all-filter" data-target-filter="filterMeseClienti">Seleziona/Deseleziona</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                ${monthOptions}
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="col-lg-3 col-md-6">
+                        <label class="form-label">&nbsp;</label>
+                        <div class="form-check mt-1">
+                            <input class="form-check-input" type="checkbox" id="filterSoloAttivi" ${this.filters.soloAttivi ? 'checked' : ''}>
+                            <label class="form-check-label" for="filterSoloAttivi">Solo con commesse attive</label>
+                        </div>
+                    </div>
+                    <div class="col-lg-2 col-md-2">
                         <label class="form-label">&nbsp;</label>
                         <button class="btn btn-vp-primary w-100" data-action="filter-clienti">
                             <i class="fas fa-search"></i>
@@ -94,7 +131,7 @@ class ClientiSection extends BaseSection {
                         <tr>
                             <th>Cliente</th>
                             <th>Ragione Sociale</th>
-                            <th>Città</th>
+                            <th class="text-end">Maturato (€)</th>
                             <th>Commesse</th>
                             <th>Azioni</th>
                         </tr>
@@ -108,11 +145,12 @@ class ClientiSection extends BaseSection {
     }
 
     renderClienteRow(cliente) {
+        const maturato = this.getMaturato(cliente.ID_CLIENTE);
         return `
             <tr>
                 <td><strong>${cliente.Cliente}</strong></td>
                 <td>${cliente.Ragione_Sociale || '-'}</td>
-                <td>${cliente.Citta || '-'}</td>
+                <td class="text-end fw-bold ${maturato > 0 ? 'text-success' : 'text-muted'}">${this.app.utils.formatCurrency(maturato)}</td>
                 <td><span class="badge bg-primary">${this.getCommesseCount(cliente.ID_CLIENTE)}</span></td>
                 <td>
                     <div class="action-buttons">
@@ -128,8 +166,65 @@ class ClientiSection extends BaseSection {
         `;
     }
 
+    getMaturato(clienteId) {
+        const allCommesse = this.app.commesse || [];
+        const giornate = this.app.giornate || [];
+        const tasks = this.app.tasks || [];
+
+        const selectedYears = Array.from(document.querySelectorAll('#filterAnnoClienti input:checked')).map(el => parseInt(el.value));
+        const selectedMonths = Array.from(document.querySelectorAll('#filterMeseClienti input:checked')).map(el => parseInt(el.value));
+
+        const inDateRange = (dataStr) => {
+            if (selectedYears.length === 0 && selectedMonths.length === 0) return true;
+            const d = new Date(dataStr);
+            if (selectedYears.length > 0 && !selectedYears.includes(d.getFullYear())) return false;
+            if (selectedMonths.length > 0 && !selectedMonths.includes(d.getMonth() + 1)) return false;
+            return true;
+        };
+
+        // Commesse di questo cliente
+        const commesseCliente = allCommesse.filter(c => String(c.ID_CLIENTE) === String(clienteId));
+
+        let totaleMaturato = 0;
+
+        commesseCliente.forEach(commessa => {
+            // Task della commessa
+            const taskCommessa = tasks.filter(t => t.ID_COMMESSA === commessa.ID_COMMESSA);
+
+            // --- Valore Campo: sum valore_calcolato giornate Campo nel periodo ---
+            let sommaValoreCampo = 0;
+            // --- Valore Spese: sum Valore_spese giornate nel periodo ---
+            let sommaSpese = 0;
+
+            taskCommessa.forEach(task => {
+                const giornateTask = giornate.filter(g =>
+                    (String(g.ID_TASK) === String(task.ID_TASK)) && inDateRange(g.Data)
+                );
+                if (task.Tipo === 'Campo') {
+                    sommaValoreCampo += giornateTask.reduce((s, g) =>
+                        s + (parseFloat(g.valore_calcolato ?? g.Valore_calcolato ?? 0) || 0), 0);
+                }
+                // Spese su tutte le giornate (già filtrate per tipo Campo in PHP: Valore_spese > 0 solo per Campo non-Desk)
+                sommaSpese += giornateTask.reduce((s, g) =>
+                    s + (parseFloat(g.Valore_spese ?? g.valore_spese ?? 0) || 0), 0);
+            });
+
+            // --- Valore Coordinamento (Monitoraggio): % del valore Campo della commessa ---
+            let sommaMonitoraggio = 0;
+            taskCommessa.forEach(task => {
+                if (task.Tipo === 'Monitoraggio') {
+                    const perc = parseFloat(task.Valore_gg) || 0;
+                    if (perc > 0) sommaMonitoraggio += sommaValoreCampo * perc;
+                }
+            });
+
+            totaleMaturato += sommaValoreCampo + sommaMonitoraggio + sommaSpese;
+        });
+
+        return totaleMaturato;
+    }
+
     bindEvents() {
-        // Bind search input with debounce
         const searchInput = document.getElementById('searchClienti');
         if (searchInput) {
             let timeout;
@@ -138,6 +233,22 @@ class ClientiSection extends BaseSection {
                 timeout = setTimeout(() => this.filterClienti(), 300);
             });
         }
+        const setupMultiSelectFilter = (filterId, buttonId) => {
+            const filterContainer = document.getElementById(filterId);
+            const filterButton = document.getElementById(buttonId);
+            if (!filterContainer || !filterButton) return;
+            filterContainer.addEventListener('change', () => {
+                const checked = filterContainer.querySelectorAll('input:checked');
+                if (checked.length === 0) { filterButton.textContent = 'Tutti'; }
+                else if (checked.length === 1) { filterButton.textContent = checked[0].parentElement.textContent.trim(); }
+                else { filterButton.textContent = `${checked.length} selezionati`; }
+                this.filterClienti();
+            });
+        };
+        setupMultiSelectFilter('filterAnnoClienti', 'filterAnnoClientiBtn');
+        setupMultiSelectFilter('filterMeseClienti', 'filterMeseClientiBtn');
+        // Applica filtro anno corrente inizialmente
+        this.filterClienti();
     }
 
     handleAction(action, id, type, targetElement) {
@@ -157,6 +268,19 @@ class ClientiSection extends BaseSection {
             case 'filter-clienti':
                 this.filterClienti();
                 break;
+            case 'toggle-all-filter': {
+                const targetId = targetElement?.dataset?.targetFilter;
+                if (targetId) {
+                    const checkboxes = document.querySelectorAll(`#${targetId} input[type="checkbox"]`);
+                    const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+                    checkboxes.forEach(cb => { cb.checked = !allChecked; });
+                    // aggiorna label pulsante
+                    const btn = document.getElementById(targetId + 'Btn');
+                    if (btn) btn.textContent = allChecked ? 'Tutti' : `${checkboxes.length} selezionati`;
+                    this.filterClienti();
+                }
+                break;
+            }
             default:
                 console.warn(`Azione non gestita: ${action}`);
                 break;
@@ -188,24 +312,50 @@ class ClientiSection extends BaseSection {
 
         if (this.filters.search) {
             const search = this.filters.search.toLowerCase();
-            filtered = filtered.filter(cliente => 
+            filtered = filtered.filter(cliente =>
                 (cliente.Cliente || '').toLowerCase().includes(search) ||
-                (cliente.Email || '').toLowerCase().includes(search) ||
-                (cliente.Telefono || '').toLowerCase().includes(search)
+                (cliente.Ragione_Sociale || '').toLowerCase().includes(search) ||
+                (cliente.Citta || '').toLowerCase().includes(search)
             );
+        }
+
+        if (this.filters.soloAttivi) {
+            const commesse = this.app?.commesse || window.app?.commesse || [];
+            const clientiAttivi = new Set(
+                commesse
+                    .filter(c => c.Stato_Commessa === 'In corso')
+                    .map(c => String(c.ID_CLIENTE))
+            );
+            filtered = filtered.filter(c => clientiAttivi.has(String(c.ID_CLIENTE)));
         }
 
         return filtered;
     }
 
     filterClienti() {
-        this.applyFilters({
-            search: document.getElementById('searchClienti')?.value || ''
-        });
+        this.filters.search = document.getElementById('searchClienti')?.value || '';
+        this.filters.soloAttivi = document.getElementById('filterSoloAttivi')?.checked || false;
+        const tbody = document.querySelector('.management-card-body');
+        if (tbody) tbody.innerHTML = this.renderClientiTable();
+        // Aggiorna il badge del valore totale in base ai filtri attivi
+        const wrapper = document.getElementById('statValoreTotaleWrapper');
+        if (wrapper) wrapper.innerHTML = this.ui.createStatsCard('fas fa-euro-sign', this.app.utils.formatCurrency(this.getTotaleClienti()), 'Valore Totale');
+    }
+
+    getTotaleClienti() {
+        // Somma il maturato di tutti i clienti attualmente visibili (filtro soloAttivi + ricerca)
+        return this.getFilteredData().reduce((sum, cliente) => sum + this.getMaturato(cliente.ID_CLIENTE), 0);
     }
 
     getActiveClients() {
-        return this.data.filter(c => c.Stato !== 'Inattivo').length;
+        // Conta i clienti che hanno almeno una commessa attualmente "In corso"
+        const commesse = this.app?.commesse || window.app?.commesse || [];
+        const clientiConCommessaAttiva = new Set(
+            commesse
+                .filter(c => c.Stato_Commessa === 'In corso')
+                .map(c => String(c.ID_CLIENTE))
+        );
+        return this.data.filter(c => clientiConCommessaAttiva.has(String(c.ID_CLIENTE))).length;
     }
 
     getCommesseCount(clienteId) {
