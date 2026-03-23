@@ -37,7 +37,7 @@ class GiornateSection extends BaseSection {
         // prepara le opzioni per anno e mese (riuso pattern usato altrove)
         const currentYear = new Date().getFullYear();
         let yearOptions = '';
-        for (let y = 2024; y <= currentYear + 1; y++) { yearOptions += `<li><label class="dropdown-item"><input type="checkbox" class="form-check-input me-2" value="${y}">${y}</label></li>`; }
+        for (let y = 2024; y <= currentYear + 1; y++) { const isChecked = (y === currentYear) ? 'checked' : ''; yearOptions += `<li><label class="dropdown-item"><input type="checkbox" class="form-check-input me-2" value="${y}" ${isChecked}>${y}</label></li>`; }
         const months = this.mesiItaliani;
         let monthOptions = months.map((month, index) => `<li><label class="dropdown-item"><input type="checkbox" class="form-check-input me-2" value="${index + 1}">${month}</label></li>`).join('');
 
@@ -62,7 +62,7 @@ class GiornateSection extends BaseSection {
                     </div>
                     <div class="col-lg-2 col-md-6">
                         <label class="form-label">Anno</label>
-                        <div class="dropdown"><button class="btn btn-outline-secondary dropdown-toggle w-100" type="button" id="filterAnnoBtn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">Tutti</button><ul class="dropdown-menu" id="filterAnno" aria-labelledby="filterAnnoBtn"><li><a class="dropdown-item fw-bold" href="#" data-action="toggle-all-filter" data-target-filter="filterAnno">Seleziona/Deseleziona</a></li><li><hr class="dropdown-divider"></li>${yearOptions}</ul></div>
+                        <div class="dropdown"><button class="btn btn-outline-secondary dropdown-toggle w-100" type="button" id="filterAnnoBtn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">${currentYear}</button><ul class="dropdown-menu" id="filterAnno" aria-labelledby="filterAnnoBtn"><li><a class="dropdown-item fw-bold" href="#" data-action="toggle-all-filter" data-target-filter="filterAnno">Seleziona/Deseleziona</a></li><li><hr class="dropdown-divider"></li>${yearOptions}</ul></div>
                     </div>
                     <div class="col-lg-2 col-md-6">
                         <label class="form-label">Mese</label>
@@ -88,6 +88,7 @@ class GiornateSection extends BaseSection {
 
         this.updateStats(this.app.giornate);
         this.bindEvents();
+        this.updateDateFilterFromUI();
     }
     
     /**
