@@ -147,7 +147,7 @@ class CommesseTaskSection extends BaseSection {
 
         // Calcolo Valore Totale, Lavori, Spese e Costo Accounting
         const sommaValoreCampo = commessa.tasks.reduce((sum, task) => (task.Tipo === 'Campo' ? sum + (parseFloat(task.valore_gg_maturato) || 0) : sum), 0);
-        const sommaValoreMonitoraggio = commessa.tasks.reduce((sum, task) => (task.Tipo === 'Monitoraggio' && parseFloat(task.Valore_gg) > 0 ? sum + (sommaValoreCampo * (parseFloat(task.Valore_gg) || 0)) : sum), 0);
+        const sommaValoreMonitoraggio = commessa.tasks.reduce((sum, task) => (task.Tipo === 'Monitoraggio' ? sum + (parseFloat(task.valore_gg_maturato) || 0) : sum), 0);
         const valoreComplessivoLavori = sommaValoreCampo + sommaValoreMonitoraggio;
         const valoreComplessivoSpese = commessa.tasks.reduce((sum, task) => sum + (parseFloat(task.valore_spese_maturato) || 0), 0);
         const valoreTotale = valoreComplessivoLavori + valoreComplessivoSpese;
@@ -183,8 +183,8 @@ class CommesseTaskSection extends BaseSection {
         }, 0);
 
         const costoMonitoraggio = commessa.tasks.reduce((acc, task) => {
-            if (task.Tipo === 'Monitoraggio' && parseFloat(task.Valore_gg) > 0) {
-                return acc + (sommaValoreCampoMaturato * (parseFloat(task.Valore_gg) || 0));
+            if (task.Tipo === 'Monitoraggio') {
+                return acc + (parseFloat(task.valore_gg_maturato) || 0);
             }
             return acc;
         }, 0);
@@ -237,23 +237,17 @@ class CommesseTaskSection extends BaseSection {
     
     createTaskCard(task, commessa) {
         if (task.Tipo === 'Monitoraggio') {
-            const tariffaMonitoraggio = parseFloat(task.Valore_gg) || 0;
-            let valoreCalcolato = 0;
-            if (tariffaMonitoraggio > 0 && commessa) {
-                const sommaValoreCampo = commessa.tasks.reduce((sum, currentTask) => {
-                    if (currentTask.Tipo === 'Campo') {
-                        return sum + (parseFloat(currentTask.valore_gg_maturato) || 0);
-                    }
-                    return sum;
-                }, 0);
-                valoreCalcolato = sommaValoreCampo * tariffaMonitoraggio;
-            }
+            const valoreCalcolato = parseFloat(task.valore_gg_maturato) || 0;
             const collaboratore = this.app.collaboratori.find(c => c.ID_COLLABORATORE === task.ID_COLLABORATORE);
             const nomeCollaboratore = collaboratore ? collaboratore.Collaboratore : 'Non assegnato';
+            const dataApertura = task.Data_Apertura_Task ? new Date(task.Data_Apertura_Task).toLocaleDateString('it-IT') : '—';
+            const dataChiusuraHtml = task.Data_Fine
+                ? `<div class="mt-1"><small class="text-muted"><i class="fas fa-calendar-times me-1"></i>Chiuso il ${new Date(task.Data_Fine).toLocaleDateString('it-IT')}</small></div>`
+                : '';
             return `
             <div class="col-lg-6 col-xl-4 mb-3">
                 <div class="card h-100 border-0 shadow-sm d-flex flex-column">
-                    <div class="card-header bg-light border-0"><div class="d-flex justify-content-between align-items-start"><h6 class="card-title mb-0 fw-bold">${task.Task}</h6><span class="status-badge ${task.Stato_Task === 'In corso' ? 'active' : 'inactive'}"><i class="fas fa-circle"></i> ${task.Stato_Task}</span></div><small class="text-muted d-block"><i class="fas fa-tag me-1"></i>${task.Tipo}</small></div>
+                    <div class="card-header bg-light border-0"><div class="d-flex justify-content-between align-items-start"><h6 class="card-title mb-0 fw-bold">${task.Task}</h6><span class="status-badge ${task.Stato_Task === 'In corso' ? 'active' : 'inactive'}"><i class="fas fa-circle"></i> ${task.Stato_Task}</span></div><small class="text-muted d-block"><i class="fas fa-tag me-1"></i>${task.Tipo}</small><small class="text-muted d-block mt-1"><i class="fas fa-calendar-plus me-1"></i>Aperto il ${dataApertura}</small>${dataChiusuraHtml}</div>
                     <div class="card-body d-flex flex-column justify-content-center"><p class="card-text text-muted small mb-4">${task.Desc_Task || ''}</p><div class="d-flex justify-content-around align-items-center text-center mt-auto"><div><small class="text-muted d-block mb-1">Assegnato a</small><div class="fw-bold fs-6"><i class="fas fa-user me-2 text-primary"></i>${nomeCollaboratore}</div></div><div><small class="text-muted d-block mb-1">Valore Monitoraggio</small><div class="fw-bold fs-4 text-info">${this.app.utils.formatCurrency(valoreCalcolato)}</div></div></div></div>
                     <div class="card-footer bg-transparent border-0"><div class="action-buttons d-flex justify-content-end gap-2"><button class="btn btn-outline-secondary btn-sm" data-action="view-task" data-id="${task.ID_TASK}" title="Visualizza dettagli"><i class="fas fa-eye"></i></button><button class="btn btn-outline-primary btn-sm" data-action="edit-task" data-id="${task.ID_TASK}" title="Modifica task"><i class="fas fa-edit"></i></button></div></div>
                 </div>
@@ -446,7 +440,9 @@ class CommesseTaskSection extends BaseSection {
                             return sum + gg;
                         }, 0);
                         
-                        const valore_gg_maturato = giornateCampoNelPeriodo.reduce((sum, g) => sum + (parseFloat(g.valore_calcolato) || 0), 0);
+                        const valore_gg_maturato = task.Tipo === 'Monitoraggio'
+                            ? (parseFloat(task.valore_gg_maturato) || 0)
+                            : giornateCampoNelPeriodo.reduce((sum, g) => sum + (parseFloat(g.valore_calcolato) || 0), 0);
                         const valore_spese_maturato = giornateNelPeriodo.reduce((sum, g) => sum + (parseFloat(g.Valore_spese) || 0), 0);
                         
                         activeTasksInPeriod.push({
@@ -462,7 +458,13 @@ class CommesseTaskSection extends BaseSection {
                         const yearMatch = selectedYears.length === 0 || (dataApertura && selectedYears.includes(dataApertura.getFullYear()));
                         const monthMatch = selectedMonths.length === 0 || (dataApertura && selectedMonths.includes(dataApertura.getMonth() + 1));
                         if (yearMatch && monthMatch) {
-                            activeTasksInPeriod.push({ ...task, giornate: [], gg_effettuate: 0, valore_gg_maturato: 0, valore_spese_maturato: 0 });
+                            activeTasksInPeriod.push({
+                                ...task,
+                                giornate: [],
+                                gg_effettuate: 0,
+                                valore_gg_maturato: task.Tipo === 'Monitoraggio' ? (parseFloat(task.valore_gg_maturato) || 0) : 0,
+                                valore_spese_maturato: 0
+                            });
                         }
                     }
                 });
@@ -614,22 +616,15 @@ class CommesseTaskSection extends BaseSection {
                     <dt class="col-sm-4">Cliente</dt><dd class="col-sm-8">${task.cliente_nome || 'N/D'}</dd>
                     <dt class="col-sm-4">Stato</dt><dd class="col-sm-8"><span class="badge ${task.Stato_Task === 'In corso' ? 'bg-success' : 'bg-secondary'}">${task.Stato_Task}</span></dd>
                     <dt class="col-sm-4">Data Apertura</dt><dd class="col-sm-8">${new Date(task.Data_Apertura_Task).toLocaleDateString('it-IT')}</dd>
+                    ${task.Data_Inizio ? `<dt class="col-sm-4">Data Inizio</dt><dd class="col-sm-8">${new Date(task.Data_Inizio).toLocaleDateString('it-IT')}</dd>` : ''}
+                    ${task.Data_Fine ? `<dt class="col-sm-4">Data Chiusura</dt><dd class="col-sm-8">${new Date(task.Data_Fine).toLocaleDateString('it-IT')}</dd>` : ''}
                 </dl>
             `;
 
             switch (task.Tipo) {
                 case 'Monitoraggio': {
                     const tariffaPercentuale = (parseFloat(task.Valore_gg) * 100).toFixed(0) + '%';
-                    let valoreCalcolato = 0;
-                    if (commessa) {
-                        const sommaValoreCampo = commessa.tasks.reduce((sum, currentTask) => {
-                            if (currentTask.Tipo === 'Campo') {
-                                return sum + (parseFloat(currentTask.valore_gg_maturato) || 0);
-                            }
-                            return sum;
-                        }, 0);
-                        valoreCalcolato = sommaValoreCampo * (parseFloat(task.Valore_gg) || 0);
-                    }
+                    const valoreCalcolato = parseFloat(task.valore_gg_maturato) || 0;
                     modalBody = `${baseDetails}<hr><h5>Dettagli Economici</h5><dl class="row"><dt class="col-sm-4">Tariffa Monitoraggio</dt><dd class="col-sm-8">${tariffaPercentuale}</dd><dt class="col-sm-4">Valore Monitoraggio</dt><dd class="col-sm-8"><strong>${this.app.utils.formatCurrency(valoreCalcolato)}</strong></dd></dl>`;
                     break;
                 }
@@ -814,12 +809,56 @@ class CommesseTaskSection extends BaseSection {
         const assegnatoContainer = form.querySelector('#assegnatoAContainer');
         const speseSelect = form.querySelector('#Spese_Comprese');
         const speseStdContainer = form.querySelector('#valoreSpeseStdContainer');
+        const statoSelect = form.querySelector('#Stato_Task');
+        const dataFineInput = form.querySelector('#Data_Fine');
         const toggleAssegnato = () => { assegnatoContainer.style.display = tipoSelect.value === 'Monitoraggio' ? 'block' : 'none'; };
         const toggleSpeseStd = () => { speseStdContainer.style.display = speseSelect.value === 'No' ? 'block' : 'none'; };
+        // Quando lo stato diventa Chiuso/Archiviato, imposta Data_Fine a oggi se vuota
+        const handleStatoChange = () => {
+            if ((statoSelect.value === 'Chiuso' || statoSelect.value === 'Archiviato') && dataFineInput && !dataFineInput.value) {
+                dataFineInput.value = new Date().toISOString().split('T')[0];
+            }
+        };
+        // Quando Data_Fine viene impostata ad una data passata o odierna, chiudi il task
+        const handleDataFineChange = () => {
+            if (dataFineInput && dataFineInput.value && statoSelect) {
+                const oggi = new Date().toISOString().split('T')[0];
+                if (dataFineInput.value <= oggi) {
+                    statoSelect.value = 'Chiuso';
+                }
+            }
+        };
+        // Warning: task Monitoraggio attivo già presente sulla stessa commessa
+        const commessaSelect = form.querySelector('#ID_COMMESSA');
+        const warningDiv = document.createElement('div');
+        warningDiv.className = 'alert alert-warning py-2 mt-2 mb-0 d-none';
+        warningDiv.innerHTML = '<i class="fas fa-exclamation-triangle me-2"></i><strong>Attenzione:</strong> esiste già un task Monitoraggio attivo per questa commessa. Chiudi il task Monitoraggio attivo prima di crearne uno nuovo.';
+        tipoSelect?.closest('.col-md-6, .mb-3')?.appendChild(warningDiv);
+
+        const checkMonitoraggioAttivo = () => {
+            if (tipoSelect?.value !== 'Monitoraggio') {
+                warningDiv.classList.add('d-none');
+                return;
+            }
+            const commessaId = commessaSelect?.value;
+            const commessaConTask = this.commesseConTask?.find(c => c.ID_COMMESSA === commessaId);
+            const hasActive = commessaConTask?.tasks.some(t =>
+                t.Tipo === 'Monitoraggio' &&
+                !['Chiuso', 'Archiviato'].includes(t.Stato_Task) &&
+                t.ID_TASK !== taskId
+            );
+            warningDiv.classList.toggle('d-none', !hasActive);
+        };
+
         tipoSelect?.addEventListener('change', toggleAssegnato);
+        tipoSelect?.addEventListener('change', checkMonitoraggioAttivo);
+        commessaSelect?.addEventListener('change', checkMonitoraggioAttivo);
         speseSelect?.addEventListener('change', toggleSpeseStd);
+        statoSelect?.addEventListener('change', handleStatoChange);
+        dataFineInput?.addEventListener('change', handleDataFineChange);
         toggleAssegnato();
         toggleSpeseStd();
+        checkMonitoraggioAttivo();
     }
 
     async handleTaskFormSubmit(event, taskId = null) {
@@ -845,6 +884,49 @@ class CommesseTaskSection extends BaseSection {
             }
         }
         
+        // Blocca la creazione di un secondo task Monitoraggio attivo per la stessa commessa
+        if (!taskId && taskData.Tipo === 'Monitoraggio' && taskData.ID_COMMESSA) {
+            const commessaConTask = this.commesseConTask?.find(c => c.ID_COMMESSA === taskData.ID_COMMESSA);
+            const hasActive = commessaConTask?.tasks.some(t =>
+                t.Tipo === 'Monitoraggio' && !['Chiuso', 'Archiviato'].includes(t.Stato_Task)
+            );
+            if (hasActive) {
+                const taskAttivo = commessaConTask.tasks.find(t =>
+                    t.Tipo === 'Monitoraggio' && !['Chiuso', 'Archiviato'].includes(t.Stato_Task)
+                );
+                this.ui.showToast(
+                    `Impossibile creare il task: il task Monitoraggio "${taskAttivo?.Task || ''}" è ancora attivo. Chiudilo prima di crearne uno nuovo.`,
+                    'error'
+                );
+                return;
+            }
+        }
+
+        // Controlla sovrapposizioni temporali tra task Monitoraggio della stessa commessa (in modifica)
+        if (taskData.Tipo === 'Monitoraggio' && taskData.ID_COMMESSA && taskData.Data_Apertura_Task) {
+            const commessaConTask = this.commesseConTask?.find(c => c.ID_COMMESSA === taskData.ID_COMMESSA);
+            const altriMonitor = (commessaConTask?.tasks || []).filter(t =>
+                t.Tipo === 'Monitoraggio' && t.ID_TASK !== taskId
+            );
+            const inizio = taskData.Data_Apertura_Task;
+            const fine   = taskData.Data_Fine || '9999-12-31';
+            for (const altro of altriMonitor) {
+                const altroInizio = altro.Data_Apertura_Task || '0000-01-01';
+                const altroFine   = altro.Data_Fine          || '9999-12-31';
+                if (inizio <= altroFine && altroInizio <= fine) {
+                    const fineLabel   = taskData.Data_Fine    || 'aperto';
+                    const altroFineLabel = altro.Data_Fine    || 'aperto';
+                    this.ui.showToast(
+                        `Sovrapposizione temporale con il task Monitoraggio "${altro.Task}" ` +
+                        `(dal ${altroInizio} al ${altroFineLabel}). ` +
+                        `Modifica le date in modo che i periodi non si sovrappongano.`,
+                        'error'
+                    );
+                    return;
+                }
+            }
+        }
+
         try {
             const result = taskId
                 ? await this.api.updateTask(taskId, taskData)
@@ -936,8 +1018,8 @@ class CommesseTaskSection extends BaseSection {
             }, 0);
 
             const sommaValoreMonitoraggio = commessa.tasks.reduce((sum, task) => {
-                if (task.Tipo === 'Monitoraggio' && parseFloat(task.Valore_gg) > 0) {
-                    return sum + (sommaValoreCampo * (parseFloat(task.Valore_gg) || 0));
+                if (task.Tipo === 'Monitoraggio') {
+                    return sum + (parseFloat(task.valore_gg_maturato) || 0);
                 }
                 return sum;
             }, 0);
@@ -1034,6 +1116,8 @@ class CommesseTaskSection extends BaseSection {
         const statiOptions = statiTask.map(s => `<option value="${s}" ${task.Stato_Task === s ? 'selected' : ''}>${s}</option>`).join('');
         const collaboratoriOptions = this.app.collaboratori.map(c => `<option value="${c.ID_COLLABORATORE}" ${task.ID_COLLABORATORE == c.ID_COLLABORATORE ? 'selected' : ''}>${c.Collaboratore}</option>`).join('');
         const dataAperturaFormatted = (task.Data_Apertura_Task ? new Date(task.Data_Apertura_Task) : new Date()).toISOString().split('T')[0];
+        const dataInizioFormatted = task.Data_Inizio ? task.Data_Inizio.split('T')[0] : '';
+        const dataFineFormatted = task.Data_Fine ? task.Data_Fine.split('T')[0] : '';
 
         // Aggiungi le opzioni per le commesse ordinate alfabeticamente
         const commesseOrderedOptions = this.app.commesse.slice().sort((a, b) => (a.Commessa || '').localeCompare(b.Commessa || ''));
@@ -1051,6 +1135,10 @@ class CommesseTaskSection extends BaseSection {
                 <div class="row">
                     <div class="col-md-6 mb-3"><label for="Stato_Task" class="form-label">Stato</label><select class="form-select" id="Stato_Task" name="Stato_Task" required>${statiOptions}</select></div>
                     <div class="col-md-6 mb-3"><label for="Data_Apertura_Task" class="form-label">Data Apertura</label><input type="date" class="form-control" id="Data_Apertura_Task" name="Data_Apertura_Task" value="${dataAperturaFormatted}" required></div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3"><label for="Data_Inizio" class="form-label">Data Inizio</label><input type="date" class="form-control" id="Data_Inizio" name="Data_Inizio" value="${dataInizioFormatted}"></div>
+                    <div class="col-md-6 mb-3"><label for="Data_Fine" class="form-label">Data Chiusura</label><input type="date" class="form-control" id="Data_Fine" name="Data_Fine" value="${dataFineFormatted}"><div class="form-text">Se antecedente a oggi il task verrà chiuso automaticamente.</div></div>
                 </div>
                 <hr>
                 <h5>Dettagli Economici</h5>
@@ -1118,7 +1206,7 @@ class CommesseTaskSection extends BaseSection {
         const rows = data.map(commessa => {
             const sommaValoreCampo = commessa.tasks.reduce((sum, task) => (task.Tipo === 'Campo' ? sum + (parseFloat(task.valore_gg_maturato) || 0) : sum), 0);
             const valoreSpese = commessa.tasks.reduce((sum, task) => sum + (parseFloat(task.valore_spese_maturato) || 0), 0);
-            const valoreLavori = sommaValoreCampo + commessa.tasks.reduce((sum, task) => (task.Tipo === 'Monitoraggio' && parseFloat(task.Valore_gg) > 0 ? sum + (sommaValoreCampo * (parseFloat(task.Valore_gg) || 0)) : sum), 0);
+            const valoreLavori = sommaValoreCampo + commessa.tasks.reduce((sum, task) => (task.Tipo === 'Monitoraggio' ? sum + (parseFloat(task.valore_gg_maturato) || 0) : sum), 0);
             // calcola costo totale attività per la commessa (Campo + Monitoraggio)
             const costoCampoAttivita = commessa.tasks.reduce((accTask, task) => {
                 if (task.Tipo !== 'Campo') return accTask;
@@ -1129,10 +1217,10 @@ class CommesseTaskSection extends BaseSection {
                     return accGg + costoGg + valoreSp;
                 }, 0);
             }, 0);
-            // contributo dei task di Monitoraggio: sommaValoreCampo * Valore_gg (per ogni task monitoraggio)
+            // contributo dei task di Monitoraggio: usa il valore già calcolato dall'API
             const costoMonitoraggio = commessa.tasks.reduce((acc, task) => {
-                if (task.Tipo === 'Monitoraggio' && parseFloat(task.Valore_gg) > 0) {
-                    return acc + (sommaValoreCampo * (parseFloat(task.Valore_gg) || 0));
+                if (task.Tipo === 'Monitoraggio') {
+                    return acc + (parseFloat(task.valore_gg_maturato) || 0);
                 }
                 return acc;
             }, 0);

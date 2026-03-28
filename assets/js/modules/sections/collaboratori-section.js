@@ -1149,18 +1149,26 @@ class CollaboratoriSection extends BaseSection {
             // Trova tutti i task della commessa
             const tasksOfCommessa = tasks.filter(t => String(t.ID_COMMESSA) === String(commessaId) && t.Tipo === 'Campo');
 
+            // Intervallo di validità del task Monitoraggio
+            const dataApertura = mtask.Data_Apertura_Task ? mtask.Data_Apertura_Task.substring(0, 10) : null;
+            const dataFine     = mtask.Data_Fine          ? mtask.Data_Fine.substring(0, 10)          : null;
+
             // Somma i valori maturati (valore_calcolato / Valore_calcolato) di tutte le giornate dei task della commessa
             let sommaValoreCampo = 0;
             tasksOfCommessa.forEach(t => {
                 const giornate = giornateAll.filter(g => String(g.ID_TASK) === String(t.ID_TASK));
-                const giornateConsiderate = this.activeDateFilter
-                    ? giornate.filter(g => {
+                const giornateConsiderate = giornate.filter(g => {
+                    const dataG = (g.Data || '').substring(0, 10);
+                    if (dataApertura && dataG < dataApertura) return false;
+                    if (dataFine     && dataG > dataFine)     return false;
+                    if (this.activeDateFilter) {
                         const d = new Date(g.Data);
-                        const yearMatch = this.activeDateFilter.years.length === 0 || this.activeDateFilter.years.includes(d.getFullYear());
+                        const yearMatch  = this.activeDateFilter.years.length  === 0 || this.activeDateFilter.years.includes(d.getFullYear());
                         const monthMatch = this.activeDateFilter.months.length === 0 || this.activeDateFilter.months.includes(d.getMonth() + 1);
-                        return yearMatch && monthMatch;
-                    })
-                    : giornate;
+                        if (!yearMatch || !monthMatch) return false;
+                    }
+                    return true;
+                });
 
                 giornateConsiderate.forEach(g => {
                     const valore = parseFloat(g.valore_calcolato ?? g.Valore_calcolato ?? 0) || 0;
@@ -1199,18 +1207,26 @@ class CollaboratoriSection extends BaseSection {
             // prendi tutti i task di tipo 'Campo' della commessa
             const tasksOfCommessa = tasks.filter(t => String(t.ID_COMMESSA) === commId && t.Tipo === 'Campo');
 
-            // somma valori dalle giornate di questi task rispettando filtri
+            // Intervallo di validità del task Monitoraggio
+            const dataApertura = mtask.Data_Apertura_Task ? mtask.Data_Apertura_Task.substring(0, 10) : null;
+            const dataFine     = mtask.Data_Fine          ? mtask.Data_Fine.substring(0, 10)          : null;
+
+            // somma valori dalle giornate di questi task rispettando filtri e intervallo di validità
             let sommaValoreCampo = 0;
             tasksOfCommessa.forEach(t => {
                 const giornate = giornateAll.filter(g => String(g.ID_TASK) === String(t.ID_TASK));
-                const giornateConsiderate = this.activeDateFilter
-                    ? giornate.filter(g => {
+                const giornateConsiderate = giornate.filter(g => {
+                    const dataG = (g.Data || '').substring(0, 10);
+                    if (dataApertura && dataG < dataApertura) return false;
+                    if (dataFine     && dataG > dataFine)     return false;
+                    if (this.activeDateFilter) {
                         const d = new Date(g.Data);
-                        const yearMatch = this.activeDateFilter.years.length === 0 || this.activeDateFilter.years.includes(d.getFullYear());
+                        const yearMatch  = this.activeDateFilter.years.length  === 0 || this.activeDateFilter.years.includes(d.getFullYear());
                         const monthMatch = this.activeDateFilter.months.length === 0 || this.activeDateFilter.months.includes(d.getMonth() + 1);
-                        return yearMatch && monthMatch;
-                    })
-                    : giornate;
+                        if (!yearMatch || !monthMatch) return false;
+                    }
+                    return true;
+                });
 
                 giornateConsiderate.forEach(g => {
                     const valore = parseFloat(g.valore_calcolato ?? g.Valore_calcolato ?? 0) || 0;

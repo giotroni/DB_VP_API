@@ -127,6 +127,8 @@ class DatabaseSetup {
             ID_COLLABORATORE VARCHAR(50),
             Tipo ENUM('Campo', 'Monitoraggio', 'Promo', 'Sviluppo', 'Formazione') DEFAULT 'Campo',
             Data_Apertura_Task DATE,
+            Data_Inizio DATE,
+            Data_Fine DATE,
             Stato_Task ENUM('In corso', 'Sospeso', 'Chiuso', 'Archiviato') DEFAULT 'In corso',
             gg_previste DECIMAL(10,2),
             Spese_Comprese ENUM('Si', 'No') DEFAULT 'No',

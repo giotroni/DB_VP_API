@@ -19,6 +19,8 @@ class TaskAPI extends BaseAPI {
             'ID_COLLABORATORE' => ['max_length' => 50],
             'Tipo' => ['enum' => ['Campo', 'Ufficio', 'Monitoraggio', 'Promo', 'Sviluppo', 'Formazione']],
             'Data_Apertura_Task' => ['date' => true],
+            'Data_Inizio' => ['date' => true],
+            'Data_Fine' => ['date' => true],
             'Stato_Task' => ['enum' => ['In corso', 'Sospeso', 'Chiuso', 'Archiviato']],
             'gg_previste' => ['numeric' => true, 'min' => 0],
             'Spese_Comprese' => ['enum' => ['Si', 'No']],
@@ -27,6 +29,115 @@ class TaskAPI extends BaseAPI {
         ];
     }
     
+    /**
+     * Override create per impedire la creazione di un secondo task Monitoraggio attivo
+     * sulla stessa commessa.
+     */
+    protected function create() {
+        $input = $this->getRequestBody();
+
+        if (($input['Tipo'] ?? '') === 'Monitoraggio' && !empty($input['ID_COMMESSA'])) {
+            try {
+                $stmt = $this->db->prepare(
+                    "SELECT COUNT(*) FROM ANA_TASK
+                     WHERE ID_COMMESSA = :commessa_id
+                       AND Tipo = 'Monitoraggio'
+                       AND Stato_Task NOT IN ('Chiuso', 'Archiviato')"
+                );
+                $stmt->bindValue(':commessa_id', $input['ID_COMMESSA']);
+                $stmt->execute();
+                if (intval($stmt->fetchColumn()) > 0) {
+                    sendErrorResponse(
+                        'Esiste già un task Monitoraggio attivo per questa commessa. Chiuderlo prima di crearne uno nuovo.',
+                        409
+                    );
+                    return;
+                }
+            } catch (PDOException $e) {
+                sendErrorResponse('Errore nella verifica task Monitoraggio: ' . $e->getMessage(), 500);
+                return;
+            }
+        }
+
+        parent::create();
+    }
+
+    /**
+     * Override update per impedire sovrapposizioni temporali tra task Monitoraggio
+     * della stessa commessa.
+     */
+    protected function update($id) {
+        $input = $this->getRequestBody();
+
+        // Recupera tipo e commessa: prima dall'input, poi dal record esistente se non forniti
+        $tipo       = $input['Tipo']        ?? null;
+        $commessaId = $input['ID_COMMESSA'] ?? null;
+        $dataApertura = $input['Data_Apertura_Task'] ?? null;
+        $dataFine     = $input['Data_Fine']           ?? null;
+
+        if ($tipo === null || $commessaId === null || $dataApertura === null) {
+            // Carica il record corrente per completare i dati mancanti
+            try {
+                $cur = $this->db->prepare("SELECT Tipo, ID_COMMESSA, Data_Apertura_Task, Data_Fine FROM ANA_TASK WHERE ID_TASK = :id");
+                $cur->bindValue(':id', $id);
+                $cur->execute();
+                $row = $cur->fetch();
+                if ($row) {
+                    $tipo         = $tipo         ?? $row['Tipo'];
+                    $commessaId   = $commessaId   ?? $row['ID_COMMESSA'];
+                    $dataApertura = $dataApertura ?? $row['Data_Apertura_Task'];
+                    // Data_Fine può essere sovrascritta a NULL esplicitamente
+                    if (!array_key_exists('Data_Fine', $input)) {
+                        $dataFine = $row['Data_Fine'];
+                    }
+                }
+            } catch (PDOException $e) {
+                // non bloccante per il controllo, continua
+            }
+        }
+
+        if ($tipo === 'Monitoraggio' && $commessaId && $dataApertura) {
+            try {
+                // Recupera tutti gli altri task Monitoraggio della stessa commessa
+                $stmt = $this->db->prepare(
+                    "SELECT ID_TASK, Task, Data_Apertura_Task, Data_Fine
+                     FROM ANA_TASK
+                     WHERE ID_COMMESSA = :commessa_id
+                       AND Tipo = 'Monitoraggio'
+                       AND ID_TASK != :task_id"
+                );
+                $stmt->bindValue(':commessa_id', $commessaId);
+                $stmt->bindValue(':task_id', $id);
+                $stmt->execute();
+                $altri = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+
+                $fineEffettiva = $dataFine ?: '9999-12-31';
+
+                foreach ($altri as $altro) {
+                    $altroInizio = $altro['Data_Apertura_Task'] ?: '0000-01-01';
+                    $altroFine   = $altro['Data_Fine']           ?: '9999-12-31';
+
+                    // Sovrapposizione: i due intervalli si intersecano se inizio_A <= fine_B && inizio_B <= fine_A
+                    if ($dataApertura <= $altroFine && $altroInizio <= $fineEffettiva) {
+                        sendErrorResponse(
+                            "Sovrapposizione temporale con il task Monitoraggio \"{$altro['Task']}\" " .
+                            "(dal " . ($altro['Data_Apertura_Task'] ?: '—') .
+                            " al " . ($altro['Data_Fine'] ?: 'aperto') . "). " .
+                            "Modifica le date in modo che i periodi non si sovrappongano.",
+                            409
+                        );
+                        return;
+                    }
+                }
+            } catch (PDOException $e) {
+                sendErrorResponse('Errore nella verifica sovrapposizione Monitoraggio: ' . $e->getMessage(), 500);
+                return;
+            }
+        }
+
+        parent::update($id);
+    }
+
     /**
      * Override getAll per aggiungere i campi calcolati
      */
@@ -258,18 +369,57 @@ class TaskAPI extends BaseAPI {
             if ($prezzoGgMonitoraggio <= 0) {
                 return 0;
             }
+
+            // Se il task è ancora attivo, cede il calcolo al task Monitoraggio più vecchio attivo
+            // (tra task attivi della stessa commessa, valorizza solo quello con Data_Apertura_Task minore)
+            if (!in_array($taskData['Stato_Task'] ?? '', ['Chiuso', 'Archiviato'])) {
+                $dataApertura = $taskData['Data_Apertura_Task'] ?? '9999-12-31';
+                $checkSql = "SELECT COUNT(*) FROM ANA_TASK
+                             WHERE ID_COMMESSA = :commessa_id
+                               AND Tipo = 'Monitoraggio'
+                               AND Stato_Task NOT IN ('Chiuso', 'Archiviato')
+                               AND ID_TASK != :task_id
+                               AND (Data_Apertura_Task < :data_apertura
+                                    OR (Data_Apertura_Task = :data_apertura2 AND ID_TASK < :task_id2))";
+                $checkStmt = $this->db->prepare($checkSql);
+                $checkStmt->bindValue(':commessa_id', $taskData['ID_COMMESSA']);
+                $checkStmt->bindValue(':task_id',       $taskId);
+                $checkStmt->bindValue(':data_apertura',  $dataApertura);
+                $checkStmt->bindValue(':data_apertura2', $dataApertura);
+                $checkStmt->bindValue(':task_id2',       $taskId);
+                $checkStmt->execute();
+                if (intval($checkStmt->fetchColumn()) > 0) {
+                    return 0;
+                }
+            }
+
+            // Filtra le giornate nell'intervallo di attività del task di monitoraggio
+            $params = [
+                ':commessa_id'         => $taskData['ID_COMMESSA'],
+                ':task_id_monitoraggio' => $taskId
+            ];
+            $dateClause = '';
+            if (!empty($taskData['Data_Apertura_Task'])) {
+                $dateClause .= " AND g.Data >= :data_apertura";
+                $params[':data_apertura'] = $taskData['Data_Apertura_Task'];
+            }
+            if (!empty($taskData['Data_Fine'])) {
+                $dateClause .= " AND g.Data <= :data_fine";
+                $params[':data_fine'] = $taskData['Data_Fine'];
+            }
             
-            // Calcola il totale del valore delle giornate effettuate negli altri task della stessa commessa
             $sql = "SELECT SUM(CAST(REPLACE(g.gg, ',', '.') AS DECIMAL(10,2)) * CAST(REPLACE(t.Valore_gg, ',', '.') AS DECIMAL(10,2))) as totale_valore_commessa
                     FROM FACT_GIORNATE g
                     JOIN ANA_TASK t ON g.ID_TASK = t.ID_TASK
                     WHERE t.ID_COMMESSA = :commessa_id 
                       AND t.ID_TASK != :task_id_monitoraggio
-                      AND g.Tipo = 'Campo'";
+                      AND g.Tipo = 'Campo'
+                      {$dateClause}";
             
             $stmt = $this->db->prepare($sql);
-            $stmt->bindValue(':commessa_id', $taskData['ID_COMMESSA']);
-            $stmt->bindValue(':task_id_monitoraggio', $taskId);
+            foreach ($params as $key => $value) {
+                $stmt->bindValue($key, $value);
+            }
             $stmt->execute();
             
             $totaleValoreCommessa = floatval($stmt->fetchColumn()) ?: 0;
@@ -290,14 +440,36 @@ class TaskAPI extends BaseAPI {
             if ($prezzoGgMonitoraggio <= 0) {
                 return 0;
             }
-            
-            // Costruisci WHERE clause per il filtro periodo
-            $whereClause = '';
+
+            // Se il task è ancora attivo, cede il calcolo al task Monitoraggio più vecchio attivo
+            if (!in_array($taskData['Stato_Task'] ?? '', ['Chiuso', 'Archiviato'])) {
+                $dataApertura = $taskData['Data_Apertura_Task'] ?? '9999-12-31';
+                $checkSql = "SELECT COUNT(*) FROM ANA_TASK
+                             WHERE ID_COMMESSA = :commessa_id
+                               AND Tipo = 'Monitoraggio'
+                               AND Stato_Task NOT IN ('Chiuso', 'Archiviato')
+                               AND ID_TASK != :task_id
+                               AND (Data_Apertura_Task < :data_apertura
+                                    OR (Data_Apertura_Task = :data_apertura2 AND ID_TASK < :task_id2))";
+                $checkStmt = $this->db->prepare($checkSql);
+                $checkStmt->bindValue(':commessa_id', $taskData['ID_COMMESSA']);
+                $checkStmt->bindValue(':task_id',       $taskId);
+                $checkStmt->bindValue(':data_apertura',  $dataApertura);
+                $checkStmt->bindValue(':data_apertura2', $dataApertura);
+                $checkStmt->bindValue(':task_id2',       $taskId);
+                $checkStmt->execute();
+                if (intval($checkStmt->fetchColumn()) > 0) {
+                    return 0;
+                }
+            }
+
             $params = [
-                ':commessa_id' => $taskData['ID_COMMESSA'],
+                ':commessa_id'          => $taskData['ID_COMMESSA'],
                 ':task_id_monitoraggio' => $taskId
             ];
             
+            // Filtro periodo (anno-mese o anno)
+            $whereClause = '';
             if ($filtriPeriodo['tipo'] === 'anno_mese') {
                 $whereClause = "AND DATE_FORMAT(g.Data, '%Y-%m') = :periodo";
                 $params[':periodo'] = $filtriPeriodo['valore'];
@@ -306,7 +478,16 @@ class TaskAPI extends BaseAPI {
                 $params[':anno'] = $filtriPeriodo['valore'];
             }
             
-            // Calcola il totale del valore delle giornate effettuate negli altri task della stessa commessa nel periodo
+            // Filtra le giornate nell'intervallo di attività del task di monitoraggio
+            if (!empty($taskData['Data_Apertura_Task'])) {
+                $whereClause .= " AND g.Data >= :data_apertura";
+                $params[':data_apertura'] = $taskData['Data_Apertura_Task'];
+            }
+            if (!empty($taskData['Data_Fine'])) {
+                $whereClause .= " AND g.Data <= :data_fine";
+                $params[':data_fine'] = $taskData['Data_Fine'];
+            }
+            
             $sql = "SELECT SUM(CAST(REPLACE(g.gg, ',', '.') AS DECIMAL(10,2)) * CAST(REPLACE(t.Valore_gg, ',', '.') AS DECIMAL(10,2))) as totale_valore_commessa
                     FROM FACT_GIORNATE g
                     JOIN ANA_TASK t ON g.ID_TASK = t.ID_TASK
@@ -928,6 +1109,26 @@ class TaskAPI extends BaseAPI {
         
         if (isset($data['Data_Apertura_Task']) && !empty($data['Data_Apertura_Task'])) {
             $data['Data_Apertura_Task'] = date('Y-m-d', strtotime($data['Data_Apertura_Task']));
+        }
+        
+        if (isset($data['Data_Inizio']) && !empty($data['Data_Inizio'])) {
+            $data['Data_Inizio'] = date('Y-m-d', strtotime($data['Data_Inizio']));
+        }
+        
+        // Normalizza Data_Fine e applica logica di chiusura automatica
+        if (isset($data['Data_Fine']) && !empty($data['Data_Fine'])) {
+            $data['Data_Fine'] = date('Y-m-d', strtotime($data['Data_Fine']));
+            // Se Data_Fine è oggi o nel passato → chiudi automaticamente il task
+            if ($data['Data_Fine'] <= date('Y-m-d')) {
+                $data['Stato_Task'] = 'Chiuso';
+            }
+        }
+        
+        // Se il task viene chiuso/archiviato, imposta Data_Fine a oggi se non già presente
+        if (isset($data['Stato_Task']) && in_array($data['Stato_Task'], ['Chiuso', 'Archiviato'])) {
+            if (empty($data['Data_Fine'])) {
+                $data['Data_Fine'] = date('Y-m-d');
+            }
         }
         
         if (isset($data['Spese_Comprese']) && $data['Spese_Comprese'] === 'Si') {
