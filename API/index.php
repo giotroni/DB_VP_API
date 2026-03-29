@@ -50,6 +50,7 @@ require_once 'TariffeAPI.php';
 require_once 'GiornateAPI.php';
 require_once 'FattureAPI.php';
 require_once 'FattureCollaboratoriAPI.php';
+require_once 'CommesseVisibilitaAPI.php';
 
 // Le funzioni di supporto sono definite in config.php
 
@@ -133,6 +134,10 @@ try {
 
         case 'fatture_collaboratori':
             $api = new FattureCollaboratoriAPI();
+            break;
+
+        case 'commesse_visibilita':
+            $api = new CommesseVisibilitaAPI();
             break;
             
         case 'status':

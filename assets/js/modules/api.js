@@ -152,6 +152,14 @@ class APIClient {
     async updateCollaboratore(id, data) { return this.request('collaboratori', 'update', { data, params: { id } }); }
     async deleteCollaboratore(id) { return this.request('collaboratori', 'delete', { params: { id } }); }
 
+    // Visibilità Commesse per utenti 'User'
+    async getCommesseVisibilita(collaboratoreId) {
+        return this.request('commesse_visibilita', 'getAll', { params: { collaboratore_id: collaboratoreId } });
+    }
+    async setCommesseVisibilita(collaboratoreId, commesseIds) {
+        return this.request('commesse_visibilita', 'set', { data: { ID_COLLABORATORE: collaboratoreId, commesse_ids: commesseIds } });
+    }
+
     // Tariffe
     async getTariffe(params = {}) { return this.request('tariffe', 'getAll', { params }); }
     async createTariffa(data) { return this.request('tariffe', 'create', { data }); }

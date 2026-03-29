@@ -382,9 +382,19 @@ class CommesseAPI extends BaseAPI {
             $params[':data_a'] = $_GET['data_a'];
         }
         
+        // Filtro visibilità: gli utenti con ruolo 'User' vedono solo le commesse assegnate
+        if (session_status() !== PHP_SESSION_ACTIVE) session_start();
+        if (isset($_SESSION['user_role']) && $_SESSION['user_role'] === 'User' && !empty($_SESSION['user_id'])) {
+            $conditions[] = "c.ID_COMMESSA IN (
+                SELECT ID_COMMESSA FROM ANA_COMMESSE_VISIBILITA
+                WHERE ID_COLLABORATORE = :current_user_id
+            )";
+            $params[':current_user_id'] = $_SESSION['user_id'];
+        }
+
         return implode(' AND ', $conditions);
     }
-    
+
     /**
      * Ordinamento predefinito
      */

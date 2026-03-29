@@ -22,18 +22,21 @@ class DatabaseCleanup {
         
         // Lista delle tabelle nell'ordine corretto per evitare errori di foreign key
         $tables = [
+            'ANA_COMMESSE_VISIBILITA',
             'FACT_FATTURE',
-            'FACT_GIORNATE', 
+            'FACT_FATTURE_COLLABORATORI',
+            'GIORNATE_IMMAGINI',
+            'FACT_GIORNATE',
             'ANA_TARIFFE_COLLABORATORI',
             'ANA_TASK',
             'ANA_COMMESSE',
             'ANA_CLIENTI',
             'ANA_COLLABORATORI'
         ];
-        
+
         // Disabilita i controlli delle foreign key temporaneamente
         $this->db->exec("SET FOREIGN_KEY_CHECKS = 0");
-        
+
         foreach ($tables as $table) {
             try {
                 $sql = "DROP TABLE IF EXISTS $table";
@@ -58,18 +61,21 @@ class DatabaseCleanup {
         
         // Lista delle tabelle nell'ordine corretto per evitare errori di foreign key
         $tables = [
+            'ANA_COMMESSE_VISIBILITA',
             'FACT_FATTURE',
-            'FACT_GIORNATE', 
+            'FACT_FATTURE_COLLABORATORI',
+            'GIORNATE_IMMAGINI',
+            'FACT_GIORNATE',
             'ANA_TARIFFE_COLLABORATORI',
             'ANA_TASK',
             'ANA_COMMESSE',
             'ANA_CLIENTI',
             'ANA_COLLABORATORI'
         ];
-        
+
         // Disabilita i controlli delle foreign key temporaneamente
         $this->db->exec("SET FOREIGN_KEY_CHECKS = 0");
-        
+
         foreach ($tables as $table) {
             try {
                 $sql = "TRUNCATE TABLE $table";
@@ -115,13 +121,16 @@ class DatabaseCleanup {
         echo "=== STATISTICHE DATABASE ===\n";
         
         $tables = [
-            'ANA_CLIENTI' => 'Clienti',
-            'ANA_COLLABORATORI' => 'Collaboratori',
-            'ANA_COMMESSE' => 'Commesse',
-            'ANA_TASK' => 'Task',
+            'ANA_CLIENTI'               => 'Clienti',
+            'ANA_COLLABORATORI'         => 'Collaboratori',
+            'ANA_COMMESSE'              => 'Commesse',
+            'ANA_COMMESSE_VISIBILITA'   => 'Visibilità commesse',
+            'ANA_TASK'                  => 'Task',
             'ANA_TARIFFE_COLLABORATORI' => 'Tariffe',
-            'FACT_GIORNATE' => 'Giornate',
-            'FACT_FATTURE' => 'Fatture'
+            'FACT_GIORNATE'             => 'Giornate',
+            'GIORNATE_IMMAGINI'         => 'Immagini giornate',
+            'FACT_FATTURE'              => 'Fatture attive',
+            'FACT_FATTURE_COLLABORATORI'=> 'Fatture passive',
         ];
         
         foreach ($tables as $tableName => $description) {

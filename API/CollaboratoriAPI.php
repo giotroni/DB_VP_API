@@ -25,6 +25,22 @@ class CollaboratoriAPI extends BaseAPI {
     }
     
     /**
+     * Override: blocca POST/PUT/DELETE agli utenti con ruolo 'User'
+     */
+    public function handleRequest($id = null) {
+        $method = $_SERVER['REQUEST_METHOD'];
+        if (in_array($method, ['POST', 'PUT', 'DELETE'])) {
+            if (session_status() !== PHP_SESSION_ACTIVE) session_start();
+            $role = $_SESSION['user_role'] ?? '';
+            if (!in_array($role, ['Admin', 'Manager'])) {
+                sendErrorResponse('Non autorizzato: solo Admin e Manager possono modificare i collaboratori', 403);
+                return;
+            }
+        }
+        parent::handleRequest($id);
+    }
+
+    /**
      * Validazione input per collaboratori
      */
     protected function validateInput($data, $requireAll = true) {

@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(php -r \"$f=fopen\\(''c:/onedrive_vep/OneDrive/Documents/40. KNOWHOW/VP/Gestionale/DB_VP_API/DB/Dati/ANA_TASK.csv'',''r''\\); $h=fgetcsv\\($f,0,'';'',''\"\"'',''\\\\\\\\''\\); echo count\\($h\\).'' cols: ''.implode\\(''|'',array_slice\\($h,0,8\\)\\).PHP_EOL; $ti=array_search\\(''Tipo'',$h\\); $types=[]; $nr=0; while\\(\\($r=fgetcsv\\($f,0,'';'',''\"\"'',''\\\\\\\\''\\)\\)!==false\\){$nr++; if\\(isset\\($r[$ti]\\)\\)$types[$r[$ti]]=true;} fclose\\($f\\); echo ''Tipo values: ''.implode\\('', '',array_keys\\($types\\)\\).PHP_EOL; echo ''Rows: ''.$nr.PHP_EOL;\")",
+      "Bash(php check_csv.php)"
+    ]
+  }
+}

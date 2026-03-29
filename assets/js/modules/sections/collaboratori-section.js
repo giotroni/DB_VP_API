@@ -184,7 +184,7 @@ class CollaboratoriSection extends BaseSection {
         this.addCollaboratoreFormListeners(`${modalId}_form`);
     }
 
-    showEditCollaboratoreModal(collaboratoreId) {
+    async showEditCollaboratoreModal(collaboratoreId) {
         const coll = this.app.collaboratori.find(c => c.ID_COLLABORATORE === collaboratoreId);
         if (!coll) { this.ui.showToast('Collaboratore non trovato.', 'error'); return; }
         const modalTitle = `Modifica Collaboratore: ${coll.Collaboratore}`;
@@ -202,6 +202,25 @@ class CollaboratoriSection extends BaseSection {
         ];
         this.ui.createModal(modalId, modalTitle, modalBody, modalActions, { size: 'modal-lg' });
         this.addCollaboratoreFormListeners(`${modalId}_form`);
+        // Carica le commesse visibili se il collaboratore ha ruolo User
+        if (coll.Ruolo === 'User') {
+            await this.loadCommesseVisibilita(collaboratoreId);
+        }
+    }
+
+    async loadCommesseVisibilita(collaboratoreId) {
+        try {
+            const result = await this.api.getCommesseVisibilita(collaboratoreId);
+            if (result.success) {
+                const ids = result.data?.commesse_ids || [];
+                ids.forEach(id => {
+                    const cb = document.getElementById(`visibilita_${collaboratoreId}_${id}`);
+                    if (cb) cb.checked = true;
+                });
+            }
+        } catch (e) {
+            console.warn('Errore caricamento visibilità commesse:', e);
+        }
     }
 
     // Elimina collaboratore: consentita solo se non ci sono tariffe collegate
@@ -255,6 +274,7 @@ class CollaboratoriSection extends BaseSection {
 
     getCollaboratoreFormHTML(collaboratore = {}) {
         const formId = collaboratore.ID_COLLABORATORE ? `editCollaboratoreModal_${collaboratore.ID_COLLABORATORE}_form` : 'newCollaboratoreModal_form';
+        const collId = collaboratore.ID_COLLABORATORE || null;
         const ruoloOptions = ['Admin', 'Manager', 'User'];
         const ruoliHtml = ruoloOptions.map(r => `<option value="${r}" ${(collaboratore.Ruolo === r) ? 'selected' : ''}>${r}</option>`).join('');
         // Costruisci tabella tariffe basandoci su this.app.tariffe
@@ -308,6 +328,35 @@ class CollaboratoriSection extends BaseSection {
             </tr>
         `}).join('') : `<tr><td colspan="5" class="text-muted">Nessuna tariffa configurata per questo collaboratore</td></tr>`;
 
+        // Sezione visibilità commesse (solo per collaboratori con ruolo User, solo in edit)
+        const isUser = collaboratore.Ruolo === 'User';
+        const allCommesse = Array.isArray(this.app.commesse)
+            ? [...this.app.commesse].sort((a, b) => (a.Commessa || '').localeCompare(b.Commessa || ''))
+            : [];
+        const commesseCheckboxHtml = allCommesse.length > 0
+            ? allCommesse.map(c => `
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox"
+                           name="commesse_visibilita"
+                           value="${c.ID_COMMESSA}"
+                           id="visibilita_${collId}_${c.ID_COMMESSA}">
+                    <label class="form-check-label small" for="visibilita_${collId}_${c.ID_COMMESSA}">
+                        ${c.Commessa}${c.Cliente ? ` <span class="text-muted">(${c.Cliente})</span>` : ''}
+                    </label>
+                </div>`).join('')
+            : '<span class="text-muted small">Nessuna commessa disponibile</span>';
+        const visibilitaSection = collId ? `
+            <hr>
+            <div id="commesse-visibilita-section_${collId}" class="${isUser ? '' : 'd-none'}">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="mb-0">Commesse Visibili</h6>
+                    <small class="text-muted">Commesse accessibili a questo utente</small>
+                </div>
+                <div class="commesse-visibilita-list" style="max-height:200px;overflow-y:auto;border:1px solid #dee2e6;border-radius:0.375rem;padding:8px 12px;">
+                    ${commesseCheckboxHtml}
+                </div>
+            </div>` : '';
+
         return `
             <form id="${formId}" novalidate>
                 <div class="row">
@@ -341,6 +390,7 @@ class CollaboratoriSection extends BaseSection {
                         </div>
                     </div>
                 </div>
+                ${visibilitaSection}
             </form>
         `;
     }
@@ -368,6 +418,21 @@ class CollaboratoriSection extends BaseSection {
         const addBtn = document.getElementById(`addTariffaBtn_${collId}`);
         if (addBtn) {
             addBtn.addEventListener('click', () => this.insertEmptyTariffaRow(collId));
+        }
+
+        // Mostra/nascondi sezione commesse visibili al cambio ruolo
+        if (collId) {
+            const ruoloSelect = form.querySelector('#Ruolo');
+            const visibilitaSection = document.getElementById(`commesse-visibilita-section_${collId}`);
+            if (ruoloSelect && visibilitaSection) {
+                ruoloSelect.addEventListener('change', () => {
+                    if (ruoloSelect.value === 'User') {
+                        visibilitaSection.classList.remove('d-none');
+                    } else {
+                        visibilitaSection.classList.add('d-none');
+                    }
+                });
+            }
         }
     }
 
@@ -669,6 +734,8 @@ class CollaboratoriSection extends BaseSection {
         const data = Object.fromEntries(formData.entries());
         // Normalizza campi vuoti: converti stringhe vuote in null
         for (const k in data) { if (data[k] === '') data[k] = null; }
+        // Rimuovi la chiave commesse_visibilita: la gestiamo separatamente
+        delete data['commesse_visibilita'];
         // Se è un update, rimuovi i campi nulli per evitare di sovrascrivere valori nel backend
         if (collaboratoreId) {
             Object.keys(data).forEach(k => { if (data[k] === null) delete data[k]; });
@@ -681,6 +748,15 @@ class CollaboratoriSection extends BaseSection {
                 ? await this.api.updateCollaboratore(collaboratoreId, data)
                 : await this.api.createCollaboratore(data);
             if (result.success) {
+                // Salva visibilità commesse se ruolo è User (solo in edit)
+                if (collaboratoreId) {
+                    const currentRuolo = form.querySelector('#Ruolo')?.value;
+                    if (currentRuolo === 'User') {
+                        const checked = form.querySelectorAll('input[name="commesse_visibilita"]:checked');
+                        const commesseIds = Array.from(checked).map(cb => cb.value);
+                        await this.api.setCommesseVisibilita(collaboratoreId, commesseIds);
+                    }
+                }
                 this.ui.showToast(`Collaboratore ${collaboratoreId ? 'aggiornato' : 'creato'} con successo!`, 'success');
                 bootstrap.Modal.getInstance(form.closest('.modal'))?.hide();
                 await this.app.loadInitialData();
@@ -1008,7 +1084,7 @@ class CollaboratoriSection extends BaseSection {
                     return acc;
                 }, {});
                 return { ...c, giornate: giornateNelPeriodo, giornateByMonth };
-            }).filter(c => c.giornate.length > 0);
+            });
         }
 
         document.getElementById('collaboratoriContainer').innerHTML = this.renderCollaboratoriCards(filteredData);

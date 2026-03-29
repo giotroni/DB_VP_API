@@ -433,12 +433,13 @@ class ManagementApp {
                  <div class="sidebar-header"><div class="vp-logo-text"><span class="vp-logo-v">V</span><span class="vp-logo-ampersand">&</span><span class="vp-logo-p">P</span></div><p class="sidebar-subtitle">Management Portal</p></div>
                 <nav class="sidebar-nav">
                     <div class="nav-item"><button class="nav-link active" data-action="navigate" data-section="commesse-task"><i class="fas fa-tasks"></i>Commesse & Task</button></div>
+                    ${this.currentUser?.ruolo !== 'User' ? `
                     <div class="nav-item"><button class="nav-link" data-action="navigate" data-section="clienti"><i class="fas fa-building"></i>Clienti</button></div>
                     <div class="nav-item"><button class="nav-link" data-action="navigate" data-section="collaboratori"><i class="fas fa-users"></i>Collaboratori</button></div>
                     <div class="nav-item"><button class="nav-link" data-action="navigate" data-section="fatture"><i class="fas fa-file-invoice"></i>Fatture</button></div>
-                    <!-- <div class="nav-item"><button class="nav-link" data-action="navigate" data-section="fatture-collaboratori"><i class="fas fa-file-invoice"></i>Fatture Collaboratori</button></div> DISABILITATO -->
                     <div class="nav-item"><button class="nav-link" data-action="navigate" data-section="giornate"><i class="fas fa-calendar-alt"></i>Giornate</button></div>
                     <div class="nav-item"><button class="nav-link" data-action="navigate" data-section="statistiche"><i class="fas fa-chart-bar"></i>Statistiche</button></div>
+                    ` : ''}
                 </nav>
                 <div class="sidebar-user">
                     <div class="user-info"><div class="user-avatar">${this.getUserInitials()}</div><div class="user-details"><div class="user-name">${this.currentUser.nome} ${this.currentUser.cognome}</div><div class="user-role">${this.currentUser.ruolo || 'Admin'}</div></div></div>

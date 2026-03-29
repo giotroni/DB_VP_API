@@ -16,8 +16,9 @@ class CommesseTaskSection extends BaseSection {
     }
 
     render() {
+        const isUserRole = this.app.currentUser?.ruolo === 'User';
         this.updatePageTitle('Situazione Commesse e Task', 'Visualizza e gestisci commesse e task');
-    this.updateTopbarActions(`<div class="d-flex gap-2"><button class="btn btn-vp-primary" data-action="add-commessa"><i class="fas fa-plus me-2"></i>Nuova Commessa</button><button class="btn btn-outline-secondary" data-action="export-commesse"><i class="fas fa-file-export me-2"></i>Esporta Excel</button></div>`);
+        this.updateTopbarActions(isUserRole ? '' : `<div class="d-flex gap-2"><button class="btn btn-vp-primary" data-action="add-commessa"><i class="fas fa-plus me-2"></i>Nuova Commessa</button><button class="btn btn-outline-secondary" data-action="export-commesse"><i class="fas fa-file-export me-2"></i>Esporta Excel</button></div>`);
         const container = this.getContainer();
         const currentYear = new Date().getFullYear();
         let yearOptions = '';
@@ -203,29 +204,32 @@ class CommesseTaskSection extends BaseSection {
             return sum;
         }, 0);
         
+        const isUser = this.app.currentUser?.ruolo === 'User';
+
         return `
             <div class="management-card mb-4">
                 <div class="management-card-header" data-action="toggle-commessa" data-id="${commessa.ID_COMMESSA}">
                     <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
                         <h5 class="management-card-title mb-0 me-2"><i class="fas fa-briefcase me-2"></i>${commessa.Commessa}${commessa.Stato_Commessa === 'Chiusa' ? ' <span class="badge bg-secondary ms-2">CHIUSA</span>' : ''}</h5>
                         <div class="d-flex align-items-center gap-2">
+                            ${!isUser ? `
                             <span class="badge bg-dark" title="Valore TOTALE">${this.app.utils.formatCurrency(valoreTotale)}</span>
                             <span class="badge bg-warning text-dark" title="Valore Lavori">${this.app.utils.formatCurrency(valoreComplessivoLavori)}</span>
                             <span class="badge bg-danger" title="Valore Spese">${this.app.utils.formatCurrency(valoreComplessivoSpese)}</span>
-                            <!-- badge numero di task rimosso -->
                             <span class="badge bg-secondary text-dark" title="Costo totale attività">${this.app.utils.formatCurrency(costo_totale_attivita)}</span>
-                            <!-- Marginalità commessa come percentuale del valore totale -->
                             <span class="badge ${marginalitaPercentuale >= 0 ? 'bg-info text-dark' : 'bg-danger text-white'}" title="Marginalità Commessa: ${this.app.utils.formatCurrency(margineAssoluto)}">${marginalitaPercentuale.toFixed(1)}%</span>
+                            ` : ''}
                             <span class="badge bg-success" title="Giorni effettuati/previsti (Campo)">${totalGiornate.toFixed(1)}${totalGgPreviste > 0 ? ` su ${totalGgPreviste.toFixed(1)}` : ''} gg</span>
+                            ${!isUser ? `
                             <button class="btn btn-sm btn-outline-light" data-action="edit-commessa" data-id="${commessa.ID_COMMESSA}" title="Modifica Commessa"><i class="fas fa-pencil-alt"></i></button>
                             <button class="btn btn-vp-primary btn-sm" data-action="add-task" data-id="${commessa.ID_COMMESSA}" title="Aggiungi nuovo task"><i class="fas fa-plus me-1"></i>Nuovo Task</button>
+                            ` : ''}
                             <button class="commessa-toggle-btn" id="toggleBtn-${commessa.ID_COMMESSA}"><i class="fas fa-chevron-down"></i></button>
                         </div>
                     </div>
                         <div class="mt-2 text-light small">
                         <i class="fas fa-building me-1"></i> ${commessa.Tipo_Commessa === 'Interna' ? 'Interna' : `Cliente: ${commessa.cliente_nome}`} |
-                        <i class="fas fa-user me-1"></i> Responsabile: ${commessa.responsabile_nome} |
-                        <i class="fas fa-coins me-1"></i> Costo Accounting: ${this.app.utils.formatCurrency(costoAccounting)} |
+                        <i class="fas fa-user me-1"></i> Responsabile: ${commessa.responsabile_nome}${!isUser ? ` | <i class="fas fa-coins me-1"></i> Costo Accounting: ${this.app.utils.formatCurrency(costoAccounting)}` : ''} |
                         <i class="fas fa-tasks me-1"></i> Task attivi: ${activeTasks}
                     </div>
                 </div>
@@ -236,6 +240,8 @@ class CommesseTaskSection extends BaseSection {
     }
     
     createTaskCard(task, commessa) {
+        const isUser = this.app.currentUser?.ruolo === 'User';
+
         if (task.Tipo === 'Monitoraggio') {
             const valoreCalcolato = parseFloat(task.valore_gg_maturato) || 0;
             const collaboratore = this.app.collaboratori.find(c => c.ID_COLLABORATORE === task.ID_COLLABORATORE);
@@ -248,8 +254,8 @@ class CommesseTaskSection extends BaseSection {
             <div class="col-lg-6 col-xl-4 mb-3">
                 <div class="card h-100 border-0 shadow-sm d-flex flex-column">
                     <div class="card-header bg-light border-0"><div class="d-flex justify-content-between align-items-start"><h6 class="card-title mb-0 fw-bold">${task.Task}</h6><span class="status-badge ${task.Stato_Task === 'In corso' ? 'active' : 'inactive'}"><i class="fas fa-circle"></i> ${task.Stato_Task}</span></div><small class="text-muted d-block"><i class="fas fa-tag me-1"></i>${task.Tipo}</small><small class="text-muted d-block mt-1"><i class="fas fa-calendar-plus me-1"></i>Aperto il ${dataApertura}</small>${dataChiusuraHtml}</div>
-                    <div class="card-body d-flex flex-column justify-content-center"><p class="card-text text-muted small mb-4">${task.Desc_Task || ''}</p><div class="d-flex justify-content-around align-items-center text-center mt-auto"><div><small class="text-muted d-block mb-1">Assegnato a</small><div class="fw-bold fs-6"><i class="fas fa-user me-2 text-primary"></i>${nomeCollaboratore}</div></div><div><small class="text-muted d-block mb-1">Valore Monitoraggio</small><div class="fw-bold fs-4 text-info">${this.app.utils.formatCurrency(valoreCalcolato)}</div></div></div></div>
-                    <div class="card-footer bg-transparent border-0"><div class="action-buttons d-flex justify-content-end gap-2"><button class="btn btn-outline-secondary btn-sm" data-action="view-task" data-id="${task.ID_TASK}" title="Visualizza dettagli"><i class="fas fa-eye"></i></button><button class="btn btn-outline-primary btn-sm" data-action="edit-task" data-id="${task.ID_TASK}" title="Modifica task"><i class="fas fa-edit"></i></button></div></div>
+                    <div class="card-body d-flex flex-column justify-content-center"><p class="card-text text-muted small mb-4">${task.Desc_Task || ''}</p><div class="d-flex justify-content-around align-items-center text-center mt-auto"><div><small class="text-muted d-block mb-1">Assegnato a</small><div class="fw-bold fs-6"><i class="fas fa-user me-2 text-primary"></i>${nomeCollaboratore}</div></div>${!isUser ? `<div><small class="text-muted d-block mb-1">Valore Monitoraggio</small><div class="fw-bold fs-4 text-info">${this.app.utils.formatCurrency(valoreCalcolato)}</div></div>` : ''}</div></div>
+                    <div class="card-footer bg-transparent border-0"><div class="action-buttons d-flex justify-content-end gap-2"><button class="btn btn-outline-secondary btn-sm" data-action="view-task" data-id="${task.ID_TASK}" title="Visualizza dettagli"><i class="fas fa-eye"></i></button>${!isUser ? `<button class="btn btn-outline-primary btn-sm" data-action="edit-task" data-id="${task.ID_TASK}" title="Modifica task"><i class="fas fa-edit"></i></button>` : ''}</div></div>
                 </div>
             </div>`;
         }
@@ -290,12 +296,15 @@ class CommesseTaskSection extends BaseSection {
                     <div class="card-body">
                         <p class="card-text text-muted small">${task.Desc_Task || ''}</p>
                         <div class="row text-center">
+                            ${isUser ? `
+                            <div class="col-12">${progressoGgContent}</div>
+                            ` : `
                             <div class="col-4">${progressoGgContent}</div>
                             <div class="col-4"><div data-bs-toggle="tooltip" title="Tariffa giornaliera applicata al task">${tariffaGgContent}</div></div>
                             <div class="col-4"><div data-bs-toggle="tooltip" title="Valore maturato dai giorni di lavoro">${valoreGgContent}</div></div>
+                            `}
                         </div>
-                        ${(() => {
-                            // Mostra la riga delle spese nella sequenza richiesta: Spese A/R, Vitto/Alloggio + Altre, Val. Spese
+                        ${!isUser ? (() => {
                             const parts = [];
                             if ((totaleSpeseAR || 0) > 0) {
                                 parts.push(`<div class="col-4"><div class="fw-bold text-info" data-bs-toggle="tooltip" title="Spese di viaggio andata/ritorno (A/R)"><i class="fas fa-plane me-1"></i>${this.app.utils.formatCurrency(totaleSpeseAR)}</div><small class="text-muted">Spese A/R</small></div>`);
@@ -307,10 +316,10 @@ class CommesseTaskSection extends BaseSection {
                                 parts.push(`<div class="col-4"><div class="fw-bold text-danger" data-bs-toggle="tooltip" title="Totale spese maturate per questo task">${this.app.utils.formatCurrency(task.valore_spese_maturato || 0)}</div><small class="text-muted">Tot Spese</small></div>`);
                             }
                             return parts.length > 0 ? `<div class="row text-center mt-2">${parts.join('')}</div>` : '';
-                        })()}
+                        })() : ''}
                         ${giornateHtml}
                     </div>
-                    <div class="card-footer bg-transparent border-0 mt-auto"><div class="action-buttons d-flex justify-content-end gap-2"><button class="btn btn-outline-secondary btn-sm" data-action="view-task" data-id="${task.ID_TASK}" title="Visualizza dettagli"><i class="fas fa-eye"></i></button><button class="btn btn-outline-primary btn-sm" data-action="edit-task" data-id="${task.ID_TASK}" title="Modifica task"><i class="fas fa-edit"></i></button></div></div>
+                    <div class="card-footer bg-transparent border-0 mt-auto"><div class="action-buttons d-flex justify-content-end gap-2"><button class="btn btn-outline-secondary btn-sm" data-action="view-task" data-id="${task.ID_TASK}" title="Visualizza dettagli"><i class="fas fa-eye"></i></button>${!isUser ? `<button class="btn btn-outline-primary btn-sm" data-action="edit-task" data-id="${task.ID_TASK}" title="Modifica task"><i class="fas fa-edit"></i></button>` : ''}</div></div>
                 </div>
             </div>`;
     }
@@ -670,16 +679,16 @@ class CommesseTaskSection extends BaseSection {
 
             const modalTitle = `<i class="fas fa-calendar-day me-2"></i>Giornate - ${task.Task}`;
 
+            const isUser = this.app.currentUser?.ruolo === 'User';
+
             const modalBody = giornateTask.length === 0
                 ? '<p class="text-muted">Nessuna giornata registrata per questo task nel periodo selezionato.</p>'
                 : (() => {
-                    // Calcola i totali per il riepilogo
                     const totals = giornateTask.reduce((acc, g) => {
                         const gg = parseFloat(g.gg) || 0;
                         const valore = parseFloat(g.valore_calcolato ?? g.Valore_calcolato ?? 0) || 0;
                         const costoGg = parseFloat(g.Costo_gg ?? g.costo_gg ?? g.Valore_gg ?? 0) || 0;
                         const valoreSpese = parseFloat(g.Valore_spese ?? g.valore_spese ?? 0) || 0;
-                        // CORREZIONE: conta solo le giornate di tipo 'Campo' nel totale gg
                         acc.num_gg += (g.Tipo === 'Campo' ? gg : 0);
                         acc.valore_tot += valore;
                         acc.costo_gg += costoGg;
@@ -687,11 +696,9 @@ class CommesseTaskSection extends BaseSection {
                         return acc;
                     }, { num_gg: 0, valore_tot: 0, costo_gg: 0, valore_spese: 0 });
 
-                    const costo_tot = totals.costo_gg + totals.valore_spese;
-
                     return `<div class="table-responsive">
                         <table class="table table-sm table-hover">
-                            <thead><tr><th>Data</th><th>Collaboratore</th><th>gg</th><th>Tipo</th><th>Note</th><th>Valore (€)</th><th>Costo_gg (€)</th><th>Valore Spese (€)</th></thead>
+                            <thead><tr><th>Data</th><th>Collaboratore</th><th>gg</th><th>Tipo</th><th>Note</th>${!isUser ? '<th>Valore (€)</th><th>Costo_gg (€)</th><th>Valore Spese (€)</th>' : ''}</tr></thead>
                             <tbody>
                                 ${giornateTask.map(g => {
                                     const collab = this.app.collaboratori.find(c => c.ID_COLLABORATORE === g.ID_COLLABORATORE);
@@ -705,9 +712,7 @@ class CommesseTaskSection extends BaseSection {
                                         <td><span class="badge bg-primary">${g.gg}g</span></td>
                                         <td>${g.Tipo}</td>
                                         <td>${g.Note || '-'}</td>
-                                        <td class="text-end fw-bold">${valoreGiornata}</td>
-                                        <td class="text-end fw-bold">${costoGg}</td>
-                                        <td class="text-end fw-bold text-danger">${valoreSpese}</td>
+                                        ${!isUser ? `<td class="text-end fw-bold">${valoreGiornata}</td><td class="text-end fw-bold">${costoGg}</td><td class="text-end fw-bold text-danger">${valoreSpese}</td>` : ''}
                                     </tr>`;
                                 }).join('')}
                             </tbody>
@@ -717,9 +722,7 @@ class CommesseTaskSection extends BaseSection {
                                     <td class="text-end"><strong>${totals.num_gg.toFixed(1)}</strong></td>
                                     <td></td>
                                     <td></td>
-                                    <td class="text-end"><strong>${this.app.utils.formatCurrency(totals.valore_tot)}</strong></td>
-                                    <td class="text-end"><strong>${this.app.utils.formatCurrency(totals.costo_gg)}</strong></td>
-                                    <td class="text-end"><strong>${this.app.utils.formatCurrency(totals.valore_spese)}</strong></td>
+                                    ${!isUser ? `<td class="text-end"><strong>${this.app.utils.formatCurrency(totals.valore_tot)}</strong></td><td class="text-end"><strong>${this.app.utils.formatCurrency(totals.costo_gg)}</strong></td><td class="text-end"><strong>${this.app.utils.formatCurrency(totals.valore_spese)}</strong></td>` : ''}
                                 </tr>
                             </tfoot>
                         </table>
@@ -1066,16 +1069,19 @@ class CommesseTaskSection extends BaseSection {
 
         const totaleMargine = valoreTotaleComplessivo - totaleCostoAttivita - totaleCostoAccounting;
 
+        const isUser = this.app.currentUser?.ruolo === 'User';
         const statsContainer = document.getElementById('stats-row-container');
         if (statsContainer) {
             statsContainer.innerHTML = `
                 <div class="stats-row">
                     ${this.ui.createStatsCard('fas fa-briefcase', commesseCount, 'Commesse')}
-                    ${this.ui.createStatsCard('fas fa-calendar-check', giornateCount.toFixed(1), "Giornate Campo")}
+                    ${this.ui.createStatsCard('fas fa-calendar-check', giornateCount.toFixed(1), 'Giornate Campo')}
+                    ${!isUser ? `
                     ${this.ui.createStatsCard('fas fa-calculator', this.app.utils.formatCurrency(valoreTotaleComplessivo), 'Valore TOTALE')}
                     ${this.ui.createStatsCard('fas fa-cogs', this.app.utils.formatCurrency(totaleCostoAttivita), 'Costo Totale Attività')}
                     ${this.ui.createStatsCard('fas fa-building', this.app.utils.formatCurrency(totaleCostoAccounting), 'COSTO ACCOUNTING')}
                     ${this.ui.createStatsCard('fas fa-chart-line', this.app.utils.formatCurrency(totaleMargine), 'MARGINE')}
+                    ` : ''}
                 </div>
             `;
         }

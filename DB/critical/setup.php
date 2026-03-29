@@ -272,6 +272,19 @@ class DatabaseSetup {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
         $this->executeSQL($sql, "FACT_FATTURE_COLLABORATORI");
 
+        // 9. ANA_COMMESSE_VISIBILITA - visibilità commesse per utenti con ruolo 'User'
+        $sql = "CREATE TABLE IF NOT EXISTS ANA_COMMESSE_VISIBILITA (
+            ID_COLLABORATORE VARCHAR(50) NOT NULL,
+            ID_COMMESSA      VARCHAR(50) NOT NULL,
+            Data_Creazione   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (ID_COLLABORATORE, ID_COMMESSA),
+            FOREIGN KEY (ID_COLLABORATORE) REFERENCES ANA_COLLABORATORI(ID_COLLABORATORE) ON DELETE CASCADE,
+            FOREIGN KEY (ID_COMMESSA)      REFERENCES ANA_COMMESSE(ID_COMMESSA) ON DELETE CASCADE,
+            INDEX idx_collaboratore (ID_COLLABORATORE),
+            INDEX idx_commessa (ID_COMMESSA)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+        $this->executeSQL($sql, "ANA_COMMESSE_VISIBILITA");
+
         echo "Tutte le tabelle sono state create con successo!\n";
     }
     
