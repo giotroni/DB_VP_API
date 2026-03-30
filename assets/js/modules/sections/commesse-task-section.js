@@ -429,31 +429,62 @@ class CommesseTaskSection extends BaseSection {
 
         if (this.activeDateFilter) {
             const finalData = [];
+
+            // Helper: filtra giornate nel periodo selezionato
+            const isGiornataNelPeriodo = (g) => {
+                const d = new Date(g.Data);
+                const yearMatch = selectedYears.length === 0 || selectedYears.includes(d.getFullYear());
+                const monthMatch = selectedMonths.length === 0 || selectedMonths.includes(d.getMonth() + 1);
+                return yearMatch && monthMatch;
+            };
+
             filteredData.forEach(commessa => {
                 const activeTasksInPeriod = [];
-                
+
+                // Raccoglie tutte le giornate Campo nel periodo selezionato per la commessa
+                const tutteGiornateCampoNelPeriodo = [];
+                commessa.tasks.forEach(t => {
+                    if (t.Tipo === 'Monitoraggio') return;
+                    (t.giornate || []).filter(isGiornataNelPeriodo).filter(g => g.Tipo === 'Campo').forEach(g => {
+                        tutteGiornateCampoNelPeriodo.push(g);
+                    });
+                });
+
+                // Calcola il valore Monitoraggio per uno specifico task,
+                // filtrando le giornate Campo sia per il periodo selezionato
+                // sia per l'intervallo di validità del task (Data_Apertura_Task → Data_Fine)
+                const calcolaValoreMonitoraggioNelPeriodo = (monTask) => {
+                    const tariffa = parseFloat(monTask.Valore_gg) || 0;
+                    if (tariffa <= 0) return 0;
+                    const dataApertura = monTask.Data_Apertura_Task ? monTask.Data_Apertura_Task.substring(0, 10) : null;
+                    const dataFine = monTask.Data_Fine ? monTask.Data_Fine.substring(0, 10) : null;
+                    const somma = tutteGiornateCampoNelPeriodo
+                        .filter(g => {
+                            const dataG = (g.Data || '').substring(0, 10);
+                            if (dataApertura && dataG < dataApertura) return false;
+                            if (dataFine && dataG > dataFine) return false;
+                            return true;
+                        })
+                        .reduce((sum, g) => sum + (parseFloat(g.valore_calcolato) || 0), 0);
+                    return somma * tariffa;
+                };
+
                 commessa.tasks.forEach(task => {
-                    const giornateNelPeriodo = task.giornate?.filter(g => {
-                        const dataGiornata = new Date(g.Data);
-                        const yearMatch = selectedYears.length === 0 || selectedYears.includes(dataGiornata.getFullYear());
-                        const monthMatch = selectedMonths.length === 0 || selectedMonths.includes(dataGiornata.getMonth() + 1);
-                        return yearMatch && monthMatch;
-                    }) || [];
+                    const giornateNelPeriodo = task.giornate?.filter(isGiornataNelPeriodo) || [];
 
                     if (giornateNelPeriodo.length > 0) {
                         const giornateCampoNelPeriodo = giornateNelPeriodo.filter(g => g.Tipo === 'Campo');
-                        
-                        // CORREZIONE: Calcoliamo solo le giornate di tipo Campo per gg_effettuate
+
                         const gg_effettuate = giornateCampoNelPeriodo.reduce((sum, g) => {
                             const gg = parseFloat(g.gg) || 0;
                             return sum + gg;
                         }, 0);
-                        
+
                         const valore_gg_maturato = task.Tipo === 'Monitoraggio'
-                            ? (parseFloat(task.valore_gg_maturato) || 0)
+                            ? calcolaValoreMonitoraggioNelPeriodo(task)
                             : giornateCampoNelPeriodo.reduce((sum, g) => sum + (parseFloat(g.valore_calcolato) || 0), 0);
                         const valore_spese_maturato = giornateNelPeriodo.reduce((sum, g) => sum + (parseFloat(g.Valore_spese) || 0), 0);
-                        
+
                         activeTasksInPeriod.push({
                             ...task,
                             giornate: giornateNelPeriodo,
@@ -471,7 +502,9 @@ class CommesseTaskSection extends BaseSection {
                                 ...task,
                                 giornate: [],
                                 gg_effettuate: 0,
-                                valore_gg_maturato: task.Tipo === 'Monitoraggio' ? (parseFloat(task.valore_gg_maturato) || 0) : 0,
+                                valore_gg_maturato: task.Tipo === 'Monitoraggio'
+                                    ? calcolaValoreMonitoraggioNelPeriodo(task)
+                                    : 0,
                                 valore_spese_maturato: 0
                             });
                         }
@@ -480,12 +513,16 @@ class CommesseTaskSection extends BaseSection {
 
                 if (activeTasksInPeriod.length > 0) {
                     const tasksToShow = [...activeTasksInPeriod];
+                    // Aggiungi task Monitoraggio non ancora presenti, ricalcolando il valore sul periodo
                     commessa.tasks.forEach(task => {
                         if (task.Tipo === 'Monitoraggio' && !tasksToShow.some(t => t.ID_TASK === task.ID_TASK)) {
-                            tasksToShow.push(task);
+                            tasksToShow.push({
+                                ...task,
+                                valore_gg_maturato: calcolaValoreMonitoraggioNelPeriodo(task),
+                            });
                         }
                     });
-                    
+
                     finalData.push({ ...commessa, tasks: tasksToShow });
                 }
             });
@@ -630,16 +667,27 @@ class CommesseTaskSection extends BaseSection {
                 </dl>
             `;
 
+            const isUser = this.app.currentUser?.ruolo === 'User';
+
             switch (task.Tipo) {
                 case 'Monitoraggio': {
-                    const tariffaPercentuale = (parseFloat(task.Valore_gg) * 100).toFixed(0) + '%';
-                    const valoreCalcolato = parseFloat(task.valore_gg_maturato) || 0;
-                    modalBody = `${baseDetails}<hr><h5>Dettagli Economici</h5><dl class="row"><dt class="col-sm-4">Tariffa Monitoraggio</dt><dd class="col-sm-8">${tariffaPercentuale}</dd><dt class="col-sm-4">Valore Monitoraggio</dt><dd class="col-sm-8"><strong>${this.app.utils.formatCurrency(valoreCalcolato)}</strong></dd></dl>`;
+                    if (isUser) {
+                        modalBody = baseDetails;
+                    } else {
+                        const tariffaPercentuale = (parseFloat(task.Valore_gg) * 100).toFixed(0) + '%';
+                        const valoreCalcolato = parseFloat(task.valore_gg_maturato) || 0;
+                        modalBody = `${baseDetails}<hr><h5>Dettagli Economici</h5><dl class="row"><dt class="col-sm-4">Tariffa Monitoraggio</dt><dd class="col-sm-8">${tariffaPercentuale}</dd><dt class="col-sm-4">Valore Monitoraggio</dt><dd class="col-sm-8"><strong>${this.app.utils.formatCurrency(valoreCalcolato)}</strong></dd></dl>`;
+                    }
                     break;
                 }
                 case 'Campo': {
-                    const showSpeseStd = task.Spese_Comprese === 'No' && parseFloat(task.Valore_Spese_std) > 0;
-                    modalBody = `${baseDetails}<hr><h5>Dettagli Economici</h5><dl class="row"><dt class="col-sm-4">Valore Giorno (€)</dt><dd class="col-sm-8">${this.app.utils.formatCurrency(task.Valore_gg)}</dd><dt class="col-sm-4">Valore Maturato (€)</dt><dd class="col-sm-8"><strong>${this.app.utils.formatCurrency(valore_gg_maturato)}</strong></dd><dt class="col-sm-4">Spese Comprese</dt><dd class="col-sm-8">${task.Spese_Comprese}</dd>${showSpeseStd ? `<dt class="col-sm-4">Valore Spese Standard (€)</dt><dd class="col-sm-8">${this.app.utils.formatCurrency(task.Valore_Spese_std)}</dd>` : ''}<dt class="col-sm-4">Spese Maturate (€)</dt><dd class="col-sm-8"><strong>${this.app.utils.formatCurrency(valore_spese_maturato)}</strong></dd></dl><hr><h5>Dettagli Giornate</h5><dl class="row"><dt class="col-sm-4">Giorni Previsti</dt><dd class="col-sm-8">${task.gg_previste || 'Non specificato'}</dd><dt class="col-sm-4">Giorni Effettuati</dt><dd class="col-sm-8">${gg_effettuate.toFixed(1)}</dd></dl>`;
+                    const giornateSection = `<hr><h5>Dettagli Giornate</h5><dl class="row"><dt class="col-sm-4">Giorni Previsti</dt><dd class="col-sm-8">${task.gg_previste || 'Non specificato'}</dd><dt class="col-sm-4">Giorni Effettuati</dt><dd class="col-sm-8">${gg_effettuate.toFixed(1)}</dd></dl>`;
+                    if (isUser) {
+                        modalBody = `${baseDetails}${giornateSection}`;
+                    } else {
+                        const showSpeseStd = task.Spese_Comprese === 'No' && parseFloat(task.Valore_Spese_std) > 0;
+                        modalBody = `${baseDetails}<hr><h5>Dettagli Economici</h5><dl class="row"><dt class="col-sm-4">Valore Giorno (€)</dt><dd class="col-sm-8">${this.app.utils.formatCurrency(task.Valore_gg)}</dd><dt class="col-sm-4">Valore Maturato (€)</dt><dd class="col-sm-8"><strong>${this.app.utils.formatCurrency(valore_gg_maturato)}</strong></dd><dt class="col-sm-4">Spese Comprese</dt><dd class="col-sm-8">${task.Spese_Comprese}</dd>${showSpeseStd ? `<dt class="col-sm-4">Valore Spese Standard (€)</dt><dd class="col-sm-8">${this.app.utils.formatCurrency(task.Valore_Spese_std)}</dd>` : ''}<dt class="col-sm-4">Spese Maturate (€)</dt><dd class="col-sm-8"><strong>${this.app.utils.formatCurrency(valore_spese_maturato)}</strong></dd></dl>${giornateSection}`;
+                    }
                     break;
                 }
                 case 'Promo': case 'Sviluppo': case 'Formazione': {

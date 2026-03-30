@@ -579,8 +579,80 @@ class ManagementApp {
     // SEZIONE 4: CARICAMENTO E GESTIONE DATI
     // ========================================================================
 
+    /**
+     * Cattura lo stato di tutti i filtri (input, select, checkbox) nella zona .search-filters
+     */
+    _saveFilterState() {
+        const state = { inputs: {}, selects: {}, checkboxes: {} };
+        const container = document.querySelector('.search-filters');
+        if (!container) return null;
+        container.querySelectorAll('input[type="text"], input[type="search"]').forEach(el => {
+            if (el.id) state.inputs[el.id] = el.value;
+        });
+        container.querySelectorAll('select').forEach(el => {
+            if (el.id) state.selects[el.id] = el.value;
+        });
+        container.querySelectorAll('input[type="checkbox"]').forEach(el => {
+            const key = el.id || (el.closest('[id]')?.id + '_' + el.value);
+            state.checkboxes[key] = el.checked;
+        });
+        // Salva anche il testo dei pulsanti dropdown (per anno/mese)
+        state.buttons = {};
+        container.querySelectorAll('button.dropdown-toggle').forEach(el => {
+            if (el.id) state.buttons[el.id] = el.textContent;
+        });
+        return state;
+    }
+
+    /**
+     * Ripristina lo stato dei filtri e riapplica il filtraggio
+     */
+    _restoreFilterState(state) {
+        if (!state) return;
+        const container = document.querySelector('.search-filters');
+        if (!container) return;
+        // Ripristina input di testo
+        Object.entries(state.inputs).forEach(([id, val]) => {
+            const el = document.getElementById(id);
+            if (el) el.value = val;
+        });
+        // Ripristina select
+        Object.entries(state.selects).forEach(([id, val]) => {
+            const el = document.getElementById(id);
+            if (el) el.value = val;
+        });
+        // Ripristina checkbox
+        Object.entries(state.checkboxes).forEach(([key, checked]) => {
+            // Prova per id diretto
+            let el = document.getElementById(key);
+            if (!el) {
+                // Formato: containerId_value
+                const parts = key.split('_');
+                const val = parts.pop();
+                const containerId = parts.join('_');
+                const cont = document.getElementById(containerId);
+                if (cont) el = cont.querySelector(`input[type="checkbox"][value="${val}"]`);
+            }
+            if (el) el.checked = checked;
+        });
+        // Ripristina testo pulsanti dropdown
+        Object.entries(state.buttons || {}).forEach(([id, text]) => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = text;
+        });
+        // Riesegui il filtraggio nella sezione corrente
+        const currentHandler = this.sections[this.currentSection];
+        if (currentHandler && typeof currentHandler.filterData === 'function') {
+            currentHandler.filterData();
+        }
+    }
+
     async loadInitialData() {
         const contentArea = document.getElementById('contentArea');
+
+        // Salva lo stato dei filtri prima di ricaricare
+        const savedFilters = this._saveFilterState();
+
         if (contentArea) contentArea.innerHTML = this.ui.createLoadingState('Caricamento dati...');
 
         try {
@@ -591,6 +663,9 @@ class ManagementApp {
             [ this.commesse, this.tasks, this.giornate, this.clienti, this.collaboratori, this.tariffe, this.fatture /* , this.fatture_collaboratori */ ] = responses.map(res => (res.success && res.data.data) ? res.data.data : []);
             console.log('✅ Dati iniziali caricati.');
             await this.showSection(this.currentSection);
+
+            // Ripristina i filtri dopo il render
+            this._restoreFilterState(savedFilters);
         } catch (error) {
             console.error('Errore critico caricamento dati:', error);
             this.ui.showToast('Impossibile caricare i dati dal server.', 'error');
