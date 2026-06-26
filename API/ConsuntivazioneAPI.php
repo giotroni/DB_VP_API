@@ -286,6 +286,7 @@ class ConsuntivazioneAPI {
                         g.Confermata,
                         t.Task,
                         c.Commessa,
+                        c.ID_COMMESSA,
                         cl.Cliente,
                         YEAR(g.Data) as Anno,
                         MONTH(g.Data) as Mese,
@@ -400,45 +401,30 @@ class ConsuntivazioneAPI {
                 return 0;
             }
             
-            // Query per ottenere la tariffa appropriata per questa consuntivazione
-            $sql = "SELECT 
-                        COALESCE(
-                            -- Tariffa specifica per commessa se esiste
-                            (SELECT tc.Tariffa_gg 
-                             FROM ANA_TARIFFE_COLLABORATORI tc
-                             WHERE tc.ID_COLLABORATORE = ?
-                             AND tc.ID_COMMESSA = (
-                                 SELECT c.ID_COMMESSA 
-                                 FROM ANA_TASK t 
-                                 JOIN ANA_COMMESSE c ON t.ID_COMMESSA = c.ID_COMMESSA 
-                                 WHERE t.Task = ?
-                             )
-                             AND tc.Dal <= ?
-                             ORDER BY tc.Dal DESC
-                             LIMIT 1),
-                            -- Altrimenti tariffa standard (ID_COMMESSA è NULL)
-                            (SELECT ts.Tariffa_gg
-                             FROM ANA_TARIFFE_COLLABORATORI ts
-                             WHERE ts.ID_COLLABORATORE = ?
-                             AND ts.ID_COMMESSA IS NULL
-                             AND ts.Dal <= ?
-                             ORDER BY ts.Dal DESC
-                             LIMIT 1),
-                            0
-                        ) as tariffa_gg";
-            
+            // Query per ottenere la tariffa appropriata per questa consuntivazione.
+            // La commessa viene risolta tramite ID_COMMESSA (non tramite il nome del
+            // task, che è una categoria generica condivisa da più commesse).
+            // Dà priorità alla tariffa specifica per commessa, con fallback alla
+            // tariffa standard (ID_COMMESSA IS NULL). Stessa semantica di
+            // GiornateAPI::getTariffaAttiva() per garantire coerenza tra le viste.
+            $sql = "SELECT Tariffa_gg
+                    FROM ANA_TARIFFE_COLLABORATORI
+                    WHERE ID_COLLABORATORE = ?
+                    AND Dal <= ?
+                    AND (ID_COMMESSA = ? OR ID_COMMESSA IS NULL)
+                    ORDER BY ID_COMMESSA DESC, Dal DESC
+                    LIMIT 1";
+
             $stmt = $this->db->prepare($sql);
             $stmt->execute([
                 $collaboratoreId,
-                $consuntivazione['Task'] ?? '',
                 $consuntivazione['Data'],
-                $collaboratoreId,
-                $consuntivazione['Data']
+                $consuntivazione['ID_COMMESSA'] ?? null
             ]);
-            
-            $result = $stmt->fetch();
-            $tariffaGg = $result['tariffa_gg'] ?? 0;
-            
+
+            $tariffaGg = $stmt->fetchColumn();
+            $tariffaGg = $tariffaGg !== false ? floatval($tariffaGg) : 0;
+
             return $consuntivazione['gg'] * $tariffaGg;
             
         } catch (Exception $e) {
