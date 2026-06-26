@@ -18,6 +18,9 @@ define('DB_PASS', 'password_database');  // Password MySQL
 
 define('DB_CHARSET', 'utf8mb4');         // Charset del database
 
+// Password per l'accesso al visualizzatore di log (DB/log_viewer.php)
+define('LOG_VIEWER_PASSWORD', 'password_log_viewer');
+
 // Classe per la gestione della connessione al database
 class DatabaseConnection {
     private static $instance = null;

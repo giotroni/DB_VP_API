@@ -4,10 +4,14 @@
  * Accesso sicuro ai file di log con funzionalità di filtro e ricerca
  */
 
+// Carica la configurazione (contiene LOG_VIEWER_PASSWORD, non versionata)
+require_once __DIR__ . '/config.php';
+
 // Configurazione di sicurezza
 $allowedIPs = ['127.0.0.1', '::1']; // Aggiungi qui gli IP autorizzati
 $requireAuth = true; // Imposta false per disabilitare l'autenticazione
-$adminPassword = 'VaglioLog2025!'; // Cambia questa password!
+// Password letta da config.php (DB/config.example.php per il template)
+$adminPassword = defined('LOG_VIEWER_PASSWORD') ? LOG_VIEWER_PASSWORD : '';
 
 // Verifica accesso
 if ($requireAuth) {
