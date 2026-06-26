@@ -1,0 +1,12 @@
+# Configurazione con credenziali (NON committare)
+DB/config.php
+
+# Log
+DB/logs/
+API/logs/
+*.log
+
+# File temporanei / OS
+Thumbs.db
+.DS_Store
+*.tmp

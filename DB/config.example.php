@@ -1,22 +1,20 @@
 <?php
 /**
- * Configurazione Database MySQL
- * File di configurazione per la connessione al database
+ * Configurazione Database MySQL - TEMPLATE
+ *
+ * Copiare questo file in `DB/config.php` e inserire le credenziali reali.
+ * `DB/config.php` è escluso dal versionamento (vedi .gitignore) per non
+ * esporre le credenziali su GitHub.
+ *
+ *   cp DB/config.example.php DB/config.php
  */
 
 // Configurazioni del database - MODIFICARE CON I PROPRI PARAMETRI
 
 define('DB_HOST', 'localhost');          // Indirizzo del server MySQL
-
-// DB PRODUZIONE
-define('DB_NAME', 'vaglioty_DB_VP'); // Nome del database
-define('DB_USER', 'vaglioty_DB_VP');      // Username MySQL
-define('DB_PASS', 'busriMnyahh2Xc5');      // Password MySQL
-
-// DB TEST
-// define('DB_NAME', 'vaglioty_DB_VP_TEST');   // Nome del database di test
-// define('DB_USER', 'vaglioty_DB_VP_TEST');   // Username MySQL di test
-// define('DB_PASS', '4X9X8sY2szynLPN');       // Password MySQL di test
+define('DB_NAME', 'nome_database');      // Nome del database
+define('DB_USER', 'utente_database');    // Username MySQL
+define('DB_PASS', 'password_database');  // Password MySQL
 
 define('DB_CHARSET', 'utf8mb4');         // Charset del database
 
@@ -24,7 +22,7 @@ define('DB_CHARSET', 'utf8mb4');         // Charset del database
 class DatabaseConnection {
     private static $instance = null;
     private $connection;
-    
+
     private function __construct() {
         try {
             $dsn = "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=" . DB_CHARSET;
@@ -62,18 +60,18 @@ class DatabaseConnection {
             die("Errore di connessione al database. Vedi error log.");
         }
     }
-    
+
     public static function getInstance() {
         if (self::$instance === null) {
             self::$instance = new self();
         }
         return self::$instance;
     }
-    
+
     public function getConnection() {
         return $this->connection;
     }
-    
+
     // Metodo per testare la connessione
     public function testConnection() {
         try {
