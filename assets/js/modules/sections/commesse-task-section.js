@@ -289,11 +289,22 @@ class CommesseTaskSection extends BaseSection {
             ? `<div class="fw-bold text-primary" data-bs-toggle="tooltip" title="Giorni effettuati su giorni previsti per questo task">${totaleGgCampo.toFixed(1)} su ${ggPreviste.toFixed(1)}</div><small class="text-muted">Progresso gg</small>`
             : `<div class="fw-bold text-primary" data-bs-toggle="tooltip" title="Giorni effettuati (nessun limite previsto)">${totaleGgCampo.toFixed(1)}</div><small class="text-muted">Tot. gg (Campo)</small>`;
 
+        // Task Campo attivo su commessa cliente senza prezzo: le giornate che ci
+        // vengono consuntivate producono costo ma ricavo zero. Va corretto.
+        const senzaValore = !isUser && this.verificaValoreGgTaskCampo({
+            Tipo: task.Tipo, Stato_Task: task.Stato_Task,
+            Valore_gg: task.Valore_gg, ID_COMMESSA: task.ID_COMMESSA
+        }) !== null;
+        const avvisoValoreHtml = senzaValore
+            ? `<div class="alert alert-warning py-2 px-2 mb-2 small" data-bs-toggle="tooltip" title="Le giornate consuntivate su questo task risultano a ricavo zero finché non viene indicato il Valore Giorno."><i class="fas fa-exclamation-triangle me-1"></i><strong>Valore Giorno mancante</strong></div>`
+            : '';
+
         return `
             <div class="col-lg-6 col-xl-4 mb-3">
-                <div class="card h-100 border-0 shadow-sm d-flex flex-column">
+                <div class="card h-100 border-0 shadow-sm d-flex flex-column${senzaValore ? ' border-warning border' : ''}">
                     <div class="card-header bg-light border-0"><div class="d-flex justify-content-between align-items-start"><h6 class="card-title mb-0 fw-bold">${task.Task}</h6><span class="status-badge ${task.Stato_Task === 'In corso' ? 'active' : 'inactive'}"><i class="fas fa-circle"></i> ${task.Stato_Task}</span></div><small class="text-muted d-block"><i class="fas fa-tag me-1"></i>${task.Tipo || 'Campo'}</small></div>
                     <div class="card-body">
+                        ${avvisoValoreHtml}
                         <p class="card-text text-muted small">${task.Desc_Task || ''}</p>
                         <div class="row text-center">
                             ${isUser ? `
@@ -901,15 +912,66 @@ class CommesseTaskSection extends BaseSection {
             warningDiv.classList.toggle('d-none', !hasActive);
         };
 
+        // Avviso: task Campo attivo su commessa cliente senza Valore Giorno
+        const valoreGgInput = form.querySelector('#Valore_gg');
+        const valoreWarning = document.createElement('div');
+        valoreWarning.className = 'alert alert-warning py-2 mt-2 mb-0 d-none';
+        valoreWarning.innerHTML = '<i class="fas fa-exclamation-triangle me-2"></i><strong>Valore Giorno obbligatorio:</strong> '
+            + 'è un task Campo su una commessa cliente. Senza prezzo le giornate consuntivate risulterebbero a ricavo zero. '
+            + 'In alternativa metti il task in stato "Sospeso".';
+        valoreGgInput?.closest('.col-md-4, .mb-3')?.appendChild(valoreWarning);
+
+        const checkValoreGg = () => {
+            if (!valoreGgInput) return;
+            const errore = this.verificaValoreGgTaskCampo({
+                Tipo: tipoSelect?.value,
+                Stato_Task: statoSelect?.value,
+                Valore_gg: valoreGgInput.value,
+                ID_COMMESSA: commessaSelect?.value
+            });
+            valoreWarning.classList.toggle('d-none', !errore);
+            valoreGgInput.classList.toggle('is-invalid', !!errore);
+        };
+
         tipoSelect?.addEventListener('change', toggleAssegnato);
         tipoSelect?.addEventListener('change', checkMonitoraggioAttivo);
+        tipoSelect?.addEventListener('change', checkValoreGg);
         commessaSelect?.addEventListener('change', checkMonitoraggioAttivo);
+        commessaSelect?.addEventListener('change', checkValoreGg);
+        valoreGgInput?.addEventListener('input', checkValoreGg);
+        statoSelect?.addEventListener('change', checkValoreGg);
         speseSelect?.addEventListener('change', toggleSpeseStd);
         statoSelect?.addEventListener('change', handleStatoChange);
         dataFineInput?.addEventListener('change', handleDataFineChange);
         toggleAssegnato();
         toggleSpeseStd();
         checkMonitoraggioAttivo();
+        checkValoreGg();
+    }
+
+    /**
+     * Verifica che un task 'Campo' attivo su una commessa cliente abbia un
+     * prezzo di vendita. Restituisce il messaggio d'errore, o null se va bene.
+     *
+     * Stessa regola applicata dal backend in TaskAPI: qui serve solo a dare un
+     * riscontro immediato, il controllo che conta è quello lato server.
+     */
+    verificaValoreGgTaskCampo(taskData) {
+        if (taskData.Tipo !== 'Campo') return null;
+
+        // In creazione lo stato può mancare: in ANA_TASK il default è 'In corso'
+        const stato = taskData.Stato_Task || 'In corso';
+        if (stato !== 'In corso') return null;
+
+        const valore = parseFloat(taskData.Valore_gg);
+        if (!isNaN(valore) && valore > 0) return null;
+
+        const commessa = this.app.commesse.find(c => String(c.ID_COMMESSA) === String(taskData.ID_COMMESSA));
+        if (!commessa || commessa.Tipo_Commessa !== 'Cliente') return null;
+
+        return `Il task è di tipo "Campo" sulla commessa cliente "${commessa.Commessa}": `
+             + `per tenerlo "In corso" devi indicare il Valore Giorno (€), altrimenti le giornate `
+             + `consuntivate risulterebbero a ricavo zero. In alternativa mettilo in stato "Sospeso".`;
     }
 
     async handleTaskFormSubmit(event, taskId = null) {
@@ -935,6 +997,15 @@ class CommesseTaskSection extends BaseSection {
             }
         }
         
+        // Un task Campo attivo su commessa cliente deve avere un prezzo di vendita:
+        // senza, le giornate consuntivate producono costo ma ricavo zero.
+        // Le commesse interne sono escluse: lì il lavoro non si vende.
+        const erroreValore = this.verificaValoreGgTaskCampo(taskData);
+        if (erroreValore) {
+            this.ui.showToast(erroreValore, 'error');
+            return;
+        }
+
         // Blocca la creazione di un secondo task Monitoraggio attivo per la stessa commessa
         if (!taskId && taskData.Tipo === 'Monitoraggio' && taskData.ID_COMMESSA) {
             const commessaConTask = this.commesseConTask?.find(c => c.ID_COMMESSA === taskData.ID_COMMESSA);

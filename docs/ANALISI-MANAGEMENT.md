@@ -586,24 +586,37 @@ conto economico mensile di qualsiasi commessa.
 Chiuso portando la logica in `BaseAPI`, in tre punti di estensione descritti al § 7.2, in
 modo che una risorsa nuova nasca limitata invece di dipendere da chi la scrive.
 
-### A1 — I task senza `Valore_gg` valorizzano sempre 0 · *contabile, medio*
+### A1 — Il fallback sulle tariffe è codice morto, e il problema vero sta nei dati · *presidiato il 31/07/2026*
 
 Quando `ANA_TASK.Valore_gg` è 0 o nullo, `TaskAPI` dovrebbe ripiegare sulle tariffe dei
-collaboratori. La query di fallback
-([TaskAPI.php:555-567](../API/TaskAPI.php#L555-L567) e la gemella filtrata) referenzia
-però una colonna `ANA_TARIFFE_COLLABORATORI.Al` **che non esiste** — lo schema ha solo
-`Dal`. La query solleva un errore SQL, il `catch` lo assorbe e la funzione restituisce 0.
+collaboratori. La query di fallback (in `calcolaValoreGg()` e nella gemella filtrata)
+referenzia però una colonna `ANA_TARIFFE_COLLABORATORI.Al` **che non esiste** — lo schema
+ha solo `Dal`, perché le tariffe hanno validità aperta. La query solleva
+`Unknown column 't.Al' in 'ON'`, il `catch` lo assorbe e la funzione restituisce 0: il
+fallback non ha mai funzionato dal giorno in cui è stato scritto.
 
-Verificato: `Unknown column 't.Al' in 'ON'`. Il task TAS00055 ha 2 giornate consuntivate
-di CONS003 (tariffa 1.000 €/gg attiva) e riporta `valore_gg_maturato = 0`, mentre il suo
-costo viene regolarmente conteggiato: la commessa risulta in perdita di 2.000 €.
+**Non è però la causa di margini sbagliati oggi.** I due task `Campo` senza prezzo che
+hanno giornate consuntivate — `TAS00055` e `TAS00106` — stanno entrambi su `COM2025001
+"Sviluppo"`, una commessa **Interna**: lì l'assenza di prezzo è corretta, il lavoro
+interno non si vende ed è puro costo. Far funzionare il fallback sarebbe anzi **dannoso**,
+perché valorizzerebbe quelle giornate alla tariffa di costo del collaboratore, inventando
+ricavo su un progetto interno e facendolo apparire in pareggio. C'è del resto un problema
+concettuale a monte: usare la tariffa di costo come prezzo di vendita produce margine zero
+per costruzione, e non è un ripiego sensato in nessuno scenario.
 
-Riguarda 3 task `Campo` più tutti i task `Promo`, `Sviluppo` e `Formazione` — questi
-ultimi, però, sono esclusi dal valore per scelta progettuale, quindi l'impatto reale è
-sui 3 task `Campo`.
+Il rischio reale è **il dato mancante su una commessa cliente**: `TAS00086 "POLMONE"`, di
+tipo `Campo` e `In corso` su `COM2025013 LACTALIS`, non ha `Valore_gg`. Oggi non produce
+danni perché non ha giornate, ma appena qualcuno ci consuntiva sopra quelle giornate
+generano costo e ricavo zero, e il margine della commessa è sbagliato senza alcun avviso.
 
-Rimedio: rimuovere `COALESCE(t.Al, '9999-12-31')` dalle due query, oppure aggiungere la
-colonna `Al` allo schema se si vuole davvero una validità chiusa.
+**Presidiato**, su indicazione dell'utente, impedendo il dato sbagliato invece di
+inventarlo: un task `Campo` su commessa `Cliente` non può restare `In corso` senza
+`Valore_gg`. Il vincolo è in `TaskAPI` su create e update, con riscontro immediato nel
+form e un avviso sulle schede dei task già esistenti che ne sono privi. Le commesse
+`Interna` sono escluse, e lo stato `Sospeso` resta disponibile come via d'uscita per i
+task storici incompleti.
+
+Resta da fare: **rimuovere il fallback morto**. Non va "riparato" sistemando la colonna.
 
 ### A2 — Le spese forfettarie sono contate una volta per task come ricavo, una volta per giornata come costo · *contabile, medio*
 

@@ -30,11 +30,71 @@ class TaskAPI extends BaseAPI {
     }
     
     /**
+     * Un task 'Campo' attivo su una commessa di tipo 'Cliente' deve avere un
+     * prezzo di vendita: senza Valore_gg le giornate che ci vengono
+     * consuntivate producono costo ma ricavo zero, e il margine della commessa
+     * risulta sbagliato senza che nulla lo segnali.
+     *
+     * Il vincolo NON si applica alle commesse 'Interna', dove l'assenza di
+     * prezzo è corretta: il lavoro interno non si vende, è puro costo.
+     * Non si applica nemmeno ai task non attivi, così un task storico
+     * incompleto può comunque essere sospeso o chiuso.
+     *
+     * @return string|null messaggio di errore, oppure null se va bene
+     */
+    private function verificaValoreGgObbligatorio($tipo, $commessaId, $statoTask, $valoreGg) {
+        if ($tipo !== 'Campo' || empty($commessaId)) {
+            return null;
+        }
+
+        // Stato assente in creazione: in ANA_TASK il default è 'In corso'
+        $stato = $statoTask ?: 'In corso';
+        if ($stato !== 'In corso') {
+            return null;
+        }
+
+        if ($valoreGg !== null && $valoreGg !== '' && floatval($valoreGg) > 0) {
+            return null;
+        }
+
+        try {
+            $stmt = $this->db->prepare(
+                "SELECT Tipo_Commessa, Commessa FROM ANA_COMMESSE WHERE ID_COMMESSA = :id LIMIT 1"
+            );
+            $stmt->bindValue(':id', $commessaId);
+            $stmt->execute();
+            $commessa = $stmt->fetch();
+        } catch (PDOException $e) {
+            // In caso di errore non blocchiamo il salvataggio
+            return null;
+        }
+
+        if (!$commessa || ($commessa['Tipo_Commessa'] ?? '') !== 'Cliente') {
+            return null;
+        }
+
+        return "Il task è di tipo 'Campo' sulla commessa cliente \"{$commessa['Commessa']}\": "
+             . "per tenerlo 'In corso' devi indicare il Valore Giorno (€), altrimenti le giornate "
+             . "consuntivate risulterebbero a ricavo zero. In alternativa mettilo in stato 'Sospeso'.";
+    }
+
+    /**
      * Override create per impedire la creazione di un secondo task Monitoraggio attivo
      * sulla stessa commessa.
      */
     protected function create() {
         $input = $this->getRequestBody();
+
+        $errore = $this->verificaValoreGgObbligatorio(
+            $input['Tipo']        ?? null,
+            $input['ID_COMMESSA'] ?? null,
+            $input['Stato_Task']  ?? null,
+            $input['Valore_gg']   ?? null
+        );
+        if ($errore !== null) {
+            sendErrorResponse($errore, 400);
+            return;
+        }
 
         if (($input['Tipo'] ?? '') === 'Monitoraggio' && !empty($input['ID_COMMESSA'])) {
             try {
@@ -68,6 +128,31 @@ class TaskAPI extends BaseAPI {
      */
     protected function update($id) {
         $input = $this->getRequestBody();
+
+        // Il valore obbligatorio va verificato sullo stato in cui il task
+        // resterà dopo il salvataggio: l'aggiornamento può essere parziale,
+        // quindi i campi assenti si leggono dal record attuale.
+        try {
+            $curStmt = $this->db->prepare(
+                "SELECT Tipo, ID_COMMESSA, Stato_Task, Valore_gg FROM ANA_TASK WHERE ID_TASK = :id"
+            );
+            $curStmt->bindValue(':id', $id);
+            $curStmt->execute();
+            $attuale = $curStmt->fetch() ?: [];
+        } catch (PDOException $e) {
+            $attuale = [];
+        }
+
+        $errore = $this->verificaValoreGgObbligatorio(
+            array_key_exists('Tipo', $input)        ? $input['Tipo']        : ($attuale['Tipo']        ?? null),
+            array_key_exists('ID_COMMESSA', $input) ? $input['ID_COMMESSA'] : ($attuale['ID_COMMESSA'] ?? null),
+            array_key_exists('Stato_Task', $input)  ? $input['Stato_Task']  : ($attuale['Stato_Task']  ?? null),
+            array_key_exists('Valore_gg', $input)   ? $input['Valore_gg']   : ($attuale['Valore_gg']   ?? null)
+        );
+        if ($errore !== null) {
+            sendErrorResponse($errore, 400);
+            return;
+        }
 
         // Recupera tipo e commessa: prima dall'input, poi dal record esistente se non forniti
         $tipo       = $input['Tipo']        ?? null;
@@ -562,38 +647,17 @@ class TaskAPI extends BaseAPI {
                 
                 return $totaleGg * $prezzoGg;
             }
-            
-            // Fallback: usa le tariffe dei collaboratori
-            $sql = "SELECT g.gg, g.ID_COLLABORATORE, 
-                           COALESCE(t.Tariffa_gg, tg.Tariffa_gg, 0) as tariffa
-                    FROM FACT_GIORNATE g
-                    LEFT JOIN ANA_TARIFFE_COLLABORATORI t ON g.ID_COLLABORATORE = t.ID_COLLABORATORE 
-                                                          AND (t.ID_COMMESSA = :commessa_id OR t.ID_COMMESSA IS NULL)
-                                                          AND g.Data BETWEEN t.Dal AND COALESCE(t.Al, '9999-12-31')
-                    LEFT JOIN ANA_TARIFFE_COLLABORATORI tg ON g.ID_COLLABORATORE = tg.ID_COLLABORATORE
-                                                            AND tg.ID_COMMESSA IS NULL
-                                                            AND g.Data BETWEEN tg.Dal AND COALESCE(tg.Al, '9999-12-31')
-                    WHERE g.ID_TASK = :task_id 
-                      AND g.Tipo = 'Campo'
-                      {$whereClause}
-                    ORDER BY t.ID_COMMESSA DESC, t.Dal DESC";
-            
-            $params[':commessa_id'] = $taskData['ID_COMMESSA'];
-            $stmt = $this->db->prepare($sql);
-            foreach ($params as $key => $value) {
-                $stmt->bindValue($key, $value);
-            }
-            $stmt->execute();
-            $giornate = $stmt->fetchAll();
-            
-            $totaleValore = 0;
-            foreach ($giornate as $giornata) {
-                $gg = floatval(str_replace(',', '.', $giornata['gg']));
-                $tariffa = floatval($giornata['tariffa']);
-                $totaleValore += $gg * $tariffa;
-            }
-            
-            return $totaleValore;
+
+            // Senza prezzo di vendita il task non matura ricavo.
+            // Qui c'era un fallback sulle tariffe dei collaboratori: non ha mai
+            // funzionato (interrogava una colonna 'Al' inesistente, l'eccezione
+            // veniva assorbita e tornava comunque 0) ed era concettualmente
+            // sbagliato, perché usare la tariffa di costo come prezzo di vendita
+            // produce margine zero per costruzione e inventerebbe ricavo sulle
+            // commesse interne, dove l'assenza di prezzo è voluta.
+            // I task Campo delle commesse cliente sono ora obbligati ad avere
+            // Valore_gg (vedi verificaValoreGgObbligatorio).
+            return 0;
         } catch (Exception $e) {
             return 0;
         }
@@ -801,33 +865,11 @@ class TaskAPI extends BaseAPI {
                 }
                 return $totaleGg * $prezzoGg;
             }
-            
-            // Fallback: usa le tariffe dei collaboratori
-            $sql = "SELECT g.gg, g.ID_COLLABORATORE, 
-                           COALESCE(t.Tariffa_gg, tg.Tariffa_gg, 0) as tariffa
-                    FROM FACT_GIORNATE g
-                    LEFT JOIN ANA_TARIFFE_COLLABORATORI t ON g.ID_COLLABORATORE = t.ID_COLLABORATORE 
-                                                          AND (t.ID_COMMESSA = :commessa_id OR t.ID_COMMESSA IS NULL)
-                                                          AND g.Data BETWEEN t.Dal AND COALESCE(t.Al, '9999-12-31')
-                    LEFT JOIN ANA_TARIFFE_COLLABORATORI tg ON g.ID_COLLABORATORE = tg.ID_COLLABORATORE
-                                                            AND tg.ID_COMMESSA IS NULL
-                                                            AND g.Data BETWEEN tg.Dal AND COALESCE(tg.Al, '9999-12-31')
-                    WHERE g.ID_TASK = :task_id 
-                      AND g.Tipo = 'Campo'
-                    ORDER BY t.ID_COMMESSA DESC, t.Dal DESC";
-            
-            $stmt = $this->db->prepare($sql);
-            $stmt->bindValue(':task_id', $taskId);
-            $stmt->bindValue(':commessa_id', $taskData['ID_COMMESSA']);
-            $stmt->execute();
-            $giornate = $stmt->fetchAll();
-            
+
+            // Senza prezzo di vendita il task non matura ricavo: vedi la nota
+            // in calcolaValoreGgFiltrato() sul perché il fallback sulle tariffe
+            // dei collaboratori è stato rimosso invece che riparato.
             $totaleValore = 0;
-            foreach ($giornate as $giornata) {
-                $gg = floatval(str_replace(',', '.', $giornata['gg']));
-                $tariffa = floatval($giornata['tariffa']);
-                $totaleValore += $gg * $tariffa;
-            }
             
             return $totaleValore;
         } catch (Exception $e) {
