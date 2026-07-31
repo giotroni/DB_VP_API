@@ -221,7 +221,8 @@ class CommesseAPI extends BaseAPI {
     protected function getAll() {
         try {
             $params = [];
-            $whereClause = $this->buildWhereClause($params);
+            // La query usa l'alias 'c' per ANA_COMMESSE
+            $whereClause = $this->buildScopedWhereClause($params, 'c.');
             $orderBy = $this->getOrderBy();
             
             // Query con JOIN per includere il nome del cliente
@@ -258,7 +259,8 @@ class CommesseAPI extends BaseAPI {
             foreach ($records as $record) {
                 $processedRecords[] = $this->processRecord($record);
             }
-            
+            $processedRecords = $this->applyRoleProjection($processedRecords);
+
             // Conta totale per paginazione
             $total = $this->getTotalCountCommesse($whereClause, $params);
             
@@ -382,17 +384,34 @@ class CommesseAPI extends BaseAPI {
             $params[':data_a'] = $_GET['data_a'];
         }
         
-        // Filtro visibilità: gli utenti con ruolo 'User' vedono solo le commesse assegnate
-        if (session_status() !== PHP_SESSION_ACTIVE) session_start();
-        if (isset($_SESSION['user_role']) && $_SESSION['user_role'] === 'User' && !empty($_SESSION['user_id'])) {
-            $conditions[] = "c.ID_COMMESSA IN (
-                SELECT ID_COMMESSA FROM ANA_COMMESSE_VISIBILITA
-                WHERE ID_COLLABORATORE = :current_user_id
-            )";
-            $params[':current_user_id'] = $_SESSION['user_id'];
-        }
+        // Il filtro di visibilità per il ruolo 'User' è in getRoleScopeClause():
+        // applicato da BaseAPI::buildScopedWhereClause() insieme a questi filtri.
 
         return implode(' AND ', $conditions);
+    }
+
+    /**
+     * Il ruolo 'User' vede solo le commesse che gli sono state assegnate.
+     */
+    protected function getRoleScopeClause(&$params, $alias = '') {
+        if (!$this->isRestrictedUser()) {
+            return null;
+        }
+
+        return "{$alias}ID_COMMESSA IN (" . $this->visibleCommesseSubquery($params) . ")";
+    }
+
+    /**
+     * Commissione esclusa: è la provvigione del responsabile, dato economico.
+     * Fuori anche collaboratore_info, che contiene l'email: il nome del
+     * responsabile il front-end lo ricava già da ANA_COLLABORATORI.
+     */
+    protected function getRestrictedUserFields() {
+        return [
+            'ID_COMMESSA', 'Commessa', 'Desc_Commessa', 'Tipo_Commessa',
+            'ID_CLIENTE', 'ID_COLLABORATORE', 'Data_Apertura_Commessa',
+            'Stato_Commessa', 'Cliente', 'cliente_info'
+        ];
     }
 
     /**
@@ -557,6 +576,11 @@ class CommesseAPI extends BaseAPI {
      */
     public function handleRequest($id = null) {
         if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'maturato') {
+            // Il maturato mensile e' il conto economico della commessa e viene
+            // calcolato con SQL proprio, che non passa dal filtro di ruolo:
+            // per il ruolo 'User' l'endpoint e' chiuso del tutto.
+            $this->assertNotRestrictedUser();
+
             // Permetti chiamate con o senza id: se non c'è id calcoliamo per tutte le commesse
             $commessaId = $id ?? ($_GET['id'] ?? null);
             $this->getMaturatoMensile($commessaId);

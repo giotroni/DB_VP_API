@@ -128,6 +128,29 @@ class ClientiAPI extends BaseAPI {
     /**
      * Costruisce clausola WHERE per filtri
      */
+    /**
+     * Il ruolo 'User' vede solo i clienti delle commesse che gli sono
+     * assegnate: gli serve il nome del cliente sulla scheda commessa.
+     */
+    protected function getRoleScopeClause(&$params, $alias = '') {
+        if (!$this->isRestrictedUser()) {
+            return null;
+        }
+
+        return "{$alias}ID_CLIENTE IN (
+            SELECT ID_CLIENTE FROM ANA_COMMESSE
+            WHERE ID_CLIENTE IS NOT NULL
+              AND ID_COMMESSA IN (" . $this->visibleCommesseSubquery($params) . ")
+        )";
+    }
+
+    /**
+     * Solo la ragione sociale: indirizzo e partita IVA non servono alla scheda.
+     */
+    protected function getRestrictedUserFields() {
+        return ['ID_CLIENTE', 'Cliente'];
+    }
+
     protected function buildWhereClause(&$params) {
         $conditions = [];
         

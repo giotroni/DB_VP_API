@@ -284,6 +284,20 @@ class FattureAPI extends BaseAPI {
     /**
      * Costruisce clausola WHERE per filtri
      */
+    /**
+     * Il ruolo 'User' non vede alcuna fattura: il fatturato ai clienti è il
+     * dato economico più sensibile e non compare in nessuna sua schermata.
+     * Management carica comunque la risorsa all'avvio per tutti i ruoli, quindi
+     * la risposta è un elenco vuoto e non un errore.
+     */
+    protected function getRoleScopeClause(&$params, $alias = '') {
+        if (!$this->isRestrictedUser()) {
+            return null;
+        }
+
+        return '1 = 0';
+    }
+
     protected function buildWhereClause(&$params) {
         $conditions = [];
         

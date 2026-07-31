@@ -437,14 +437,52 @@ resta l'unico endpoint raggiungibile senza sessione. Stesso controllo su
 `ConsuntivazioneAPI::serveImage()`, che serve gli allegati.
 
 Va tenuta ferma la distinzione fra i due livelli: **il gate su `index.php` è il controllo
-di accesso**, mentre il filtro per ruolo — la visibilità commesse per gli utenti `User`,
-e il nascondere i badge economici nel front-end — agisce **sui dati già autorizzati**.
-Il secondo non sostituisce il primo, e infatti oggi è ancora parziale: `TaskAPI` e
-`GiornateAPI` non filtrano per ruolo, quindi un utente `User` autenticato vede le
-giornate di tutti i collaboratori (§ 10, punto S2).
+di accesso** (chi sei), mentre il filtro per ruolo decide **cosa puoi vedere** una volta
+entrato. Il secondo non sostituisce il primo.
 
 > Storicamente non era così: fino al 31/07/2026 il router non effettuava alcun controllo
 > di sessione e l'intero database era leggibile e scrivibile senza login. Vedi § 10, S1.
+
+### 7.2 Autorizzazione per ruolo
+
+`Admin`, `Manager` e `Amministrazione` non hanno restrizioni sulle API. **`User` è l'unico
+ruolo limitato**: è il collaboratore che consuntiva, e in Management vede la sola sezione
+Commesse & Task senza alcun dato economico.
+
+Le restrizioni vivono in `BaseAPI` ([BaseAPI.php](../API/BaseAPI.php)) e sono tre, così
+che una risorsa nuova nasca limitata invece di dipendere da chi la scrive:
+
+| Punto di estensione | Cosa decide |
+|---|---|
+| `getRoleScopeClause()` | **quali righe** — condizione SQL aggiunta a ogni `SELECT`, elenco e singolo record |
+| `getRestrictedUserFields()` | **quali colonne** — allowlist applicata dopo `processRecord()` |
+| `assertWriteAllowed()` | **la scrittura è vietata** — `403` su POST/PUT/DELETE |
+
+Il perno è `ANA_COMMESSE_VISIBILITA`: la visibilità è concessa a livello di **commessa** e
+da lì discende su task e giornate. Risorsa per risorsa, un utente `User` vede:
+
+| Risorsa | Righe | Colonne escluse |
+|---|---|---|
+| `commesse` | solo quelle assegnate | `Commissione` |
+| `task` | dei suoi commesse | `Valore_gg`, `Valore_Spese_std`, `Spese_Comprese`, valori maturati |
+| `giornate` | dei task dei suoi commesse | spese, `Costo_gg`, `Costo_Spese`, `Valore_spese`, `valore_calcolato`, `task_info` |
+| `clienti` | dei suoi commesse | tutto tranne `ID_CLIENTE` e `Cliente` |
+| `collaboratori` | sé stesso + responsabili e assegnatari dei suoi commesse | tutto tranne `ID_COLLABORATORE` e `Collaboratore` |
+| `tariffe` | solo la propria | — |
+| `fatture` | nessuna | — |
+
+Due dettagli che non si deducono leggendo il codice in fretta:
+
+- **`Costo_gg` è escluso perché è una tariffa travestita.** Vale `tariffa × giorni`: farlo
+  passare avrebbe reso deducibili i compensi dei colleghi, vanificando la restrizione su
+  `tariffe`. Stesso motivo per `task_info` nelle giornate, che porta con sé `Valore_gg`.
+- **Gli endpoint con SQL proprio non passano dal filtro** e vanno chiusi a mano:
+  `?resource=commesse&action=maturato` e `?resource=fatture_collaboratori&action=summary`
+  rispondono `403` al ruolo `User`. È il motivo per cui esiste `assertNotRestrictedUser()`
+  come guard esplicito.
+
+Sul singolo record la restrizione risponde `404`, non `403`: non si conferma l'esistenza
+di ciò che non si può vedere.
 
 ---
 
@@ -536,19 +574,17 @@ Chiuso con un controllo di sessione in testa a `index.php`, prima del routing, e
 stesso guard su `serveImage()`. Entrambi rispondono `401` senza distinguere fra sessione
 assente, scaduta o risorsa inesistente.
 
-### S2 — L'autorizzazione per ruolo è parziale · *sicurezza, medio*
+### S2 — L'autorizzazione per ruolo era parziale · *sicurezza, medio* · **RISOLTO il 31/07/2026**
 
-Chiuso l'accesso anonimo (S1), resta il livello sopra: fra utenti autenticati il filtro
-per ruolo è applicato **solo** da `CommesseAPI`. `TaskAPI`, `GiornateAPI`, `ClientiAPI`,
-`CollaboratoriAPI`, `TariffeAPI` e `FattureAPI` non lo applicano.
+Chiuso l'accesso anonimo (S1), restava il livello sopra: fra utenti autenticati il filtro
+per ruolo era applicato **solo** da `CommesseAPI`. Un utente `User` — che nel front-end
+vede la sola sezione Commesse & Task senza alcun dato economico — interrogando
+direttamente `?resource=giornate` otteneva le giornate di **tutti** i collaboratori, da
+`?resource=tariffe` i compensi di tutti, e da `?resource=commesse&action=maturato` il
+conto economico mensile di qualsiasi commessa.
 
-In pratica un utente con ruolo `User` — che nel front-end vede solo Commesse & Task senza
-alcun dato economico — se interroga direttamente `?resource=giornate` ottiene le giornate
-di **tutti** i collaboratori, e da `?resource=tariffe` le tariffe di tutti. Verificato in
-locale assegnando temporaneamente il ruolo `User` all'utente di test.
-
-Rimedio: portare il filtro per ruolo in `BaseAPI`, così che valga per default su ogni
-risorsa invece di dipendere dalla singola classe.
+Chiuso portando la logica in `BaseAPI`, in tre punti di estensione descritti al § 7.2, in
+modo che una risorsa nuova nasca limitata invece di dipendere da chi la scrive.
 
 ### A1 — I task senza `Valore_gg` valorizzano sempre 0 · *contabile, medio*
 
@@ -654,5 +690,5 @@ problema di definizione da chiudere con una decisione di business; il secondo è
 funzionalità che manca perché il portale chiuda il cerchio dalla giornata consuntivata
 alla fattura emessa.
 
-L'accesso anonimo alle API (S1) è stato chiuso il 31/07/2026; resta da completare
-l'autorizzazione per ruolo fra utenti autenticati (S2).
+Il fronte sicurezza è invece chiuso: l'accesso anonimo alle API (S1) e l'autorizzazione
+per ruolo fra utenti autenticati (S2) sono stati risolti il 31/07/2026.

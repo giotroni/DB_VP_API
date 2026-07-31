@@ -189,6 +189,40 @@ class CollaboratoriAPI extends BaseAPI {
     /**
      * Costruisce clausola WHERE per filtri
      */
+    /**
+     * Il ruolo 'User' vede se stesso e i colleghi coinvolti nelle commesse che
+     * gli sono assegnate: gli servono i nomi di responsabile e assegnatari
+     * sulle schede. Non l'intera rubrica aziendale.
+     */
+    protected function getRoleScopeClause(&$params, $alias = '') {
+        if (!$this->isRestrictedUser()) {
+            return null;
+        }
+
+        $self = $this->newScopeParam($params, $this->getCurrentUserId());
+        $visibiliCommesse = $this->visibleCommesseSubquery($params);
+        $visibiliTask = $this->visibleCommesseSubquery($params);
+
+        return "(
+            {$alias}ID_COLLABORATORE = $self
+            OR {$alias}ID_COLLABORATORE IN (
+                SELECT ID_COLLABORATORE FROM ANA_COMMESSE
+                WHERE ID_COLLABORATORE IS NOT NULL AND ID_COMMESSA IN ($visibiliCommesse)
+            )
+            OR {$alias}ID_COLLABORATORE IN (
+                SELECT ID_COLLABORATORE FROM ANA_TASK
+                WHERE ID_COLLABORATORE IS NOT NULL AND ID_COMMESSA IN ($visibiliTask)
+            )
+        )";
+    }
+
+    /**
+     * Solo il nome. Email, username, partita IVA e ruolo restano fuori.
+     */
+    protected function getRestrictedUserFields() {
+        return ['ID_COLLABORATORE', 'Collaboratore'];
+    }
+
     protected function buildWhereClause(&$params) {
         $conditions = [];
         

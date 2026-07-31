@@ -144,9 +144,9 @@ class TaskAPI extends BaseAPI {
     protected function getAll() {
         try {
             $params = [];
-            $whereClause = $this->buildWhereClause($params);
+            $whereClause = $this->buildScopedWhereClause($params);
             $orderBy = $this->getOrderBy();
-            
+
             // Query semplice sulla tabella principale
             $sql = "SELECT * FROM {$this->table}";
             
@@ -177,7 +177,8 @@ class TaskAPI extends BaseAPI {
             foreach ($records as $record) {
                 $processedRecords[] = $this->processRecord($record);
             }
-            
+            $processedRecords = $this->applyRoleProjection($processedRecords);
+
             // Conta totale per paginazione
             $total = $this->getTotalCount($whereClause, $params);
             
@@ -203,18 +204,29 @@ class TaskAPI extends BaseAPI {
      */
     protected function getById($id) {
         try {
+            $params = [];
             $sql = "SELECT * FROM {$this->table} WHERE {$this->primaryKey} = :id";
+
+            // Anche sul singolo record vale la restrizione di ruolo
+            $roleScope = $this->getRoleScopeClause($params);
+            if (!empty($roleScope)) {
+                $sql .= " AND (" . $roleScope . ")";
+            }
+
             $stmt = $this->db->prepare($sql);
             $stmt->bindValue(':id', $id);
+            foreach ($params as $key => $value) {
+                $stmt->bindValue($key, $value);
+            }
             $stmt->execute();
-            
+
             $record = $stmt->fetch();
             if (!$record) {
                 sendErrorResponse('Record non trovato', 404);
                 return;
             }
-            
-            $processedRecord = $this->processRecord($record);
+
+            $processedRecord = $this->applyRoleProjection($this->processRecord($record));
             sendSuccessResponse($processedRecord);
             
         } catch (PDOException $e) {
@@ -945,6 +957,32 @@ class TaskAPI extends BaseAPI {
     /**
      * Override buildWhereClause per aggiungere filtri personalizzati
      */
+    /**
+     * Il ruolo 'User' vede solo i task delle commesse che gli sono assegnate.
+     */
+    protected function getRoleScopeClause(&$params, $alias = '') {
+        if (!$this->isRestrictedUser()) {
+            return null;
+        }
+
+        return "{$alias}ID_COMMESSA IN (" . $this->visibleCommesseSubquery($params) . ")";
+    }
+
+    /**
+     * Esclusi i prezzi di vendita (Valore_gg, Valore_Spese_std, Spese_Comprese)
+     * e i valori maturati: la scheda task del ruolo 'User' mostra solo i giorni
+     * effettuati sui previsti.
+     */
+    protected function getRestrictedUserFields() {
+        return [
+            'ID_TASK', 'Task', 'Desc_Task', 'ID_COMMESSA', 'ID_COLLABORATORE',
+            'Tipo', 'Data_Apertura_Task', 'Data_Inizio', 'Data_Fine',
+            'Stato_Task', 'gg_previste',
+            'gg_effettuate', 'gg_effettuate_filtrate',
+            'commessa_nome', 'cliente_nome', 'responsabile_commessa', 'collaboratore_nome'
+        ];
+    }
+
     protected function buildWhereClause(&$params) {
         $conditions = [];
         

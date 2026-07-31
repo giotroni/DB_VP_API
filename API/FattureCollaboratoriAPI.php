@@ -31,10 +31,26 @@ class FattureCollaboratoriAPI extends BaseAPI {
      */
     protected function getAll() {
         if (isset($_GET['action']) && $_GET['action'] === 'summary') {
+            // summary() aggrega con SQL proprio e non passa dal filtro di
+            // ruolo: per il ruolo 'User' resta chiuso.
+            $this->assertNotRestrictedUser();
             $this->summary();
             return;
         }
         parent::getAll();
+    }
+
+    /**
+     * Il ruolo 'User' vede al più le proprie fatture passive, mai quelle
+     * degli altri collaboratori.
+     */
+    protected function getRoleScopeClause(&$params, $alias = '') {
+        if (!$this->isRestrictedUser()) {
+            return null;
+        }
+
+        $self = $this->newScopeParam($params, $this->getCurrentUserId());
+        return "{$alias}ID_COLLABORATORE = $self";
     }
 
     /**

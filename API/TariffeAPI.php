@@ -218,6 +218,19 @@ class TariffeAPI extends BaseAPI {
     /**
      * Costruisce clausola WHERE per filtri
      */
+    /**
+     * Il ruolo 'User' vede solo la propria tariffa: i compensi degli altri
+     * collaboratori non lo riguardano.
+     */
+    protected function getRoleScopeClause(&$params, $alias = '') {
+        if (!$this->isRestrictedUser()) {
+            return null;
+        }
+
+        $self = $this->newScopeParam($params, $this->getCurrentUserId());
+        return "{$alias}ID_COLLABORATORE = $self";
+    }
+
     protected function buildWhereClause(&$params) {
         $conditions = [];
         

@@ -50,6 +50,15 @@ class CommesseVisibilitaAPI {
             return;
         }
 
+        // Un utente 'User' può interrogare solo la propria visibilità: sapere
+        // quali commesse sono assegnate agli altri non lo riguarda.
+        // La modifica resta riservata ad Admin e Manager (vedi setVisibilita).
+        $role = $_SESSION['user_role'] ?? '';
+        if ($role === 'User' && $collaboratoreId !== ($_SESSION['user_id'] ?? null)) {
+            sendErrorResponse('Non autorizzato', 403);
+            return;
+        }
+
         try {
             $stmt = $this->db->prepare(
                 "SELECT ID_COMMESSA FROM ANA_COMMESSE_VISIBILITA WHERE ID_COLLABORATORE = :id"

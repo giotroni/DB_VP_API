@@ -70,8 +70,8 @@ abstract class BaseAPI {
             $sql = "SELECT * FROM {$this->table}";
             $params = [];
             
-            // Aggiunta filtri personalizzati
-            $whereClause = $this->buildWhereClause($params);
+            // Filtri della richiesta + restrizione di ruolo
+            $whereClause = $this->buildScopedWhereClause($params);
             if ($whereClause) {
                 $sql .= " WHERE " . $whereClause;
             }
@@ -108,7 +108,8 @@ abstract class BaseAPI {
             
             // Post-processing dei dati
             $data = array_map([$this, 'processRecord'], $data);
-            
+            $data = $this->applyRoleProjection($data);
+
             sendSuccessResponse([
                 'data' => $data,
                 'pagination' => [
@@ -129,21 +130,36 @@ abstract class BaseAPI {
      */
     protected function getById($id) {
         try {
+            $params = [];
             $sql = "SELECT * FROM {$this->table} WHERE {$this->primaryKey} = :id";
+
+            // La restrizione di ruolo vale anche sul singolo record: senza,
+            // basterebbe conoscere un ID per aggirare il filtro dell'elenco.
+            $roleScope = $this->getRoleScopeClause($params);
+            if (!empty($roleScope)) {
+                $sql .= " AND (" . $roleScope . ")";
+            }
+
             $stmt = $this->db->prepare($sql);
             $stmt->bindValue(':id', $id);
+            foreach ($params as $key => $value) {
+                $stmt->bindValue($key, $value);
+            }
             $stmt->execute();
-            
+
             $data = $stmt->fetch();
-            
+
             if (!$data) {
+                // Stesso 404 sia che il record non esista sia che non sia
+                // visibile: non si conferma l'esistenza di ciò che non si vede.
                 sendErrorResponse('Record non trovato', 404);
                 return;
             }
-            
+
             // Post-processing del record
             $data = $this->processRecord($data);
-            
+            $data = $this->applyRoleProjection($data);
+
             sendSuccessResponse($data);
             
         } catch (PDOException $e) {
@@ -155,9 +171,11 @@ abstract class BaseAPI {
      * Crea un nuovo record
      */
     protected function create() {
+        $this->assertWriteAllowed();
+
         try {
             $input = $this->getRequestBody();
-            
+
             // Validazione input
             $validation = $this->validateInput($input);
             if (!$validation['valid']) {
@@ -297,6 +315,8 @@ abstract class BaseAPI {
      * Aggiorna un record esistente
      */
     protected function update($id) {
+        $this->assertWriteAllowed();
+
         try {
             // Verifica esistenza record
             $existsQuery = "SELECT 1 FROM {$this->table} WHERE {$this->primaryKey} = :id";
@@ -366,6 +386,8 @@ abstract class BaseAPI {
      * Elimina un record
      */
     protected function delete($id) {
+        $this->assertWriteAllowed();
+
         try {
             // Verifica esistenza record
             $existsQuery = "SELECT 1 FROM {$this->table} WHERE {$this->primaryKey} = :id";
@@ -445,14 +467,158 @@ abstract class BaseAPI {
         if (session_status() !== PHP_SESSION_ACTIVE) {
             session_start();
         }
-        
+
         // Se c'è un utente autenticato, usa il suo ID
         if (isset($_SESSION['user_id']) && !empty($_SESSION['user_id'])) {
             return $_SESSION['user_id'];
         }
-        
+
         // Fallback per compatibilità con operazioni di sistema
         return 'SYSTEM';
+    }
+
+    // ========================================================================
+    // AUTORIZZAZIONE PER RUOLO
+    //
+    // L'autenticazione (chi sei) è gestita da API/index.php, che rifiuta le
+    // richieste senza sessione. Qui si decide cosa quel qualcuno può vedere e
+    // toccare. Il ruolo 'User' è l'unico limitato: è il collaboratore che
+    // consuntiva, e in Management vede la sola sezione Commesse & Task senza
+    // alcun dato economico.
+    //
+    // Le restrizioni sono tre e vivono tutte qui, così che una nuova risorsa
+    // sia limitata per default invece che per memoria di chi la scrive:
+    //   1. getRoleScopeClause()      - quali righe (condizione SQL)
+    //   2. getRestrictedUserFields() - quali colonne (allowlist)
+    //   3. assertWriteAllowed()      - la scrittura è vietata
+    // ========================================================================
+
+    /**
+     * Ruolo dell'utente in sessione ('Admin', 'Manager', 'User', 'Amministrazione').
+     */
+    protected function getCurrentUserRole() {
+        if (session_status() !== PHP_SESSION_ACTIVE) {
+            session_start();
+        }
+        return $_SESSION['user_role'] ?? null;
+    }
+
+    /**
+     * True per gli utenti a visibilità limitata.
+     */
+    protected function isRestrictedUser() {
+        return $this->getCurrentUserRole() === 'User';
+    }
+
+    /**
+     * Sottoquery delle commesse visibili all'utente corrente.
+     * Usata da quasi tutte le risorse: la visibilità è concessa a livello di
+     * commessa (ANA_COMMESSE_VISIBILITA) e da lì discende su task e giornate.
+     */
+    protected function visibleCommesseSubquery(&$params) {
+        $placeholder = $this->newScopeParam($params, $this->getCurrentUserId());
+        return "SELECT ID_COMMESSA FROM ANA_COMMESSE_VISIBILITA WHERE ID_COLLABORATORE = $placeholder";
+    }
+
+    /**
+     * Registra un parametro con nome univoco e lo restituisce.
+     *
+     * Serve perché il driver è configurato con PDO::ATTR_EMULATE_PREPARES a
+     * false: in quella modalità lo stesso placeholder non può comparire più
+     * volte nella query. Alcune restrizioni usano la sottoquery delle commesse
+     * visibili due o tre volte, quindi ogni occorrenza ha il proprio nome.
+     */
+    protected function newScopeParam(&$params, $value) {
+        static $counter = 0;
+        $placeholder = ':scope_p' . (++$counter);
+        $params[$placeholder] = $value;
+        return $placeholder;
+    }
+
+    /**
+     * Condizione SQL che limita le righe visibili all'utente corrente.
+     * Null o stringa vuota = nessuna restrizione. Da sovrascrivere in ogni
+     * risorsa che contiene dati non destinati al ruolo 'User'.
+     *
+     * @param string $alias prefisso di tabella (es. 'c.') quando la query usa un alias
+     */
+    protected function getRoleScopeClause(&$params, $alias = '') {
+        return null;
+    }
+
+    /**
+     * Where completa: filtri della richiesta + restrizione di ruolo.
+     * È final perché è il punto in cui la restrizione viene applicata: le
+     * sottoclassi personalizzano getRoleScopeClause(), non questa.
+     */
+    final protected function buildScopedWhereClause(&$params, $alias = '') {
+        $parts = [];
+
+        $requestFilters = $this->buildWhereClause($params);
+        if (!empty($requestFilters)) {
+            $parts[] = '(' . $requestFilters . ')';
+        }
+
+        $roleScope = $this->getRoleScopeClause($params, $alias);
+        if (!empty($roleScope)) {
+            $parts[] = '(' . $roleScope . ')';
+        }
+
+        return implode(' AND ', $parts);
+    }
+
+    /**
+     * Colonne visibili al ruolo 'User'. Null = tutte.
+     * Serve a non spedire al client dati che il front-end si limita a
+     * nascondere: importi, tariffe, commissioni, contatti.
+     */
+    protected function getRestrictedUserFields() {
+        return null;
+    }
+
+    /**
+     * Applica l'allowlist di colonne a un record o a un elenco di record.
+     */
+    protected function applyRoleProjection($data) {
+        if (!$this->isRestrictedUser()) {
+            return $data;
+        }
+
+        $allowed = $this->getRestrictedUserFields();
+        if ($allowed === null) {
+            return $data;
+        }
+
+        // Elenco di record
+        if (is_array($data) && array_is_list($data)) {
+            return array_map(function ($record) use ($allowed) {
+                return is_array($record) ? array_intersect_key($record, array_flip($allowed)) : $record;
+            }, $data);
+        }
+
+        // Record singolo
+        return is_array($data) ? array_intersect_key($data, array_flip($allowed)) : $data;
+    }
+
+    /**
+     * Blocca le scritture per il ruolo 'User'.
+     * In Management gli utenti 'User' non hanno alcun pulsante di modifica, e
+     * la consuntivazione passa da ConsuntivazioneAPI.php, che ha controlli
+     * propri: nessun flusso legittimo scrive da qui con quel ruolo.
+     */
+    protected function assertWriteAllowed() {
+        $this->assertNotRestrictedUser();
+    }
+
+    /**
+     * Nega l'operazione al ruolo 'User'.
+     * Da usare anche sui percorsi di sola lettura che aggirano il filtro di
+     * ruolo perché costruiscono SQL proprio (aggregazioni, riepiloghi).
+     */
+    protected function assertNotRestrictedUser() {
+        if ($this->isRestrictedUser()) {
+            sendErrorResponse('Operazione non consentita per il tuo ruolo', 403);
+        }
     }
 }
 ?>

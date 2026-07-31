@@ -301,6 +301,36 @@ class GiornateAPI extends BaseAPI {
     /**
      * Costruisce clausola WHERE per filtri
      */
+    /**
+     * Il ruolo 'User' vede solo le giornate dei task delle commesse che gli
+     * sono assegnate: la visibilità è concessa a livello di commessa e da lì
+     * discende, così il conteggio dei giorni sulla scheda resta corretto.
+     */
+    protected function getRoleScopeClause(&$params, $alias = '') {
+        if (!$this->isRestrictedUser()) {
+            return null;
+        }
+
+        return "{$alias}ID_TASK IN (
+            SELECT ID_TASK FROM ANA_TASK
+            WHERE ID_COMMESSA IN (" . $this->visibleCommesseSubquery($params) . ")
+        )";
+    }
+
+    /**
+     * Escluse spese e importi calcolati. Costo_gg in particolare è la tariffa
+     * del collaboratore moltiplicata per i giorni: lasciarlo passare
+     * equivarrebbe a pubblicare i compensi dei colleghi.
+     * Fuori anche task_info, che porta con sé Valore_gg: è il prezzo di
+     * vendita della giornata al cliente.
+     */
+    protected function getRestrictedUserFields() {
+        return [
+            'ID_GIORNATA', 'Data', 'ID_COLLABORATORE', 'ID_TASK', 'Tipo',
+            'Desk', 'gg', 'Confermata', 'Note'
+        ];
+    }
+
     protected function buildWhereClause(&$params) {
         $conditions = [];
         
