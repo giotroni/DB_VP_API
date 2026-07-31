@@ -616,7 +616,11 @@ form e un avviso sulle schede dei task già esistenti che ne sono privi. Le comm
 `Interna` sono escluse, e lo stato `Sospeso` resta disponibile come via d'uscita per i
 task storici incompleti.
 
-Resta da fare: **rimuovere il fallback morto**. Non va "riparato" sistemando la colonna.
+Il fallback morto è stato **rimosso**, non riparato: nessun cambiamento di
+comportamento, restituiva 0 e ora restituisce 0 esplicitamente. Se in futuro qualcuno
+pensasse di reintrodurlo aggiungendo la colonna `Al`, la nota nel codice spiega perché
+non va fatto — valorizzerebbe le giornate alla tariffa di costo, inventando ricavo sulle
+commesse interne e producendo margine zero per costruzione su quelle cliente.
 
 ### A2 — Le spese forfettarie sono contate una volta per task come ricavo, una volta per giornata come costo · *contabile, medio*
 
