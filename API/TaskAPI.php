@@ -635,38 +635,17 @@ class TaskAPI extends BaseAPI {
                 
                 return $totaleGg * $prezzoGg;
             }
-            
-            // Fallback: usa le tariffe dei collaboratori
-            $sql = "SELECT g.gg, g.ID_COLLABORATORE, 
-                           COALESCE(t.Tariffa_gg, tg.Tariffa_gg, 0) as tariffa
-                    FROM FACT_GIORNATE g
-                    LEFT JOIN ANA_TARIFFE_COLLABORATORI t ON g.ID_COLLABORATORE = t.ID_COLLABORATORE 
-                                                          AND (t.ID_COMMESSA = :commessa_id OR t.ID_COMMESSA IS NULL)
-                                                          AND g.Data BETWEEN t.Dal AND COALESCE(t.Al, '9999-12-31')
-                    LEFT JOIN ANA_TARIFFE_COLLABORATORI tg ON g.ID_COLLABORATORE = tg.ID_COLLABORATORE
-                                                            AND tg.ID_COMMESSA IS NULL
-                                                            AND g.Data BETWEEN tg.Dal AND COALESCE(tg.Al, '9999-12-31')
-                    WHERE g.ID_TASK = :task_id 
-                      AND g.Tipo = 'Campo'
-                      {$whereClause}
-                    ORDER BY t.ID_COMMESSA DESC, t.Dal DESC";
-            
-            $params[':commessa_id'] = $taskData['ID_COMMESSA'];
-            $stmt = $this->db->prepare($sql);
-            foreach ($params as $key => $value) {
-                $stmt->bindValue($key, $value);
-            }
-            $stmt->execute();
-            $giornate = $stmt->fetchAll();
-            
-            $totaleValore = 0;
-            foreach ($giornate as $giornata) {
-                $gg = floatval(str_replace(',', '.', $giornata['gg']));
-                $tariffa = floatval($giornata['tariffa']);
-                $totaleValore += $gg * $tariffa;
-            }
-            
-            return $totaleValore;
+
+            // Senza prezzo di vendita il task non matura ricavo.
+            // Qui c'era un fallback sulle tariffe dei collaboratori: non ha mai
+            // funzionato (interrogava una colonna 'Al' inesistente, l'eccezione
+            // veniva assorbita e tornava comunque 0) ed era concettualmente
+            // sbagliato, perché usare la tariffa di costo come prezzo di vendita
+            // produce margine zero per costruzione e inventerebbe ricavo sulle
+            // commesse interne, dove l'assenza di prezzo è voluta.
+            // I task Campo delle commesse cliente sono ora obbligati ad avere
+            // Valore_gg (vedi verificaValoreGgObbligatorio).
+            return 0;
         } catch (Exception $e) {
             return 0;
         }
@@ -874,33 +853,11 @@ class TaskAPI extends BaseAPI {
                 }
                 return $totaleGg * $prezzoGg;
             }
-            
-            // Fallback: usa le tariffe dei collaboratori
-            $sql = "SELECT g.gg, g.ID_COLLABORATORE, 
-                           COALESCE(t.Tariffa_gg, tg.Tariffa_gg, 0) as tariffa
-                    FROM FACT_GIORNATE g
-                    LEFT JOIN ANA_TARIFFE_COLLABORATORI t ON g.ID_COLLABORATORE = t.ID_COLLABORATORE 
-                                                          AND (t.ID_COMMESSA = :commessa_id OR t.ID_COMMESSA IS NULL)
-                                                          AND g.Data BETWEEN t.Dal AND COALESCE(t.Al, '9999-12-31')
-                    LEFT JOIN ANA_TARIFFE_COLLABORATORI tg ON g.ID_COLLABORATORE = tg.ID_COLLABORATORE
-                                                            AND tg.ID_COMMESSA IS NULL
-                                                            AND g.Data BETWEEN tg.Dal AND COALESCE(tg.Al, '9999-12-31')
-                    WHERE g.ID_TASK = :task_id 
-                      AND g.Tipo = 'Campo'
-                    ORDER BY t.ID_COMMESSA DESC, t.Dal DESC";
-            
-            $stmt = $this->db->prepare($sql);
-            $stmt->bindValue(':task_id', $taskId);
-            $stmt->bindValue(':commessa_id', $taskData['ID_COMMESSA']);
-            $stmt->execute();
-            $giornate = $stmt->fetchAll();
-            
+
+            // Senza prezzo di vendita il task non matura ricavo: vedi la nota
+            // in calcolaValoreGgFiltrato() sul perché il fallback sulle tariffe
+            // dei collaboratori è stato rimosso invece che riparato.
             $totaleValore = 0;
-            foreach ($giornate as $giornata) {
-                $gg = floatval(str_replace(',', '.', $giornata['gg']));
-                $tariffa = floatval($giornata['tariffa']);
-                $totaleValore += $gg * $tariffa;
-            }
             
             return $totaleValore;
         } catch (Exception $e) {
