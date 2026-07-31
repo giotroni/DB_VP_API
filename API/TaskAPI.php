@@ -30,11 +30,71 @@ class TaskAPI extends BaseAPI {
     }
     
     /**
+     * Un task 'Campo' attivo su una commessa di tipo 'Cliente' deve avere un
+     * prezzo di vendita: senza Valore_gg le giornate che ci vengono
+     * consuntivate producono costo ma ricavo zero, e il margine della commessa
+     * risulta sbagliato senza che nulla lo segnali.
+     *
+     * Il vincolo NON si applica alle commesse 'Interna', dove l'assenza di
+     * prezzo è corretta: il lavoro interno non si vende, è puro costo.
+     * Non si applica nemmeno ai task non attivi, così un task storico
+     * incompleto può comunque essere sospeso o chiuso.
+     *
+     * @return string|null messaggio di errore, oppure null se va bene
+     */
+    private function verificaValoreGgObbligatorio($tipo, $commessaId, $statoTask, $valoreGg) {
+        if ($tipo !== 'Campo' || empty($commessaId)) {
+            return null;
+        }
+
+        // Stato assente in creazione: in ANA_TASK il default è 'In corso'
+        $stato = $statoTask ?: 'In corso';
+        if ($stato !== 'In corso') {
+            return null;
+        }
+
+        if ($valoreGg !== null && $valoreGg !== '' && floatval($valoreGg) > 0) {
+            return null;
+        }
+
+        try {
+            $stmt = $this->db->prepare(
+                "SELECT Tipo_Commessa, Commessa FROM ANA_COMMESSE WHERE ID_COMMESSA = :id LIMIT 1"
+            );
+            $stmt->bindValue(':id', $commessaId);
+            $stmt->execute();
+            $commessa = $stmt->fetch();
+        } catch (PDOException $e) {
+            // In caso di errore non blocchiamo il salvataggio
+            return null;
+        }
+
+        if (!$commessa || ($commessa['Tipo_Commessa'] ?? '') !== 'Cliente') {
+            return null;
+        }
+
+        return "Il task è di tipo 'Campo' sulla commessa cliente \"{$commessa['Commessa']}\": "
+             . "per tenerlo 'In corso' devi indicare il Valore Giorno (€), altrimenti le giornate "
+             . "consuntivate risulterebbero a ricavo zero. In alternativa mettilo in stato 'Sospeso'.";
+    }
+
+    /**
      * Override create per impedire la creazione di un secondo task Monitoraggio attivo
      * sulla stessa commessa.
      */
     protected function create() {
         $input = $this->getRequestBody();
+
+        $errore = $this->verificaValoreGgObbligatorio(
+            $input['Tipo']        ?? null,
+            $input['ID_COMMESSA'] ?? null,
+            $input['Stato_Task']  ?? null,
+            $input['Valore_gg']   ?? null
+        );
+        if ($errore !== null) {
+            sendErrorResponse($errore, 400);
+            return;
+        }
 
         if (($input['Tipo'] ?? '') === 'Monitoraggio' && !empty($input['ID_COMMESSA'])) {
             try {
@@ -68,6 +128,31 @@ class TaskAPI extends BaseAPI {
      */
     protected function update($id) {
         $input = $this->getRequestBody();
+
+        // Il valore obbligatorio va verificato sullo stato in cui il task
+        // resterà dopo il salvataggio: l'aggiornamento può essere parziale,
+        // quindi i campi assenti si leggono dal record attuale.
+        try {
+            $curStmt = $this->db->prepare(
+                "SELECT Tipo, ID_COMMESSA, Stato_Task, Valore_gg FROM ANA_TASK WHERE ID_TASK = :id"
+            );
+            $curStmt->bindValue(':id', $id);
+            $curStmt->execute();
+            $attuale = $curStmt->fetch() ?: [];
+        } catch (PDOException $e) {
+            $attuale = [];
+        }
+
+        $errore = $this->verificaValoreGgObbligatorio(
+            array_key_exists('Tipo', $input)        ? $input['Tipo']        : ($attuale['Tipo']        ?? null),
+            array_key_exists('ID_COMMESSA', $input) ? $input['ID_COMMESSA'] : ($attuale['ID_COMMESSA'] ?? null),
+            array_key_exists('Stato_Task', $input)  ? $input['Stato_Task']  : ($attuale['Stato_Task']  ?? null),
+            array_key_exists('Valore_gg', $input)   ? $input['Valore_gg']   : ($attuale['Valore_gg']   ?? null)
+        );
+        if ($errore !== null) {
+            sendErrorResponse($errore, 400);
+            return;
+        }
 
         // Recupera tipo e commessa: prima dall'input, poi dal record esistente se non forniti
         $tipo       = $input['Tipo']        ?? null;
