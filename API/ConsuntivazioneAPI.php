@@ -1032,6 +1032,15 @@ class ConsuntivazioneAPI {
      * Serve an image binary given image id (with basic auth check)
      */
     public function serveImage($idImage) {
+        // Gli allegati sono indirizzabili con un id progressivo: senza questo
+        // controllo bastava enumerarli per scaricarli tutti. Stesso guard delle
+        // altre azioni della classe, ma qui la risposta non e' JSON.
+        if (!$this->authAPI->isAuthenticated()) {
+            http_response_code(401);
+            echo 'Autenticazione richiesta';
+            exit;
+        }
+
         // No JSON response: invia direttamente il file
         if (!$idImage) {
             http_response_code(400);

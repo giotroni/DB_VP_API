@@ -430,13 +430,21 @@ sezione, il flag `isUser` nasconde tutti i badge economici e i pulsanti di modif
 commesse vengono limitate a quelle presenti in `ANA_COMMESSE_VISIBILITA` per
 quell'utente. `TaskAPI` e `GiornateAPI` non applicano alcun filtro equivalente.
 
-Da segnalare con chiarezza: **`API/index.php` non verifica l'autenticazione.** Non c'è
-alcun controllo di sessione all'ingresso del router, e l'ho verificato empiricamente —
-interrogando `?resource=clienti` senza aver mai effettuato il login si ottengono tutti
-i 22 clienti. Lo stesso vale per collaboratori, tariffe, giornate e fatture. Il
-nascondere i dati per ruolo è quindi una scelta di **presentazione**, non un controllo
-di accesso: chiunque raggiunga l'URL del gestionale può leggere l'intero database, e in
-scrittura può creare, modificare ed eliminare record. Il § 10 lo riprende come punto S1.
+**`API/index.php` verifica la sessione all'ingresso** ([index.php:66-77](../API/index.php#L66-L77)):
+nessuna risorsa del router è pubblica, e senza sessione la richiesta si ferma con
+`401 Autenticazione richiesta` prima del routing e prima di qualsiasi query. `auth.php`
+resta l'unico endpoint raggiungibile senza sessione. Stesso controllo su
+`ConsuntivazioneAPI::serveImage()`, che serve gli allegati.
+
+Va tenuta ferma la distinzione fra i due livelli: **il gate su `index.php` è il controllo
+di accesso**, mentre il filtro per ruolo — la visibilità commesse per gli utenti `User`,
+e il nascondere i badge economici nel front-end — agisce **sui dati già autorizzati**.
+Il secondo non sostituisce il primo, e infatti oggi è ancora parziale: `TaskAPI` e
+`GiornateAPI` non filtrano per ruolo, quindi un utente `User` autenticato vede le
+giornate di tutti i collaboratori (§ 10, punto S2).
+
+> Storicamente non era così: fino al 31/07/2026 il router non effettuava alcun controllo
+> di sessione e l'intero database era leggibile e scrivibile senza login. Vedi § 10, S1.
 
 ---
 
@@ -514,15 +522,33 @@ collaboratori che **non compaiono in nessuna riga qui sopra**, perché i task ha
 Emersi durante l'analisi, verificati sull'ambiente locale. Ordinati per impatto.
 Nessuno è stato corretto: sono segnalazioni.
 
-### S1 — Le API non richiedono autenticazione · *sicurezza, alto*
+### S1 — Le API non richiedevano autenticazione · *sicurezza, alto* · **RISOLTO il 31/07/2026**
 
-`API/index.php` non controlla la sessione. Verificato: senza login,
-`GET /API/index.php?resource=clienti` restituisce l'anagrafica completa; lo stesso per
+`API/index.php` non controllava la sessione. Verificato prima del fix: senza login,
+`GET /API/index.php?resource=clienti` restituiva l'anagrafica completa; lo stesso per
 collaboratori (con email e ruoli), tariffe, giornate e fatture. Anche POST/PUT/DELETE
-sono aperti. Il filtro per ruolo `User` su `ANA_COMMESSE_VISIBILITA` è aggirabile
-semplicemente non autenticandosi.
+erano aperti — una POST su `?resource=clienti` creava davvero il record. Il filtro per
+ruolo `User` su `ANA_COMMESSE_VISIBILITA` era aggirabile semplicemente non autenticandosi.
+Aperta anche `ConsuntivazioneAPI.php?action=serve_image`, unico metodo della classe senza
+guard: gli allegati hanno un id progressivo, quindi bastava enumerarli.
 
-Rimedio minimo: un controllo di sessione in testa a `index.php`, prima del routing.
+Chiuso con un controllo di sessione in testa a `index.php`, prima del routing, e con lo
+stesso guard su `serveImage()`. Entrambi rispondono `401` senza distinguere fra sessione
+assente, scaduta o risorsa inesistente.
+
+### S2 — L'autorizzazione per ruolo è parziale · *sicurezza, medio*
+
+Chiuso l'accesso anonimo (S1), resta il livello sopra: fra utenti autenticati il filtro
+per ruolo è applicato **solo** da `CommesseAPI`. `TaskAPI`, `GiornateAPI`, `ClientiAPI`,
+`CollaboratoriAPI`, `TariffeAPI` e `FattureAPI` non lo applicano.
+
+In pratica un utente con ruolo `User` — che nel front-end vede solo Commesse & Task senza
+alcun dato economico — se interroga direttamente `?resource=giornate` ottiene le giornate
+di **tutti** i collaboratori, e da `?resource=tariffe` le tariffe di tutti. Verificato in
+locale assegnando temporaneamente il ruolo `User` all'utente di test.
+
+Rimedio: portare il filtro per ruolo in `BaseAPI`, così che valga per default su ogni
+risorsa invece di dipendere dalla singola classe.
 
 ### A1 — I task senza `Valore_gg` valorizzano sempre 0 · *contabile, medio*
 
@@ -628,4 +654,5 @@ problema di definizione da chiudere con una decisione di business; il secondo è
 funzionalità che manca perché il portale chiuda il cerchio dalla giornata consuntivata
 alla fattura emessa.
 
-A parte, e più urgente di entrambi: le API sono aperte senza autenticazione (S1).
+L'accesso anonimo alle API (S1) è stato chiuso il 31/07/2026; resta da completare
+l'autorizzazione per ruolo fra utenti autenticati (S2).

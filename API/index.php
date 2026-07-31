@@ -40,6 +40,7 @@ if (!$config_loaded) {
 }
 
 require_once 'BaseAPI.php';
+require_once 'AuthAPI.php';
 
 // Import delle classi API per ogni tabella
 require_once 'ClientiAPI.php';
@@ -61,6 +62,22 @@ setJSONHeaders();
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
     exit;
+}
+
+// ============================================================================
+// AUTENTICAZIONE
+// Nessuna risorsa di questo router e' pubblica: senza una sessione valida la
+// richiesta si ferma qui, prima del routing e prima di qualsiasi query.
+// Il login passa da auth.php, che resta l'unico endpoint raggiungibile senza
+// sessione. La visibilita' per ruolo (es. ANA_COMMESSE_VISIBILITA per gli
+// utenti 'User') e' applicata a valle dalle singole classi API: e' un filtro
+// sui dati, non il controllo di accesso, che e' questo.
+// ============================================================================
+$authAPI = new AuthAPI();
+if (!$authAPI->isAuthenticated()) {
+    // 401: il client deve autenticarsi. Il messaggio non distingue tra
+    // sessione assente, scaduta o risorsa inesistente.
+    sendErrorResponse('Autenticazione richiesta', 401);
 }
 
 try {
