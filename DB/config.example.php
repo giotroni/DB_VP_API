@@ -11,10 +11,12 @@
 
 // Configurazioni del database - MODIFICARE CON I PROPRI PARAMETRI
 
-define('DB_HOST', 'localhost');          // Indirizzo del server MySQL
-define('DB_NAME', 'nome_database');      // Nome del database
-define('DB_USER', 'utente_database');    // Username MySQL
-define('DB_PASS', 'password_database');  // Password MySQL
+// Se presenti, le variabili d'ambiente vincono sui valori qui sotto: e' cosi'
+// che l'ambiente di test in Docker punta al container "db" senza toccare il file.
+define('DB_HOST', getenv('DB_HOST') ?: 'localhost');          // Indirizzo del server MySQL
+define('DB_NAME', getenv('DB_NAME') ?: 'nome_database');      // Nome del database
+define('DB_USER', getenv('DB_USER') ?: 'utente_database');    // Username MySQL
+define('DB_PASS', getenv('DB_PASS') ?: 'password_database');  // Password MySQL
 
 define('DB_CHARSET', 'utf8mb4');         // Charset del database
 

@@ -1,6 +1,10 @@
 # Configurazione con credenziali (NON committare)
 DB/config.php
 
+# Ambiente di test locale Docker: credenziali e dump con dati reali
+.env
+DB/Backup/
+
 # Log
 DB/logs/
 API/logs/

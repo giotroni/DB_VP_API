@@ -50,7 +50,8 @@ try {
     echo "<div class='success'>✅ Connessione al database riuscita</div>";
     
     // Test query
-    $stmt = $db->query("SELECT DATABASE() as current_db, USER() as current_user, VERSION() as mysql_version");
+    // `current_user` va protetto: e' parola riservata da MariaDB 11
+    $stmt = $db->query("SELECT DATABASE() as current_db, USER() as `current_user`, VERSION() as mysql_version");
     $info = $stmt->fetch();
     
     echo "<div class='info'>";

@@ -1,0 +1,78 @@
+# Ambiente di TEST LOCALE del gestionale Vaglio & Partners.
+# Replica le versioni di produzione (PHP 8.4 + MariaDB 11.4) e importa il dump reale.
+# Tutte le porte sono legate a 127.0.0.1: il database contiene dati veri.
+#
+#   docker compose up -d --build     avvia (al primo avvio importa il dump)
+#   docker compose down              ferma, mantenendo i dati nel volume
+#   docker compose down -v           ferma e cancella il database
+#
+# Vedi docs/AMBIENTE-LOCALE.md
+
+services:
+  db:
+    image: mariadb:11.4
+    container_name: vp_db
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?definisci DB_ROOT_PASSWORD nel file .env}
+      MARIADB_DATABASE: ${DB_NAME:-vaglioty_DB_VP}
+      MARIADB_USER: ${DB_USER:-vaglioty_DB_VP}
+      MARIADB_PASSWORD: ${DB_PASSWORD:?definisci DB_PASSWORD nel file .env}
+      # Senza questo il container sta in UTC e i CURRENT_TIMESTAMP (Data_Modifica)
+      # finiscono 2 ore indietro rispetto ai timestamp scritti da PHP (Europe/Rome).
+      TZ: Europe/Rome
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    ports:
+      - "127.0.0.1:${DB_PORT:-3307}:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+      # Eseguiti in ordine alfabetico al PRIMO avvio (volume vuoto): il dump di
+      # produzione, poi la tabella che manca nel dump, poi l'utente di test.
+      - ./DB/Backup/${BACKUP_DATE:-20260730}/vaglioty_DB_VP.sql:/docker-entrypoint-initdb.d/01-dump.sql:ro
+      - ./docker/initdb/02-fact_fatture_collaboratori.sql:/docker-entrypoint-initdb.d/02-fact_fatture_collaboratori.sql:ro
+      - ./docker/initdb/03-utente-test-locale.sql:/docker-entrypoint-initdb.d/03-utente-test-locale.sql:ro
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+
+  web:
+    build: ./docker/php
+    container_name: vp_web
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_HOST: db
+      DB_NAME: ${DB_NAME:-vaglioty_DB_VP}
+      DB_USER: ${DB_USER:-vaglioty_DB_VP}
+      DB_PASS: ${DB_PASSWORD:?definisci DB_PASSWORD nel file .env}
+      TZ: Europe/Rome
+    ports:
+      - "127.0.0.1:${WEB_PORT:-8081}:80"
+    volumes:
+      # Il repo intero alla radice del DocumentRoot: i path assoluti tipo
+      # /DB/uploads/consuntivazioni devono restare validi.
+      - .:/var/www/html
+
+  phpmyadmin:
+    image: phpmyadmin:latest
+    container_name: vp_pma
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PMA_HOST: db
+      PMA_PORT: 3306
+      UPLOAD_LIMIT: 256M
+    ports:
+      - "127.0.0.1:${PMA_PORT:-8082}:80"
+
+volumes:
+  db_data:
