@@ -32,7 +32,13 @@ class GiornateSection extends BaseSection {
         
         // Prepara le opzioni per i menu a tendina dei filtri
         const collaboratoriOptions = this.app.collaboratori.map(c => `<option value="${c.ID_COLLABORATORE}">${c.Collaboratore}</option>`).join('');
-        const commesseOptions = this.app.commesse.map(c => `<option value="${c.ID_COMMESSA}">${c.Commessa}</option>`).join('');
+        // Ordine alfabetico come negli altri filtri commessa: dall'API le commesse
+        // arrivano ordinate per data di apertura, non per nome.
+        const commesseOptions = (this.app.commesse || [])
+            .slice()
+            .sort((a, b) => (a.Commessa || '').localeCompare(b.Commessa || ''))
+            .map(c => `<option value="${c.ID_COMMESSA}">${c.Commessa}</option>`)
+            .join('');
 
         // prepara le opzioni per anno e mese (riuso pattern usato altrove)
         const currentYear = new Date().getFullYear();
