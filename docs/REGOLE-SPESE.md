@@ -156,57 +156,85 @@ prenda, questo punto va riscritto.
 
 ---
 
-## 5. Le decisioni da prendere
+## 5. Le decisioni prese — 02/08/2026
 
-### Decisione 1 — Cosa significa `Valore_Spese_std`?
+### ✅ `Valore_Spese_std` è un **importo giornaliero**
 
-È la decisione che sblocca tutto il resto. Tre letture possibili:
+È la diaria di trasferta concordata col cliente: si addebita **per ogni giornata di campo**.
+Le letture "una volta per task" e "una volta al mese" sono errate e vanno eliminate.
 
-| Opzione | Significato commerciale | Conseguenza sui dati esistenti |
-|---|---|---|
-| **A. Forfait giornaliero** (diaria) | "ti addebito X € di trasferta per ogni giornata di campo" | il ricavo spese dei 19 task sale di 4.180 € rispetto alla lettura per-task |
-| **B. Forfait a task** | "le trasferte di tutto questo intervento costano X €" | il ricavo resta quello di oggi lato card, ma va corretto ovunque si legga per giornata |
-| **C. Forfait mensile** | "X € al mese finché l'intervento è aperto" | lettura intermedia; oggi esiste solo nel maturato mensile |
+Coerente con i dati: i forfait censiti valgono 50–90 €, importi da diaria (viaggio + pasto).
+Su TAS00056 il forfait è 70 € contro 10 giornate — la lettura per-task avrebbe significato
+trasferte vendute a 7 € l'una.
 
-**Elemento a favore di A.** I forfait censiti valgono 50–90 €: sono importi da diaria
-giornaliera (viaggio + pasto), non da trasferta di un intervento intero. Su TAS00056 il
-forfait è 70 € contro 10 giornate consuntivate — leggerlo come "70 € per tutto il task"
-significherebbe aver venduto 10 trasferte a 7 € l'una. La lettura per giornata è l'unica
-che regge il confronto con gli esborsi reali della tabella al punto ③.
+### ✅ Il margine è **totale**: ricavo complessivo meno costi, tutto compreso
 
-Va comunque confermata da te: è una questione di cosa c'è scritto nelle offerte, non di
-cosa è coerente nel codice.
+Il margine di commessa deve essere il netto tra quanto si vende al cliente e quanto si
+spende davvero, **spese incluse da entrambi i lati**. Non più il prezzo di vendita usato
+come se fosse un costo.
 
-### Decisione 2 — Il costo di commessa deve riflettere l'esborso vero?
+### ✅ Con `Spese_Comprese = Si` l'esborso va **comunque a costo**
 
-Oggi non lo riflette: usa il prezzo di vendita al posto del costo. Le opzioni:
+Il ricavo è già dentro il valore giornata, ma il costo esiste e va imputato. Oggi sparisce.
 
-- **Sì (raccomandato):** il costo spese diventa `Costo_Spese` = esborso − quota già
-  fatturata a V&P. Il margine spese diventa una grandezza reale — positivo quando il
-  forfait copre la trasferta, negativo quando no. Risolve ②, ③ e ④ in un colpo solo.
-- **No:** si tiene la convenzione attuale, ma allora il margine spese è zero per
-  costruzione e tanto vale escludere le spese dal calcolo del margine invece di
-  farle comparire da entrambi i lati con numeri diversi.
+### ✅ Le spese si **riaddebitano per intero** al cliente
 
-### Decisione 3 — In regime `Spese_Comprese = Si`, l'esborso va a costo?
-
-Concettualmente sì: il ricavo è già dentro il valore giornata, ma il costo resta ed è
-reale. Dipende però da come è costruito il prezzo giornata in offerta — se lo hai già
-maggiorato per coprire le trasferte, imputare anche il costo è corretto e mostra il
-margine vero; se il valore giornata è quello "secco", il conto va rivisto a monte.
-
-### Decisione 4 — Il regime a consuntivo va bene così?
-
-Qui il software è già coerente (ricavo = esborso, per giornata e per task coincidono) e
-non richiede decisioni, salvo un punto: **anche a consuntivo il ricavo ignora
-`Spese_Fatturate_VP`**. Se una spesa è arrivata direttamente in fattura a V&P, la
-riaddebitiamo comunque al cliente? Probabilmente sì, ma va confermato.
+`Spese_Fatturate_VP` non riduce il ricavo: al cliente si addebita la spesa a prescindere
+da chi l'ha materialmente pagata.
 
 ---
 
-## 6. Cosa comporta implementare
+## 6. Le regole che ne derivano
 
-A decisioni prese, l'intervento è circoscritto e va fatto in un colpo solo:
+### Ricavo spese — prezzo al cliente
+
+```
+giornata non 'Campo', oppure Desk = 'Si'   →  0
+Spese_Comprese = 'Si'                      →  0   (già dentro il valore giornata)
+Valore_Spese_std > 0                       →  la diaria, per ogni giornata di campo
+altrimenti (consuntivo)                    →  spese effettive LORDE della giornata
+```
+
+### Costo spese — esborso di V&P
+
+```
+sempre, in ogni regime  →  Spese_Viaggi + Vitto_alloggio + Altri_costi
+```
+
+Nessuna eccezione: né `Spese_Comprese = Si` né la presenza di una diaria riducono il costo,
+perché il costo è quello che V&P ha sborsato e non dipende da come lo si è venduto.
+
+### Margine di commessa
+
+```
+(valore giornate + ricavo spese) − (costo giornate + costo spese) − costo accounting
+```
+
+### Due punti da chiarire prima di scrivere il codice
+
+1. **`Spese_Fatturate_VP` va sottratta dal costo?** Il campo dice che quella quota è stata
+   fatturata direttamente a V&P dal fornitore — quindi V&P la paga comunque, solo non come
+   rimborso al collaboratore. Se è così, il costo di commessa è la spesa **lorda** e il
+   campo serve unicamente al calcolo del rimborso in consuntivazione. Da confermare.
+   *(Attenzione al nome: `giornata.Costo_Spese` oggi vale `spese − fatturate`, cioè è il
+   rimborso al collaboratore, non il costo aziendale. Il nome è fuorviante.)*
+2. **Le mezze giornate.** Con `gg = 0,50` la diaria si addebita intera o a metà? Oggi il
+   codice la addebita intera. Se la diaria copre viaggio e pasto la trasferta c'è comunque,
+   quindi intera sembra corretto, ma va confermato: 2 delle giornate a forfait sono da mezza.
+
+### Nota sul fatturato
+
+La regola parla di "valore complessivo fatturato". Il software oggi calcola il **maturato**
+(quanto si è prodotto), non il fatturato: le fatture si inseriscono a mano e nessuna
+schermata le riconcilia col maturato di commessa. Il margine che si va a correggere è
+quindi un margine sul maturato. La riconciliazione col fatturato resta l'assenza funzionale
+più grossa del gestionale, ed è un lavoro a sé.
+
+---
+
+## 7. Cosa comporta implementare
+
+L'intervento è circoscritto e va fatto in un colpo solo:
 
 1. **Una sola funzione** che, dato il task e la giornata, restituisce ricavo spese e costo
    spese secondo la regola decisa. Oggi la logica è replicata in quattro punti che sono
@@ -217,16 +245,20 @@ A decisioni prese, l'intervento è circoscritto e va fatto in un colpo solo:
    ma i margini storici di tutte le commesse con task a forfait cambiano valore. Vale la
    pena stampare un prima/dopo per commessa prima di mettere in produzione.
 
-Ordine di grandezza dello spostamento sui dati attuali: **~4.200 € di margine** che oggi
-è negativo per errore, più il ricavo spese che si muove a seconda della Decisione 1.
+4. **I punti in cui il costo spese oggi non esiste** vanno aggiunti, non solo corretti:
+   in regime `Spese_Comprese = Si` il costo è sempre stato zero ovunque.
+
+Ordine di grandezza dello spostamento sui dati attuali: il ricavo spese sale di **4.180 €**
+(la diaria applicata a tutte le giornate anziché una volta per task), il margine fittizio
+di pari importo sparisce, e compaiono per la prima volta i costi spese reali — inclusi i
+191,80 € oggi invisibili del regime `Spese_Comprese = Si`.
 
 ---
 
-## Riepilogo delle domande
+## Stato
 
-1. `Valore_Spese_std` è un forfait **per giornata**, **per task** o **per mese**?
-2. Il costo di commessa deve usare l'**esborso reale** invece del prezzo di vendita?
-3. Con `Spese_Comprese = Si`, l'esborso reale va **comunque a costo** di commessa?
-4. Le spese già fatturate direttamente a V&P si **riaddebitano** comunque al cliente?
-
-Rispondi a queste quattro e la parte tecnica è meccanica.
+- **Decise il 02/08/2026:** diaria giornaliera; margine totale con esborso reale a costo;
+  costo imputato anche in regime `Spese_Comprese = Si`; ricavo spese non ridotto da
+  `Spese_Fatturate_VP`.
+- **Da confermare prima di implementare:** se `Spese_Fatturate_VP` vada sottratta dal
+  **costo** di commessa, e se la diaria sulle mezze giornate sia intera o dimezzata (§ 6).
