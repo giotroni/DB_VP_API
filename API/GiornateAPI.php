@@ -4,6 +4,7 @@
  */
 
 require_once 'BaseAPI.php';
+require_once __DIR__ . '/CalcoloSpese.php';
 
 class GiornateAPI extends BaseAPI {
     
@@ -475,20 +476,11 @@ class GiornateAPI extends BaseAPI {
                 $record['valore_calcolato'] = floatval($taskInfo['Valore_gg']) * floatval($record['gg']);
             }
 
-            // Calcolo di 'Valore_spese' secondo le regole di business
-            $record['Valore_spese'] = 0;
-            if ($taskInfo && $record['Tipo'] === 'Campo' && $record['Desk'] !== 'Si') {
-                if (isset($taskInfo['Spese_Comprese']) && $taskInfo['Spese_Comprese'] === 'Si') {
-                    $record['Valore_spese'] = 0;
-                } else {
-                    $speseStd = isset($taskInfo['Valore_Spese_std']) ? floatval($taskInfo['Valore_Spese_std']) : 0;
-                    if ($speseStd > 0) {
-                        $record['Valore_spese'] = $speseStd;
-                    } else {
-                        $record['Valore_spese'] = $record['spese_totali'];
-                    }
-                }
-            }
+            // Ricavo spese della giornata: prezzo addebitato al cliente.
+            // Regole in CalcoloSpese, condivise con TaskAPI e CommesseAPI.
+            $record['Valore_spese'] = $taskInfo
+                ? CalcoloSpese::ricavoGiornata($taskInfo, $record)
+                : 0;
 
             // --- INIZIO NUOVO CODICE ---
             // --- INIZIO CODICE AGGIORNATO ---
@@ -510,8 +502,12 @@ class GiornateAPI extends BaseAPI {
             }
 
             // Calcolo 'Costo_Spese'
-            // Somma delle spese sostenute meno la quota già fatturata a VP
-            $costoSpese = (floatval($record['Spese_Viaggi']) + floatval($record['Vitto_alloggio']) + floatval($record['Altri_costi'])) - floatval($record['Spese_Fatturate_VP']);
+            // ATTENZIONE: è quanto V&P deve RIMBORSARE al collaboratore, non il
+            // costo di commessa. La quota Spese_Fatturate_VP è stata pagata con
+            // la carta di credito V&P: resta un esborso aziendale, semplicemente
+            // non va riconosciuta al consulente.
+            // Per il costo di commessa si usa 'spese_totali' (l'esborso lordo).
+            $costoSpese = $record['spese_totali'] - floatval($record['Spese_Fatturate_VP']);
             $record['Costo_Spese'] = $costoSpese;
             
             // --- FINE CODICE AGGIORNATO ---

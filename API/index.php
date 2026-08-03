@@ -41,6 +41,7 @@ if (!$config_loaded) {
 
 require_once 'BaseAPI.php';
 require_once 'AuthAPI.php';
+require_once 'CalcoloSpese.php';
 
 // Import delle classi API per ogni tabella
 require_once 'ClientiAPI.php';

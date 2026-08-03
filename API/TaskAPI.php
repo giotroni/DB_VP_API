@@ -4,6 +4,7 @@
  */
 
 require_once 'BaseAPI.php';
+require_once __DIR__ . '/CalcoloSpese.php';
 
 class TaskAPI extends BaseAPI {
     
@@ -352,13 +353,15 @@ class TaskAPI extends BaseAPI {
             $record['valore_gg_maturato'] = $valoriMaturati['valore_gg'];
             $record['valore_spese_maturato'] = $valoriMaturati['valore_spese'];
             $record['valore_tot_maturato'] = $valoriMaturati['valore_tot'];
-            
+            $record['costo_spese_maturato'] = $valoriMaturati['costo_spese'];
+
             // Calcola valori maturati filtrati per periodo se necessario
             if ($filtriPeriodo['attivo']) {
                 $valoriMaturatiFiltrati = $this->calcolaValoriMaturatiFiltrati($record['ID_TASK'], $record, $filtriPeriodo);
                 $record['valore_gg_maturato_filtrato'] = $valoriMaturatiFiltrati['valore_gg'];
                 $record['valore_spese_maturato_filtrato'] = $valoriMaturatiFiltrati['valore_spese'];
                 $record['valore_tot_maturato_filtrato'] = $valoriMaturatiFiltrati['valore_tot'];
+                $record['costo_spese_maturato_filtrato'] = $valoriMaturatiFiltrati['costo_spese'];
             }
             
             return $record;
@@ -373,6 +376,7 @@ class TaskAPI extends BaseAPI {
             $record['valore_gg_maturato'] = 0;
             $record['valore_spese_maturato'] = 0;
             $record['valore_tot_maturato'] = 0;
+            $record['costo_spese_maturato'] = 0;
             return $record;
         }
     }
@@ -441,21 +445,24 @@ class TaskAPI extends BaseAPI {
             $valoreGg = $this->calcolaValoreGgFiltrato($taskId, $taskData, $filtriPeriodo);
             $valoreSpese = $this->calcolaValoreSpeseFilrato($taskId, $taskData, $filtriPeriodo);
             $valoreTot = $valoreGg + $valoreSpese;
-            
+            $costoSpese = $this->calcolaCostoSpeseFiltrato($taskId, $filtriPeriodo);
+
             return [
                 'valore_gg' => round($valoreGg, 2),
                 'valore_spese' => round($valoreSpese, 2),
-                'valore_tot' => round($valoreTot, 2)
+                'valore_tot' => round($valoreTot, 2),
+                'costo_spese' => round($costoSpese, 2)
             ];
         } catch (Exception $e) {
             return [
                 'valore_gg' => 0,
                 'valore_spese' => 0,
-                'valore_tot' => 0
+                'valore_tot' => 0,
+                'costo_spese' => 0
             ];
         }
     }
-    
+
     /**
      * Calcola valore per task di monitoraggio
      * Formula: Prezzo/gg del task di monitoraggio × Giornate effettuate negli altri task della commessa
@@ -664,53 +671,26 @@ class TaskAPI extends BaseAPI {
     }
     
     /**
-     * Calcola Valore_Spese filtrato per periodo
+     * Ricavo spese del task limitato al periodo filtrato. Stessa regola della
+     * versione totale: la diaria si conta una volta per giornata di campo del
+     * periodo, non una volta sola perché il periodo contiene giornate.
      */
     private function calcolaValoreSpeseFilrato($taskId, $taskData, $filtriPeriodo) {
         try {
-            // Se Spese_Comprese = 'Si', il valore spese è sempre 0
-            if (isset($taskData['Spese_Comprese']) && $taskData['Spese_Comprese'] === 'Si') {
-                return 0;
-            }
-            
-            // Se Spese_Comprese = 'No', verifica se ci sono spese standard
-            $speseStandard = floatval($taskData['Valore_Spese_std'] ?? 0);
-            
-            if ($speseStandard > 0) {
-                // Per le spese standard, se c'è un filtro periodo, restituisce spese standard
-                // solo se ci sono giornate nel periodo, altrimenti 0
-                $giornateFilrate = $this->getGiorniEffettuatiFiltrati($taskId, $filtriPeriodo);
-                return $giornateFilrate > 0 ? $speseStandard : 0;
-            } else {
-                // Somma le spese dalle giornate del task filtrate per periodo
-                $whereClause = '';
-                $params = [':task_id' => $taskId];
-                
-                if ($filtriPeriodo['tipo'] === 'anno_mese') {
-                    $whereClause = "AND DATE_FORMAT(Data, '%Y-%m') = :periodo";
-                    $params[':periodo'] = $filtriPeriodo['valore'];
-                } elseif ($filtriPeriodo['tipo'] === 'anno') {
-                    $whereClause = "AND YEAR(Data) = :anno";
-                    $params[':anno'] = $filtriPeriodo['valore'];
-                }
-                
-                $sql = "SELECT SUM(
-                           COALESCE(CAST(REPLACE(Spese_Viaggi, ',', '.') AS DECIMAL(10,2)), 0) +
-                           COALESCE(CAST(REPLACE(Vitto_alloggio, ',', '.') AS DECIMAL(10,2)), 0) +
-                           COALESCE(CAST(REPLACE(Altri_costi, ',', '.') AS DECIMAL(10,2)), 0)
-                       ) as totale_spese
-                        FROM FACT_GIORNATE 
-                        WHERE ID_TASK = :task_id {$whereClause}";
-                
-                $stmt = $this->db->prepare($sql);
-                foreach ($params as $key => $value) {
-                    $stmt->bindValue($key, $value);
-                }
-                $stmt->execute();
-                $totaleSpese = $stmt->fetchColumn();
-                
-                return floatval($totaleSpese) ?: 0;
-            }
+            $agg = $this->aggregaSpeseTask($taskId, $filtriPeriodo);
+            return CalcoloSpese::ricavoAggregato($taskData, $agg['giornate'], $agg['spese_addebitabili']);
+        } catch (Exception $e) {
+            return 0;
+        }
+    }
+
+    /**
+     * Costo spese del task limitato al periodo filtrato.
+     */
+    private function calcolaCostoSpeseFiltrato($taskId, $filtriPeriodo) {
+        try {
+            $agg = $this->aggregaSpeseTask($taskId, $filtriPeriodo);
+            return $agg['spese_lorde'];
         } catch (Exception $e) {
             return 0;
         }
@@ -813,17 +793,20 @@ class TaskAPI extends BaseAPI {
             $valoreGg = $this->calcolaValoreGg($taskId, $taskData);
             $valoreSpese = $this->calcolaValoreSpese($taskId, $taskData);
             $valoreTot = $valoreGg + $valoreSpese;
-            
+            $costoSpese = $this->calcolaCostoSpese($taskId);
+
             return [
                 'valore_gg' => round($valoreGg, 2),
                 'valore_spese' => round($valoreSpese, 2),
-                'valore_tot' => round($valoreTot, 2)
+                'valore_tot' => round($valoreTot, 2),
+                'costo_spese' => round($costoSpese, 2)
             ];
         } catch (Exception $e) {
             return [
                 'valore_gg' => 0,
                 'valore_spese' => 0,
-                'valore_tot' => 0
+                'valore_tot' => 0,
+                'costo_spese' => 0
             ];
         }
     }
@@ -878,41 +861,76 @@ class TaskAPI extends BaseAPI {
     }
     
     /**
-     * Calcola Valore_Spese in base alle regole business
+     * Ricavo spese del task: la diaria per ogni giornata di campo, oppure le
+     * spese effettive se il task è a consuntivo. Regole in CalcoloSpese.
      */
     private function calcolaValoreSpese($taskId, $taskData) {
         try {
-            // Se Spese_Comprese = 'Si', il valore spese è sempre 0
-            if (isset($taskData['Spese_Comprese']) && $taskData['Spese_Comprese'] === 'Si') {
-                return 0;
-            }
-            
-            // Se Spese_Comprese = 'No', verifica se ci sono spese standard
-            $speseStandard = floatval($taskData['Valore_Spese_std'] ?? 0);
-            
-            if ($speseStandard > 0) {
-                // Usa le spese standard
-                return $speseStandard;
-            } else {
-                // Somma le spese dalle giornate del task
-                $sql = "SELECT SUM(
-                           COALESCE(CAST(REPLACE(Spese_Viaggi, ',', '.') AS DECIMAL(10,2)), 0) +
-                           COALESCE(CAST(REPLACE(Vitto_alloggio, ',', '.') AS DECIMAL(10,2)), 0) +
-                           COALESCE(CAST(REPLACE(Altri_costi, ',', '.') AS DECIMAL(10,2)), 0)
-                       ) as totale_spese
-                        FROM FACT_GIORNATE 
-                        WHERE ID_TASK = :task_id";
-                
-                $stmt = $this->db->prepare($sql);
-                $stmt->bindValue(':task_id', $taskId);
-                $stmt->execute();
-                $totaleSpese = $stmt->fetchColumn();
-                
-                return floatval($totaleSpese) ?: 0;
-            }
+            $agg = $this->aggregaSpeseTask($taskId);
+            return CalcoloSpese::ricavoAggregato($taskData, $agg['giornate'], $agg['spese_addebitabili']);
         } catch (Exception $e) {
             return 0;
         }
+    }
+
+    /**
+     * Costo spese del task: l'esborso lordo di TUTTE le giornate, comprese
+     * quelle da remoto e quelle dei task con Spese_Comprese = 'Si'. Il costo
+     * non dipende da come la spesa è stata venduta.
+     */
+    private function calcolaCostoSpese($taskId) {
+        try {
+            $agg = $this->aggregaSpeseTask($taskId);
+            return $agg['spese_lorde'];
+        } catch (Exception $e) {
+            return 0;
+        }
+    }
+
+    /**
+     * Aggrega in una sola query i tre numeri che servono al calcolo spese:
+     * quante giornate sono addebitabili (righe, non somma dei gg: la diaria si
+     * paga intera anche per le mezze giornate), le spese lorde totali e quelle
+     * delle sole giornate addebitabili.
+     *
+     * @param array $filtriPeriodo se valorizzato, restringe al periodo
+     */
+    private function aggregaSpeseTask($taskId, $filtriPeriodo = null) {
+        $whereClause = '';
+        $params = [':task_id' => $taskId];
+
+        if ($filtriPeriodo) {
+            if ($filtriPeriodo['tipo'] === 'anno_mese') {
+                $whereClause = "AND DATE_FORMAT(Data, '%Y-%m') = :periodo";
+                $params[':periodo'] = $filtriPeriodo['valore'];
+            } elseif ($filtriPeriodo['tipo'] === 'anno') {
+                $whereClause = "AND YEAR(Data) = :anno";
+                $params[':anno'] = $filtriPeriodo['valore'];
+            }
+        }
+
+        $addebitabili = CalcoloSpese::sqlGiornateAddebitabili();
+        $lorde = CalcoloSpese::sqlSpeseLorde();
+
+        $sql = "SELECT
+                    SUM(CASE WHEN {$addebitabili} THEN 1 ELSE 0 END) AS giornate,
+                    SUM({$lorde}) AS spese_lorde,
+                    SUM(CASE WHEN {$addebitabili} THEN {$lorde} ELSE 0 END) AS spese_addebitabili
+                FROM FACT_GIORNATE
+                WHERE ID_TASK = :task_id {$whereClause}";
+
+        $stmt = $this->db->prepare($sql);
+        foreach ($params as $key => $value) {
+            $stmt->bindValue($key, $value);
+        }
+        $stmt->execute();
+        $row = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+
+        return [
+            'giornate' => intval($row['giornate'] ?? 0),
+            'spese_lorde' => floatval($row['spese_lorde'] ?? 0),
+            'spese_addebitabili' => floatval($row['spese_addebitabili'] ?? 0)
+        ];
     }
     
     /**
