@@ -4,6 +4,7 @@
  */
 
 require_once 'BaseAPI.php';
+require_once __DIR__ . '/CalcoloSpese.php';
 
 class CommesseAPI extends BaseAPI {
     
@@ -744,6 +745,8 @@ class CommesseAPI extends BaseAPI {
         // Inizializza valore_spese e contatori di costo per ogni mese
         foreach ($monthly as $ymKey => $_) {
             $monthly[$ymKey]['valore_spese'] = 0;
+            // Esborso reale delle spese: entra nel costo di commessa
+            $monthly[$ymKey]['costo_spese'] = 0;
             // Costo_gg: somma dei costi giornalieri (tariffa * gg) per il mese
             $monthly[$ymKey]['costo_gg'] = 0;
         }
@@ -765,15 +768,14 @@ class CommesseAPI extends BaseAPI {
             $ids = array_map(function($t){ return $t['ID_TASK']; }, $tasksList);
             // costruisci placeholder
             $placeholders = rtrim(str_repeat('?,', count($ids)), ',');
-                        $aggSql = "SELECT ID_TASK, DATE_FORMAT(Data, '%Y-%m') AS ym, 
-                                                SUM(
-                                                    COALESCE(CAST(REPLACE(Spese_Viaggi, ',', '.') AS DECIMAL(10,2)),0) +
-                                                    COALESCE(CAST(REPLACE(Vitto_alloggio, ',', '.') AS DECIMAL(10,2)),0) +
-                                                    COALESCE(CAST(REPLACE(Altri_costi, ',', '.') AS DECIMAL(10,2)),0)
-                                                ) AS spese_sum,
-                                                SUM(
-                                                    COALESCE(CAST(REPLACE(Spese_Fatturate_VP, ',', '.') AS DECIMAL(10,2)),0)
-                                                ) AS spese_fatturate_sum,
+            $addebitabili = CalcoloSpese::sqlGiornateAddebitabili();
+            $lorde = CalcoloSpese::sqlSpeseLorde();
+            // giornate_addebitabili conta le righe, non i gg: la diaria si paga
+            // intera anche sulle mezze giornate.
+                        $aggSql = "SELECT ID_TASK, DATE_FORMAT(Data, '%Y-%m') AS ym,
+                                                SUM({$lorde}) AS spese_sum,
+                                                SUM(CASE WHEN {$addebitabili} THEN {$lorde} ELSE 0 END) AS spese_addebitabili_sum,
+                                                SUM(CASE WHEN {$addebitabili} THEN 1 ELSE 0 END) AS giornate_addebitabili,
                                                 SUM(CAST(REPLACE(gg, ',', '.') AS DECIMAL(10,2))) AS gg_sum
                                              FROM FACT_GIORNATE
                                              WHERE ID_TASK IN ($placeholders)
@@ -789,7 +791,8 @@ class CommesseAPI extends BaseAPI {
                 foreach ($aggRows as $ar) {
                     $speseByTaskMonth[$ar['ID_TASK']][$ar['ym']] = [
                         'spese_sum' => floatval($ar['spese_sum']),
-                        'spese_fatturate_sum' => floatval($ar['spese_fatturate_sum'] ?? 0),
+                        'spese_addebitabili_sum' => floatval($ar['spese_addebitabili_sum'] ?? 0),
+                        'giornate_addebitabili' => intval($ar['giornate_addebitabili'] ?? 0),
                         'gg_sum' => floatval($ar['gg_sum'])
                     ];
                 }
@@ -802,27 +805,23 @@ class CommesseAPI extends BaseAPI {
         // Applica la logica di calcolo spese (per task) su ogni mese presente in $monthly
         foreach ($tasksList as $task) {
             $taskId = $task['ID_TASK'];
-            $speseComprese = ($task['Spese_Comprese'] ?? '') === 'Si';
-            $valoreStd = floatval($task['Valore_Spese_std'] ?? 0);
 
             foreach ($monthly as $ymKey => $_) {
-                // Se c'è valore standard e il task ha giornate nel mese aggiungilo al valore di ricavo
-                // Per il costo delle spese usiamo sempre le spese effettive registrate meno la quota già fatturata a VP
                 $taskMonth = $speseByTaskMonth[$taskId][$ymKey] ?? null;
-                $ggInMonth = $taskMonth['gg_sum'] ?? 0;
-                $speseSum = $taskMonth['spese_sum'] ?? 0;
-                $speseFatturate = $taskMonth['spese_fatturate_sum'] ?? 0;
-
-                if ($valoreStd > 0) {
-                    if ($ggInMonth > 0) {
-                        $monthly[$ymKey]['valore_spese'] += $valoreStd;
-                    }
-                } else {
-                    $monthly[$ymKey]['valore_spese'] += $speseSum;
+                if ($taskMonth === null) {
+                    continue;
                 }
 
-                // Nota: il costo spese non viene più considerato nel calcolo del costo totale
-                // (viene comunque mantenuto il calcolo di valore_spese per il ricavo se necessario)
+                // Ricavo: la diaria per ogni giornata di campo del mese, oppure
+                // le spese effettive se il task è a consuntivo.
+                $monthly[$ymKey]['valore_spese'] += CalcoloSpese::ricavoAggregato(
+                    $task,
+                    $taskMonth['giornate_addebitabili'],
+                    $taskMonth['spese_addebitabili_sum']
+                );
+
+                // Costo: l'esborso lordo del mese, in ogni regime.
+                $monthly[$ymKey]['costo_spese'] += $taskMonth['spese_sum'];
             }
         }
 
@@ -859,6 +858,7 @@ class CommesseAPI extends BaseAPI {
 
             // valore spese già calcolato in $v['valore_spese']
             $valore_spese = floatval($v['valore_spese'] ?? 0);
+            $costo_spese = floatval($v['costo_spese'] ?? 0);
 
             // valore monitoraggio e totale mensile
             $valore_monitoraggio = $valore_monitor;
@@ -903,8 +903,10 @@ class CommesseAPI extends BaseAPI {
                 $costo_gg_tot = 0;
             }
 
-            // Costo totale: somma del costo delle giornate (Costo_gg) e del valore spese (Valore_spese)
-            $costo_tot = $costo_gg_tot + $valore_spese;
+            // Costo totale: costo delle giornate più l'esborso reale delle spese.
+            // Prima qui entrava $valore_spese, cioè il prezzo di vendita: il
+            // margine delle spese risultava zero per costruzione.
+            $costo_tot = $costo_gg_tot + $costo_spese;
 
             $entry = [
                 'year_month' => $ym,
@@ -915,6 +917,7 @@ class CommesseAPI extends BaseAPI {
                 'valore_spese' => round($valore_spese, 2),
                 'totale_maturato' => round($totale, 2),
                 'Costo_gg' => round($costo_gg_tot, 2),
+                'Costo_Spese' => round($costo_spese, 2),
                 'Costo_TOT' => round($costo_tot, 2),
                 'Valore_TOT' => round($valore_totale_mese, 2),
                 'costo_accounting' => round($costo_accounting, 2),

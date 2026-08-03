@@ -156,17 +156,19 @@ class CommesseTaskSection extends BaseSection {
         const commissioneCommessa = parseFloat(commessa.Commissione) || 0;
         const costoAccounting = sommaValoreCampo * commissioneCommessa;
 
-        // ======= NUOVO: Calcolo di "costo_totale_attività" =======
-        // 1) Per i task di tipo 'Campo' sommiamo per ogni giornata: Costo_gg + Costo_Spese (con fallback sui nomi possibili)
+        // ======= Calcolo di "costo_totale_attività" =======
+        // 1) Per i task di tipo 'Campo' sommiamo per ogni giornata: Costo_gg + esborso spese.
+        //    L'esborso è spese_totali (viaggi + vitto/alloggio + altri costi), non
+        //    Valore_spese che è il prezzo di vendita: usare quello rendeva il margine
+        //    delle spese nullo per costruzione. Vedi docs/REGOLE-SPESE.md.
         const costoCampoDalleGiornate = commessa.tasks
             .filter(t => t.Tipo === 'Campo')
             .reduce((accTask, task) => {
                 const giornate = task.giornate || [];
                 const costoPerTask = giornate.reduce((accGg, g) => {
                     const costoGg = parseFloat(g.Costo_gg ?? g.costo_gg ?? 0) || 0;
-                    // Usare Valore_spese come richiesto (non Costo_Spese)
-                    const valoreSpese = parseFloat(g.Valore_spese ?? g.valore_spese ?? g.Valore_Spese ?? 0) || 0;
-                    return accGg + costoGg + valoreSpese;
+                    const costoSpese = parseFloat(g.spese_totali ?? g.Spese_Totali ?? 0) || 0;
+                    return accGg + costoGg + costoSpese;
                 }, 0);
                 return accTask + costoPerTask;
             }, 0);
@@ -1163,8 +1165,8 @@ class CommesseTaskSection extends BaseSection {
                 const giornate = task.giornate || [];
                 const costoPerTask = giornate.reduce((accGg, g) => {
                     const costoGg = parseFloat(g.Costo_gg ?? g.costo_gg ?? 0) || 0;
-                    const valoreSpese = parseFloat(g.Valore_spese ?? g.valore_spese ?? 0) || 0;
-                    return accGg + costoGg + valoreSpese;
+                    const costoSpese = parseFloat(g.spese_totali ?? g.Spese_Totali ?? 0) || 0;
+                    return accGg + costoGg + costoSpese;
                 }, 0);
                 return sumTask + costoPerTask;
             }, 0);
@@ -1338,8 +1340,8 @@ class CommesseTaskSection extends BaseSection {
                 const giornate = task.giornate || [];
                 return accTask + giornate.reduce((accGg, g) => {
                     const costoGg = parseFloat(g.Costo_gg ?? g.costo_gg ?? 0) || 0;
-                    const valoreSp = parseFloat(g.Valore_spese ?? g.valore_spese ?? 0) || 0;
-                    return accGg + costoGg + valoreSp;
+                    const costoSp = parseFloat(g.spese_totali ?? g.Spese_Totali ?? 0) || 0;
+                    return accGg + costoGg + costoSp;
                 }, 0);
             }, 0);
             // contributo dei task di Monitoraggio: usa il valore già calcolato dall'API
