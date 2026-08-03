@@ -6,9 +6,10 @@ Serve a rispondere a una domanda sola: **cosa fa oggi il software con le spese, 
 è quello che vogliamo?** Prima la fotografia di com'è implementato adesso, poi le
 incoerenze che ne derivano con i numeri veri, infine le decisioni da prendere.
 
-I conteggi vengono dallo snapshot in [DB/Dati/](../DB/Dati/) (78 task, ultimo export
-disponibile), non dal database di produzione: gli ordini di grandezza sono quelli, le
-cifre esatte vanno riverificate sul DB live prima di qualunque comunicazione al cliente.
+I conteggi vengono dal **database vero** (95 task), interrogato tramite l'ambiente di test
+locale descritto in [AMBIENTE-LOCALE.md](AMBIENTE-LOCALE.md). Una prima versione di questo
+documento usava lo snapshot CSV in [DB/Dati/](../DB/Dati/), che è più vecchio e contiene
+meno giornate: le cifre qui sotto sostituiscono quelle.
 
 ---
 
@@ -37,9 +38,9 @@ si addebita al cliente quello che si è effettivamente speso.
 
 | Regime | Task |
 |---|---|
-| `Spese_Comprese = Si` (spese nel prezzo giornata) | **29** |
-| Forfait `Valore_Spese_std > 0` | **20** |
-| A consuntivo (`No`, senza forfait) | **29** |
+| `Spese_Comprese = Si` (spese nel prezzo giornata) | **33** |
+| Diaria `Valore_Spese_std > 0` | **26** |
+| A consuntivo (`No`, senza diaria) | **36** |
 
 ---
 
@@ -104,23 +105,23 @@ guarda mai il forfait. Va bene così — non è oggetto di decisione.
 ### ① Il forfait ha tre interpretazioni simultanee
 
 Per task, per giornata, per mese — a seconda di chi legge il dato. Su TAS00083
-("4. SFC CT - Seconda Fase", commessa COM2025018 LACTALIS CORTEOLONA), forfait 55 € e
-6 giornate consuntivate:
+("4. SFC CT - Seconda Fase", commessa COM2025018 LACTALIS CORTEOLONA), diaria 55 € e
+17 giornate di campo consuntivate:
 
 | Interpretazione | Ricavo spese | Dove si vede |
 |---|---|---|
 | per task | **55 €** | ricavo della card commessa |
-| per giornata | **330 €** | costo della card commessa, sezione Clienti |
-| per mese | **110 €** (2 mesi con giornate) | maturato mensile |
+| per giornata | **935 €** | costo della card commessa, sezione Clienti |
+| per mese | **385 €** (7 mesi con giornate) | maturato mensile |
 
-Sui 19 task a forfait che hanno giornate consuntivate, lo scarto complessivo tra
-lettura per-task e lettura per-giornata è di **4.180 €**.
+Sui 26 task a diaria che hanno giornate consuntivate, lo scarto complessivo tra
+lettura per-task e lettura per-giornata è di **7.460 €**.
 
-### ② Nella card commessa il forfait entra come ricavo con una regola e come costo con l'altra
+### ② Nella card commessa la diaria entra come ricavo con una regola e come costo con l'altra
 
 Non è solo un'incoerenza di rappresentazione: **genera margine negativo dal nulla**.
-Su TAS00083, 55 € di ricavo contro 330 € di costo = **275 € di margine inventato**.
-Sull'intero parco task il gonfiaggio è quello stesso di **4.180 €**.
+Su TAS00083, 55 € di ricavo contro 935 € di costo = **880 € di margine inventato**.
+Sull'intero parco task il gonfiaggio è quello stesso di **7.460 €**.
 
 ### ③ Il "costo spese" usato nei margini non è un costo
 
@@ -130,21 +131,22 @@ di V&P — **non viene usato in nessun calcolo di margine**, né la quota `Spese
 
 La conseguenza si vede bene nei casi in cui forfait e realtà divergono parecchio:
 
-| Task | Forfait × gg | Esborso reale | Scostamento |
+| Task | Diaria × gg | Esborso reale | Scostamento |
 |---|---|---|---|
-| TAS00040 Corteolona Aula CT | 55 × 3 = 165 € | 526 € | −361 € non visti |
+| TAS00085 Shop Floor Coaching CapiTurno | 70 × 15 = 1.050 € | 2.437,30 € | −1.387 € non visti |
+| TAS00083 4. SFC CT | 55 × 17 = 935 € | 2.069 € | −1.134 € non visti |
 | TAS00073 Aula CapiTurno | 70 × 3 = 210 € | 540 € | −330 € non visti |
-| TAS00083 4. SFC CT | 55 × 6 = 330 € | 565 € | −235 € non visti |
-| TAS00048 Shop Floor Coaching CT | 70 × 7 = 490 € | 0 € | +490 € di costo inesistente |
+| TAS00040 Corteolona Aula CT | 55 × 4 = 220 € | 526 € | −306 € non visti |
 
-Il margine di commessa oggi **non risente mai di quanto abbiamo speso davvero**.
+Il margine di commessa oggi **non risente mai di quanto abbiamo speso davvero**. E il dato
+non è marginale: sui task sopra la diaria copre meno della metà della trasferta.
 
 ### ④ Con `Spese_Comprese = Si` il costo sparisce del tutto
 
 `Valore_spese` è 0 per definizione, e siccome il costo passa da lì, l'esborso reale non
-compare da nessuna parte nel conto economico di commessa. Oggi vale **191,80 €**
-(TAS00037 EVOLUTION GAME 175 €, TAS00009 GALBANI COACHING 16,80 €): poco, ma è poco
-perché il regime è poco usato con spese vere, non perché il meccanismo funzioni.
+compare da nessuna parte nel conto economico di commessa. Vale **238,80 €** su 3 task:
+poco, ma è poco perché il regime è poco usato con spese vere, non perché il meccanismo
+funzioni.
 
 ### Nota a margine
 
@@ -210,17 +212,16 @@ perché il costo è quello che V&P ha sborsato e non dipende da come lo si è ve
 (valore giornate + ricavo spese) − (costo giornate + costo spese) − costo accounting
 ```
 
-### Due punti da chiarire prima di scrivere il codice
+### Due dettagli chiariti il 03/08/2026
 
-1. **`Spese_Fatturate_VP` va sottratta dal costo?** Il campo dice che quella quota è stata
-   fatturata direttamente a V&P dal fornitore — quindi V&P la paga comunque, solo non come
-   rimborso al collaboratore. Se è così, il costo di commessa è la spesa **lorda** e il
-   campo serve unicamente al calcolo del rimborso in consuntivazione. Da confermare.
-   *(Attenzione al nome: `giornata.Costo_Spese` oggi vale `spese − fatturate`, cioè è il
-   rimborso al collaboratore, non il costo aziendale. Il nome è fuorviante.)*
-2. **Le mezze giornate.** Con `gg = 0,50` la diaria si addebita intera o a metà? Oggi il
-   codice la addebita intera. Se la diaria copre viaggio e pasto la trasferta c'è comunque,
-   quindi intera sembra corretto, ma va confermato: 2 delle giornate a forfait sono da mezza.
+1. **`Spese_Fatturate_VP` non riduce il costo.** È l'importo delle spese per cui esiste una
+   fattura V&P pagata con la carta di credito aziendale: V&P la sostiene comunque, serve
+   solo a non riconoscerla al consulente. Il costo di commessa è quindi la spesa **lorda**,
+   e il campo resta confinato al calcolo del rimborso in consuntivazione.
+   *(Attenzione al nome: `giornata.Costo_Spese` vale `spese − fatturate`, cioè è il rimborso
+   dovuto al collaboratore, non il costo aziendale. Il nome inganna, il codice ora lo dice.)*
+2. **Le mezze giornate pagano la diaria intera.** La trasferta c'è comunque, quindi la
+   spesa si contabilizza per intero anche con `gg = 0,50`.
 
 ### Nota sul fatturato
 
@@ -232,26 +233,60 @@ più grossa del gestionale, ed è un lavoro a sé.
 
 ---
 
-## 7. Cosa comporta implementare
+## 7. Com'è stato implementato
 
-L'intervento è circoscritto e va fatto in un colpo solo:
+Fatto il 03/08/2026, commit `74bc638`.
 
-1. **Una sola funzione** che, dato il task e la giornata, restituisce ricavo spese e costo
-   spese secondo la regola decisa. Oggi la logica è replicata in quattro punti che sono
-   già divergenti — finché resta duplicata, tornerà a divergere.
-2. **Quattro consumatori da riallineare** su quella funzione: card commessa, export CSV
-   commesse, sezione Clienti, maturato mensile.
-3. **Nessuna migrazione dati.** I campi restano quelli, cambia solo come vengono letti —
-   ma i margini storici di tutte le commesse con task a forfait cambiano valore. Vale la
-   pena stampare un prima/dopo per commessa prima di mettere in produzione.
+Le regole stanno ora in **un punto solo**, [API/CalcoloSpese.php](../API/CalcoloSpese.php),
+usato da `TaskAPI`, `GiornateAPI` e `CommesseAPI`. Prima erano replicate in quattro punti
+già divergenti fra loro: finché la logica resta duplicata, torna a divergere.
 
-4. **I punti in cui il costo spese oggi non esiste** vanno aggiunti, non solo corretti:
-   in regime `Spese_Comprese = Si` il costo è sempre stato zero ovunque.
+| Punto | Cosa è cambiato |
+|---|---|
+| `TaskAPI::calcolaValoreSpese()` | la diaria moltiplicata per le giornate di campo, non più contata una volta sola |
+| `TaskAPI::calcolaValoreSpeseFilrato()` | idem, sulle giornate del periodo filtrato |
+| `TaskAPI` | nuovo campo `costo_spese_maturato` esposto sul task |
+| `GiornateAPI` | stessa regola di prima, ma delegata a `CalcoloSpese`; commento che chiarisce cosa sia davvero `Costo_Spese` |
+| `CommesseAPI::getMaturatoMensile()` | diaria per giornata anziché una volta al mese; `Costo_TOT` usa l'esborso reale; nuovo campo `Costo_Spese` per mese |
+| Card commessa ed export CSV | il costo somma `spese_totali` (esborso) invece di `Valore_spese` (prezzo) |
 
-Ordine di grandezza dello spostamento sui dati attuali: il ricavo spese sale di **4.180 €**
-(la diaria applicata a tutte le giornate anziché una volta per task), il margine fittizio
-di pari importo sparisce, e compaiono per la prima volta i costi spese reali — inclusi i
-191,80 € oggi invisibili del regime `Spese_Comprese = Si`.
+La **sezione Clienti non è stata toccata**: sommava già `Valore_spese` per giornata, che
+con la regola nuova è la lettura corretta. Da fonte dell'incoerenza è diventata il
+riferimento.
+
+Nessuna migrazione dati: i campi sono gli stessi, cambia come vengono letti.
+
+### Verifica
+
+Fatta sull'ambiente locale contro il database vero, non su dati di prova:
+
+- **le tre fonti ora concordano** — su TAS00052 la somma per giornata e il valore per task
+  danno entrambi 250,00 €, ed era esattamente la divergenza che generava margini falsi;
+- le giornate `Desk = Si` e quelle non di campo restano fuori dal ricavo, le mezze giornate
+  pagano la diaria intera (verificato su TAS00083: 55 € anche sulle giornate da 0,50);
+- i tre regimi si comportano come deciso — `Spese_Comprese = Si` dà ricavo 0 e costo 175 €
+  su TAS00037 (prima era invisibile), il consuntivo dà ricavo = costo;
+- i totali del maturato mensile combaciano con una query di controllo scritta a parte
+  (COM2025011: 1.000 / 0 · COM0001: 0 / 175 · COM2025013: 2.030 / 3.367,30).
+
+### Effetto sui margini
+
+**16 commesse** cambiano valore, tutte di tipo Cliente:
+
+| Commessa | Ricavo spese | Costo spese | Δ margine |
+|---|---|---|---|
+| LINDT SVILUPPO CapiTurno 2026 | 140 → 980 | 980 → 0 | **+1.820** |
+| LACTALIS STAB CERTOSA | 250 → 1.000 | 1.000 → 0 | **+1.750** |
+| LACTALIS PORCARI | 370 → 1.110 | 1.110 → 150 | **+1.700** |
+| LINDT SVILUPPO CAPITURNO 2025 | 140 → 770 | 770 → 0 | **+1.400** |
+| LINDT SVILUPPO CR 2025 | 140 → 700 | 700 → 420 | **+840** |
+| … altre 8 commesse in positivo | | | da +40 a +490 |
+| LACTALIS STAB CORTEOLONA 2026 | 165 → 1.155 | 1.155 → 2.320 | **−175** |
+| CALVI SVIL MANAGERIALITÀ | 0 → 0 | 0 → 175 | **−175** |
+| LACTALIS AUDIT CORTE - CASTELLI | 1.595 → 1.595 | 1.595 → 1.642 | **−47** |
+
+I margini salgono dove la diaria era sottostimata dal conteggio per-task, scendono dove
+per la prima volta compare un esborso reale che prima non veniva contato.
 
 ---
 
@@ -260,5 +295,7 @@ di pari importo sparisce, e compaiono per la prima volta i costi spese reali —
 - **Decise il 02/08/2026:** diaria giornaliera; margine totale con esborso reale a costo;
   costo imputato anche in regime `Spese_Comprese = Si`; ricavo spese non ridotto da
   `Spese_Fatturate_VP`.
-- **Da confermare prima di implementare:** se `Spese_Fatturate_VP` vada sottratta dal
-  **costo** di commessa, e se la diaria sulle mezze giornate sia intera o dimezzata (§ 6).
+- **Chiariti il 03/08/2026:** `Spese_Fatturate_VP` non riduce il costo; le mezze giornate
+  pagano la diaria intera.
+- **Implementato il 03/08/2026** e verificato in locale sul database vero. Resta da
+  guardare le schermate in Management prima di portare in produzione.
