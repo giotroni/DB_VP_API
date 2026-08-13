@@ -21,12 +21,12 @@ $cfg = @{}
 foreach ($riga in Get-Content '.env') {
     if ($riga -match '^\s*([A-Z_]+)\s*=\s*(.*)$') { $cfg[$Matches[1]] = $Matches[2].Trim() }
 }
-$backupDate = if ($cfg.BACKUP_DATE) { $cfg.BACKUP_DATE } else { '20260730' }
+$backupDate = if ($cfg.BACKUP_DATE) { $cfg.BACKUP_DATE } else { '260804' }
 $dbName     = if ($cfg.DB_NAME)     { $cfg.DB_NAME }     else { 'vaglioty_DB_VP' }
 $dbUser     = if ($cfg.DB_USER)     { $cfg.DB_USER }     else { 'vaglioty_DB_VP' }
 $dbPass     = $cfg.DB_PASSWORD
 
-$dump = "DB/Backup/$backupDate/vaglioty_DB_VP.sql"
+$dump = "DB/Backup/${backupDate}_vaglioty_DB_VP.sql"
 if (-not (Test-Path $dump)) {
     throw "Dump non trovato: $dump (controlla BACKUP_DATE nel file .env)"
 }

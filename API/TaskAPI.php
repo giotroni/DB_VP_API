@@ -24,8 +24,10 @@ class TaskAPI extends BaseAPI {
             'Data_Fine' => ['date' => true],
             'Stato_Task' => ['enum' => ['In corso', 'Sospeso', 'Chiuso', 'Archiviato']],
             'gg_previste' => ['numeric' => true, 'min' => 0],
-            'Spese_Comprese' => ['enum' => ['Si', 'No']],
-            'Valore_Spese_std' => ['numeric' => true, 'min' => 0],
+            'Spese_Comprese_Viaggi' => ['enum' => ['Si', 'No']],
+            'Spese_Comprese_Vitto_Alloggio' => ['enum' => ['Si', 'No']],
+            'Valore_Spese_std_Viaggi' => ['numeric' => true, 'min' => 0],
+            'Valore_Spese_std_Vitto_Alloggio' => ['numeric' => true, 'min' => 0],
             'Valore_gg' => ['numeric' => true, 'min' => 0]
         ];
     }
@@ -678,7 +680,7 @@ class TaskAPI extends BaseAPI {
     private function calcolaValoreSpeseFilrato($taskId, $taskData, $filtriPeriodo) {
         try {
             $agg = $this->aggregaSpeseTask($taskId, $filtriPeriodo);
-            return CalcoloSpese::ricavoAggregato($taskData, $agg['giornate'], $agg['spese_addebitabili']);
+            return CalcoloSpese::ricavoAggregato($taskData, $agg);
         } catch (Exception $e) {
             return 0;
         }
@@ -861,13 +863,14 @@ class TaskAPI extends BaseAPI {
     }
     
     /**
-     * Ricavo spese del task: la diaria per ogni giornata di campo, oppure le
-     * spese effettive se il task è a consuntivo. Regole in CalcoloSpese.
+     * Ricavo spese del task: per ciascuna delle due categorie, la diaria per
+     * ogni giornata di campo oppure le spese effettive se è a consuntivo.
+     * Regole in CalcoloSpese.
      */
     private function calcolaValoreSpese($taskId, $taskData) {
         try {
             $agg = $this->aggregaSpeseTask($taskId);
-            return CalcoloSpese::ricavoAggregato($taskData, $agg['giornate'], $agg['spese_addebitabili']);
+            return CalcoloSpese::ricavoAggregato($taskData, $agg);
         } catch (Exception $e) {
             return 0;
         }
@@ -875,8 +878,8 @@ class TaskAPI extends BaseAPI {
 
     /**
      * Costo spese del task: l'esborso lordo di TUTTE le giornate, comprese
-     * quelle da remoto e quelle dei task con Spese_Comprese = 'Si'. Il costo
-     * non dipende da come la spesa è stata venduta.
+     * quelle da remoto, quelle senza viaggio e quelle dei task con le spese
+     * comprese. Il costo non dipende da come la spesa è stata venduta.
      */
     private function calcolaCostoSpese($taskId) {
         try {
@@ -888,10 +891,11 @@ class TaskAPI extends BaseAPI {
     }
 
     /**
-     * Aggrega in una sola query i tre numeri che servono al calcolo spese:
-     * quante giornate sono addebitabili (righe, non somma dei gg: la diaria si
-     * paga intera anche per le mezze giornate), le spese lorde totali e quelle
-     * delle sole giornate addebitabili.
+     * Aggrega in una sola query i numeri che servono al calcolo spese.
+     *
+     * I conteggi sono di righe, non somme dei gg: la diaria si paga intera
+     * anche per le mezze giornate. Viaggi e vitto/alloggio hanno basi diverse
+     * perché i viaggi si fermano alle giornate in cui la trasferta c'è stata.
      *
      * @param array $filtriPeriodo se valorizzato, restringe al periodo
      */
@@ -910,12 +914,17 @@ class TaskAPI extends BaseAPI {
         }
 
         $addebitabili = CalcoloSpese::sqlGiornateAddebitabili();
-        $lorde = CalcoloSpese::sqlSpeseLorde();
+        $conViaggio   = CalcoloSpese::sqlViaggiAddebitabili();
+        $lorde        = CalcoloSpese::sqlSpeseLorde();
+        $viaggi       = CalcoloSpese::sqlSpeseViaggi();
+        $vitto        = CalcoloSpese::sqlSpeseVitto();
 
         $sql = "SELECT
-                    SUM(CASE WHEN {$addebitabili} THEN 1 ELSE 0 END) AS giornate,
+                    SUM(CASE WHEN {$addebitabili} THEN 1 ELSE 0 END) AS n_addebitabili,
+                    SUM(CASE WHEN {$conViaggio}   THEN 1 ELSE 0 END) AS n_con_viaggio,
                     SUM({$lorde}) AS spese_lorde,
-                    SUM(CASE WHEN {$addebitabili} THEN {$lorde} ELSE 0 END) AS spese_addebitabili
+                    SUM(CASE WHEN {$conViaggio}   THEN {$viaggi} ELSE 0 END) AS viaggi_sum,
+                    SUM(CASE WHEN {$addebitabili} THEN {$vitto}  ELSE 0 END) AS vitto_sum
                 FROM FACT_GIORNATE
                 WHERE ID_TASK = :task_id {$whereClause}";
 
@@ -927,9 +936,11 @@ class TaskAPI extends BaseAPI {
         $row = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
 
         return [
-            'giornate' => intval($row['giornate'] ?? 0),
-            'spese_lorde' => floatval($row['spese_lorde'] ?? 0),
-            'spese_addebitabili' => floatval($row['spese_addebitabili'] ?? 0)
+            'n_addebitabili' => intval($row['n_addebitabili'] ?? 0),
+            'n_con_viaggio'  => intval($row['n_con_viaggio'] ?? 0),
+            'spese_lorde'    => floatval($row['spese_lorde'] ?? 0),
+            'viaggi_sum'     => floatval($row['viaggi_sum'] ?? 0),
+            'vitto_sum'      => floatval($row['vitto_sum'] ?? 0)
         ];
     }
     
@@ -1029,7 +1040,7 @@ class TaskAPI extends BaseAPI {
     }
 
     /**
-     * Esclusi i prezzi di vendita (Valore_gg, Valore_Spese_std, Spese_Comprese)
+     * Esclusi i prezzi di vendita (Valore_gg e i quattro campi di regime spese)
      * e i valori maturati: la scheda task del ruolo 'User' mostra solo i giorni
      * effettuati sui previsti.
      */
@@ -1201,10 +1212,12 @@ class TaskAPI extends BaseAPI {
             $data['Stato_Task'] = 'In corso';
         }
         
-        if (!isset($data['Spese_Comprese']) || empty($data['Spese_Comprese'])) {
-            $data['Spese_Comprese'] = 'No';
+        foreach (['Spese_Comprese_Viaggi', 'Spese_Comprese_Vitto_Alloggio'] as $flag) {
+            if (!isset($data[$flag]) || empty($data[$flag])) {
+                $data[$flag] = 'No';
+            }
         }
-        
+
         if (isset($data['Data_Apertura_Task']) && !empty($data['Data_Apertura_Task'])) {
             $data['Data_Apertura_Task'] = date('Y-m-d', strtotime($data['Data_Apertura_Task']));
         }
@@ -1229,10 +1242,16 @@ class TaskAPI extends BaseAPI {
             }
         }
         
-        if (isset($data['Spese_Comprese']) && $data['Spese_Comprese'] === 'Si') {
-            $data['Valore_Spese_std'] = null;
+        // Una categoria compresa nel valore giornata non ha diaria: il form la
+        // nasconde, qui la si azzera perché non resti un valore orfano che
+        // riemergerebbe se il regime tornasse a 'No'.
+        if (($data['Spese_Comprese_Viaggi'] ?? null) === 'Si') {
+            $data['Valore_Spese_std_Viaggi'] = null;
         }
-        
+        if (($data['Spese_Comprese_Vitto_Alloggio'] ?? null) === 'Si') {
+            $data['Valore_Spese_std_Vitto_Alloggio'] = null;
+        }
+
         return $data;
     }
     

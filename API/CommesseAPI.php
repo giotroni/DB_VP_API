@@ -753,7 +753,10 @@ class CommesseAPI extends BaseAPI {
 
         // Recupera tasks della commessa per calcolare le spese come in TaskAPI
         try {
-            $tasksSql = "SELECT ID_TASK, Spese_Comprese, Valore_Spese_std FROM ANA_TASK WHERE ID_COMMESSA = :id";
+            $tasksSql = "SELECT ID_TASK,
+                                Spese_Comprese_Viaggi, Spese_Comprese_Vitto_Alloggio,
+                                Valore_Spese_std_Viaggi, Valore_Spese_std_Vitto_Alloggio
+                         FROM ANA_TASK WHERE ID_COMMESSA = :id";
             $tasksStmt = $this->db->prepare($tasksSql);
             $tasksStmt->bindValue(':id', $commessaId);
             $tasksStmt->execute();
@@ -769,13 +772,19 @@ class CommesseAPI extends BaseAPI {
             // costruisci placeholder
             $placeholders = rtrim(str_repeat('?,', count($ids)), ',');
             $addebitabili = CalcoloSpese::sqlGiornateAddebitabili();
-            $lorde = CalcoloSpese::sqlSpeseLorde();
-            // giornate_addebitabili conta le righe, non i gg: la diaria si paga
-            // intera anche sulle mezze giornate.
+            $conViaggio   = CalcoloSpese::sqlViaggiAddebitabili();
+            $lorde        = CalcoloSpese::sqlSpeseLorde();
+            $viaggi       = CalcoloSpese::sqlSpeseViaggi();
+            $vitto        = CalcoloSpese::sqlSpeseVitto();
+            // I conteggi sono di righe, non di gg: la diaria si paga intera
+            // anche sulle mezze giornate. I viaggi hanno una base più stretta,
+            // le sole giornate in cui la trasferta c'è stata.
                         $aggSql = "SELECT ID_TASK, DATE_FORMAT(Data, '%Y-%m') AS ym,
                                                 SUM({$lorde}) AS spese_sum,
-                                                SUM(CASE WHEN {$addebitabili} THEN {$lorde} ELSE 0 END) AS spese_addebitabili_sum,
-                                                SUM(CASE WHEN {$addebitabili} THEN 1 ELSE 0 END) AS giornate_addebitabili,
+                                                SUM(CASE WHEN {$addebitabili} THEN 1 ELSE 0 END) AS n_addebitabili,
+                                                SUM(CASE WHEN {$conViaggio}   THEN 1 ELSE 0 END) AS n_con_viaggio,
+                                                SUM(CASE WHEN {$conViaggio}   THEN {$viaggi} ELSE 0 END) AS viaggi_sum,
+                                                SUM(CASE WHEN {$addebitabili} THEN {$vitto}  ELSE 0 END) AS vitto_sum,
                                                 SUM(CAST(REPLACE(gg, ',', '.') AS DECIMAL(10,2))) AS gg_sum
                                              FROM FACT_GIORNATE
                                              WHERE ID_TASK IN ($placeholders)
@@ -790,10 +799,12 @@ class CommesseAPI extends BaseAPI {
                 $aggRows = $aggStmt->fetchAll(PDO::FETCH_ASSOC);
                 foreach ($aggRows as $ar) {
                     $speseByTaskMonth[$ar['ID_TASK']][$ar['ym']] = [
-                        'spese_sum' => floatval($ar['spese_sum']),
-                        'spese_addebitabili_sum' => floatval($ar['spese_addebitabili_sum'] ?? 0),
-                        'giornate_addebitabili' => intval($ar['giornate_addebitabili'] ?? 0),
-                        'gg_sum' => floatval($ar['gg_sum'])
+                        'spese_sum'      => floatval($ar['spese_sum']),
+                        'n_addebitabili' => intval($ar['n_addebitabili'] ?? 0),
+                        'n_con_viaggio'  => intval($ar['n_con_viaggio'] ?? 0),
+                        'viaggi_sum'     => floatval($ar['viaggi_sum'] ?? 0),
+                        'vitto_sum'      => floatval($ar['vitto_sum'] ?? 0),
+                        'gg_sum'         => floatval($ar['gg_sum'])
                     ];
                 }
             } catch (PDOException $e) {
@@ -812,13 +823,9 @@ class CommesseAPI extends BaseAPI {
                     continue;
                 }
 
-                // Ricavo: la diaria per ogni giornata di campo del mese, oppure
-                // le spese effettive se il task è a consuntivo.
-                $monthly[$ymKey]['valore_spese'] += CalcoloSpese::ricavoAggregato(
-                    $task,
-                    $taskMonth['giornate_addebitabili'],
-                    $taskMonth['spese_addebitabili_sum']
-                );
+                // Ricavo: per ciascuna categoria, la diaria per ogni giornata di
+                // campo del mese oppure le spese effettive se è a consuntivo.
+                $monthly[$ymKey]['valore_spese'] += CalcoloSpese::ricavoAggregato($task, $taskMonth);
 
                 // Costo: l'esborso lordo del mese, in ogni regime.
                 $monthly[$ymKey]['costo_spese'] += $taskMonth['spese_sum'];

@@ -68,6 +68,13 @@ class ConsuntivazioneApp {
             if (e.target.id === 'images') {
                 this.handleImagesSelected(e.target.files);
             }
+            // Il flag Viaggio vale solo per le giornate di campo in trasferta
+            if (['tipo', 'desk'].includes(e.target.id)) {
+                this.aggiornaFlagViaggio('');
+            }
+            if (['editTipo', 'editDesk'].includes(e.target.id)) {
+                this.aggiornaFlagViaggio('edit');
+            }
         });
         
         // Calcolo automatico totale spese
@@ -392,10 +399,18 @@ class ConsuntivazioneApp {
                                                         Lavoro da remoto (Desk)
                                                     </label>
                                                 </div>
+                                                <div class="form-check form-switch mt-2">
+                                                    <input class="form-check-input" type="checkbox" id="viaggio" value="Si" checked>
+                                                    <label class="form-check-label" for="viaggio">
+                                                        <i class="fas fa-car me-2"></i>
+                                                        Viaggio effettuato
+                                                    </label>
+                                                    <div class="form-text">Togli il segno se sei rimasto sul posto dal giorno prima.</div>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
-                                    
+
                                     <hr class="my-4">
                                     <h5 class="mb-3">
                                         <i class="fas fa-money-bill-wave me-2"></i>
@@ -585,7 +600,8 @@ class ConsuntivazioneApp {
         
         // Calcola totale spese iniziale
         this.calcolaTotaleSpese();
-        
+        this.aggiornaFlagViaggio();
+
         // Aggiungi event listeners per ricalcolo automatico delle spese
         ['speseViaggio', 'vittoAlloggio', 'altreSpese', 'speseFattVP'].forEach(fieldId => {
             const field = document.getElementById(fieldId);
@@ -594,7 +610,7 @@ class ConsuntivazioneApp {
                 field.addEventListener('change', () => this.calcolaTotaleSpese());
             }
         });
-        
+
         // Imposta il form solo se dovrebbe essere mostrato
         if (this.shouldShowConsuntivazioneForm()) {
             // Imposta data di oggi come default
@@ -1015,6 +1031,31 @@ class ConsuntivazioneApp {
         });
     }
     
+    /**
+     * Il flag Viaggio conta solo sulle giornate di campo svolte in trasferta:
+     * su una giornata Desk o di tipo diverso non c'è viaggio da addebitare al
+     * cliente, quindi lo switch si disabilita invece di restare acceso a vuoto.
+     *
+     * @param {string} prefix '' per il form di inserimento, 'edit' per il modale
+     */
+    aggiornaFlagViaggio(prefix = '') {
+        const id = (nome) => prefix ? prefix + nome.charAt(0).toUpperCase() + nome.slice(1) : nome;
+        const viaggio = document.getElementById(id('viaggio'));
+        if (!viaggio) return;
+
+        const tipo = document.getElementById(id('tipo'));
+        const desk = document.getElementById(id('desk'));
+        const inTrasferta = (!tipo || tipo.value === 'Campo') && !(desk && desk.checked);
+
+        viaggio.disabled = !inTrasferta;
+        const label = viaggio.closest('.form-check')?.querySelector('.form-text');
+        if (label) {
+            label.textContent = inTrasferta
+                ? 'Togli il segno se sei rimasto sul posto dal giorno prima.'
+                : 'Non applicabile: nessuna trasferta su questa giornata.';
+        }
+    }
+
     calcolaTotaleSpese() {
         const speseViaggio = parseFloat(document.getElementById('speseViaggio')?.value || 0);
         const vittoAlloggio = parseFloat(document.getElementById('vittoAlloggio')?.value || 0);
@@ -1054,6 +1095,7 @@ class ConsuntivazioneApp {
         fd.append('task', document.getElementById('task').value);
         fd.append('tipo', document.getElementById('tipo').value);
         fd.append('desk', document.getElementById('desk').checked ? 'Si' : 'No');
+        fd.append('viaggio', document.getElementById('viaggio').checked ? 'Si' : 'No');
         fd.append('spese_viaggio', parseFloat(document.getElementById('speseViaggio').value || 0));
         fd.append('vitto_alloggio', parseFloat(document.getElementById('vittoAlloggio').value || 0));
         fd.append('altre_spese', parseFloat(document.getElementById('altreSpese').value || 0));
@@ -1253,10 +1295,10 @@ class ConsuntivazioneApp {
                 ` : ''}
 
                 <div class="consuntivazione-spese">
-                    <span>Viaggi: € ${parseFloat(cons.Spese_Viaggi || 0).toFixed(2)}</span>
-                    <span>Vitto/Alloggio: € ${parseFloat(cons.Vitto_alloggio || 0).toFixed(2)}</span>
-                    <span>Altre: € ${parseFloat(cons.Altri_costi || 0).toFixed(2)}</span>
-                    <span>Fatturate VP: € ${parseFloat(cons.Spese_Fatturate_VP || 0).toFixed(2)}</span>
+                    <span>Viaggi: € ${this.formatItalianNumber(cons.Spese_Viaggi || 0)}</span>
+                    <span>Vitto/Alloggio: € ${this.formatItalianNumber(cons.Vitto_alloggio || 0)}</span>
+                    <span>Altre: € ${this.formatItalianNumber(cons.Altri_costi || 0)}</span>
+                    <span>Fatturate VP: € ${this.formatItalianNumber(cons.Spese_Fatturate_VP || 0)}</span>
                     <strong>Tot: € ${this.formatItalianNumber(cons.Totale_Spese || 0)}</strong>
                     <strong>Rimborsabili: € ${this.formatItalianNumber(Math.max(0, parseFloat(cons.Totale_Spese || 0) - parseFloat(cons.Spese_Fatturate_VP || 0)))}</strong>
                 </div>
@@ -1654,6 +1696,10 @@ class ConsuntivazioneApp {
                             '<span class="badge bg-dark"><i class="fas fa-desktop"></i> Desk</span>' : 
                             '<span class="badge bg-light text-dark"><i class="fas fa-building"></i> Campo</span>'
                         }
+                        ${(cons.Viaggio === 'No' && cons.Tipo === 'Campo' && cons.Desk !== 'Si')
+                            ? '<span class="badge bg-warning text-dark ms-1" title="Nessun viaggio quel giorno"><i class="fas fa-ban"></i> No viaggio</span>'
+                            : ''
+                        }
                     </td>
                     <td class="text-center">
                         <span class="badge bg-primary">${cons.gg}</span>
@@ -1765,9 +1811,14 @@ class ConsuntivazioneApp {
      */
     formatItalianNumber(value) {
         const num = parseFloat(value || 0);
-        return num.toLocaleString('it-IT', { 
-            minimumFractionDigits: 2, 
-            maximumFractionDigits: 2 
+        // useGrouping: 'always' e' necessario: la locale italiana ha
+        // minimumGroupingDigits = 2, quindi per impostazione predefinita NON
+        // separa le migliaia sui numeri di quattro cifre (1550,00 invece di
+        // 1.550,00) mentre le separa da cinque in su.
+        return num.toLocaleString('it-IT', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+            useGrouping: 'always'
         });
     }
 
@@ -1922,12 +1973,21 @@ class ConsuntivazioneApp {
                                         <div class="form-group mb-3">
                                             <label for="editDesk" class="form-label">Modalità Lavoro</label>
                                             <div class="form-check form-switch mt-2">
-                                                <input class="form-check-input" type="checkbox" id="editDesk" 
+                                                <input class="form-check-input" type="checkbox" id="editDesk"
                                                        ${consuntivazione.Desk === 'Si' ? 'checked' : ''}>
                                                 <label class="form-check-label" for="editDesk">
                                                     <i class="fas fa-desktop me-2"></i>
                                                     Lavoro da remoto (Desk)
                                                 </label>
+                                            </div>
+                                            <div class="form-check form-switch mt-2">
+                                                <input class="form-check-input" type="checkbox" id="editViaggio"
+                                                       ${consuntivazione.Viaggio === 'No' ? '' : 'checked'}>
+                                                <label class="form-check-label" for="editViaggio">
+                                                    <i class="fas fa-car me-2"></i>
+                                                    Viaggio effettuato
+                                                </label>
+                                                <div class="form-text">Togli il segno se sei rimasto sul posto dal giorno prima.</div>
                                             </div>
                                         </div>
                                     </div>
@@ -2005,7 +2065,8 @@ class ConsuntivazioneApp {
         
         // Popola le select
         this.populateEditSelects(consuntivazione);
-        
+        this.aggiornaFlagViaggio('edit');
+
         // Mostra il modal
         const modal = new bootstrap.Modal(document.getElementById('editModal'));
         modal.show();
@@ -2178,6 +2239,7 @@ class ConsuntivazioneApp {
             id_task: document.getElementById('editTask').value,
             tipo: document.getElementById('editTipo').value,
             desk: document.getElementById('editDesk').checked ? 'Si' : 'No',
+            viaggio: document.getElementById('editViaggio').checked ? 'Si' : 'No',
             spese_viaggi: document.getElementById('editSpeseViaggio').value || 0,
             vitto_alloggio: document.getElementById('editVittoAlloggio')?.value || 0,
             altri_costi: document.getElementById('editAltreSpese').value || 0,
@@ -2377,6 +2439,7 @@ class ConsuntivazioneApp {
             task: originalCons.ID_TASK || originalCons.ID_TASK,
             tipo: originalCons.Tipo || 'Campo',
             desk: originalCons.Desk || 'No',
+            viaggio: originalCons.Viaggio || 'Si',
             spese_viaggio: parseFloat(originalCons.Spese_Viaggi || 0),
             vitto_alloggio: parseFloat(originalCons.Vitto_alloggio || 0),
             altre_spese: parseFloat(originalCons.Altri_costi || 0),

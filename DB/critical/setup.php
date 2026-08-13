@@ -132,7 +132,11 @@ class DatabaseSetup {
             Stato_Task ENUM('In corso', 'Sospeso', 'Chiuso', 'Archiviato') DEFAULT 'In corso',
             gg_previste DECIMAL(10,2),
             Spese_Comprese ENUM('Si', 'No') DEFAULT 'No',
+            Spese_Comprese_Viaggi ENUM('Si', 'No') DEFAULT 'No',
+            Spese_Comprese_Vitto_Alloggio ENUM('Si', 'No') DEFAULT 'No',
             Valore_Spese_std DECIMAL(10,2),
+            Valore_Spese_std_Viaggi DECIMAL(10,2),
+            Valore_Spese_std_Vitto_Alloggio DECIMAL(10,2),
             Valore_gg DECIMAL(10,2),
             Data_Creazione TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             ID_UTENTE_CREAZIONE VARCHAR(50),
@@ -175,6 +179,7 @@ class DatabaseSetup {
             ID_TASK VARCHAR(50),
             Tipo ENUM('Campo', 'Promo', 'Sviluppo', 'Formazione') DEFAULT 'Campo',
             Desk ENUM('Si', 'No') DEFAULT 'No',
+            Viaggio ENUM('Si', 'No') DEFAULT 'Si',
             gg DECIMAL(10,2),
             Spese_Viaggi DECIMAL(10,2) DEFAULT 0,
             Vitto_alloggio DECIMAL(10,2) DEFAULT 0,
@@ -366,10 +371,18 @@ class DatabaseSetup {
             ['TAS00010', 'SVILUPPO PROC INT', 'Sviluppo procedure interne', 'COM0009', 'CONS001', 'Sviluppo', '2024-12-01', 'In corso', 10.0, 'No', null, 0]
         ];
         
-        $sql = "INSERT INTO ANA_TASK (ID_TASK, Task, Desc_Task, ID_COMMESSA, ID_COLLABORATORE, Tipo, Data_Apertura_Task, Stato_Task, gg_previste, Spese_Comprese, Valore_Spese_std, Valore_gg) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        // I dati di esempio hanno il regime unico storico: lo si replica sulle due
+        // categorie, con la diaria che diventa diaria viaggi. Stessa logica della
+        // migration DB/migrations/add_spese_viaggi_vitto.sql.
+        $sql = "INSERT INTO ANA_TASK (ID_TASK, Task, Desc_Task, ID_COMMESSA, ID_COLLABORATORE, Tipo, Data_Apertura_Task, Stato_Task, gg_previste, Spese_Comprese, Valore_Spese_std, Valore_gg, Spese_Comprese_Viaggi, Spese_Comprese_Vitto_Alloggio, Valore_Spese_std_Viaggi) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         $stmt = $this->db->prepare($sql);
-        
+
         foreach ($tasks as $task) {
+            $speseComprese  = $task[9];
+            $valoreSpeseStd = $task[10];
+            // Con una diaria il forfait copriva viaggio e pasto: vitto/alloggio compreso.
+            $vittoCompreso  = ($speseComprese !== 'Si' && $valoreSpeseStd > 0) ? 'Si' : $speseComprese;
+            $task = array_merge($task, [$speseComprese, $vittoCompreso, $valoreSpeseStd]);
             try {
                 $stmt->execute($task);
             } catch (PDOException $e) {

@@ -10,7 +10,7 @@ le modifiche senza toccare il server Serverplan.
 ## Requisiti
 
 - Docker Desktop (backend WSL2)
-- Il dump di produzione in `DB/Backup/<YYYYMMDD>/vaglioty_DB_VP.sql`
+- Il dump di produzione in `DB/Backup/<AAMMGG>_vaglioty_DB_VP.sql` (es. `260804_vaglioty_DB_VP.sql`)
 - `DB/config.php` presente (non e' versionato; copiarlo da `DB/config.example.php`)
 
 ## Primo avvio
@@ -24,7 +24,7 @@ Al primo avvio il container `db` esegue in ordine gli script di `docker/initdb`:
 
 | # | Script | Cosa fa |
 |---|--------|---------|
-| 01 | `DB/Backup/<BACKUP_DATE>/vaglioty_DB_VP.sql` | importa il dump (9 tabelle) |
+| 01 | `DB/Backup/<BACKUP_DATE>_vaglioty_DB_VP.sql` | importa il dump (9 tabelle) |
 | 02 | `02-fact_fatture_collaboratori.sql` | crea `FACT_FATTURE_COLLABORATORI`, **assente dal dump** |
 | 03 | `03-utente-test-locale.sql` | aggiunge l'utente `testadmin` |
 
@@ -42,6 +42,16 @@ Quando `docker compose ps` mostra `vp_db` come `healthy`, l'ambiente e' pronto.
 
 Porte e password si cambiano nel `.env`. La 3306 e la 8080 sono lasciate libere
 per l'installazione XAMPP presente sulla macchina.
+
+### Allineare il locale a un nuovo backup di produzione
+
+1. copiare il dump in `DB/Backup/` mantenendo il nome `<AAMMGG>_vaglioty_DB_VP.sql`;
+2. aggiornare `BACKUP_DATE` nel `.env` con quel prefisso (es. `260804`);
+3. `.\docker\reset-db.ps1` — cancella il volume e reimporta.
+
+Il volume `db_data` viene ricreato da zero: **le modifiche fatte in locale al
+database si perdono**, i file del progetto no. L'ultimo allineamento è del
+**04/08/2026** (dump `260804`, 96 task e 463 giornate).
 
 ### Credenziali di accesso all'app
 

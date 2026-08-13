@@ -14,12 +14,19 @@ class Utils {
     }
 
     static formatCurrency(amount) {
-        if (!amount || isNaN(amount)) return '€0,00';
-        
+        const n = parseFloat(amount);
+        const valore = isNaN(n) ? 0 : n;
+
+        // useGrouping: 'always' e' necessario: la locale italiana ha
+        // minimumGroupingDigits = 2, quindi per impostazione predefinita NON
+        // separa le migliaia sui numeri di quattro cifre (1550,00 invece di
+        // 1.550,00) mentre le separa da cinque in su. Il risultato era una
+        // pagina con due formati diversi affiancati.
         return new Intl.NumberFormat('it-IT', {
             style: 'currency',
-            currency: 'EUR'
-        }).format(amount);
+            currency: 'EUR',
+            useGrouping: 'always'
+        }).format(valore);
     }
 
     static debounce(func, delay) {

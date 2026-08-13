@@ -17,13 +17,23 @@ meno giornate: le cifre qui sotto sostituiscono quelle.
 
 ### Sul task (`ANA_TASK`) — il **prezzo di vendita** delle spese
 
-| Campo | Valori | Significato inteso |
-|---|---|---|
-| `Spese_Comprese` | `Si` / `No` | `Si` = le spese sono già dentro il valore giornata, non si addebitano a parte. `No` = si addebitano. |
-| `Valore_Spese_std` | numero o vuoto | Il forfait spese concordato col cliente. Compilabile **solo** se `Spese_Comprese = No`: il form lo nasconde e `TaskAPI` lo azzera a `null` in salvataggio ([TaskAPI.php:1214-1215](../API/TaskAPI.php#L1214-L1215)). |
+Dal 07/08/2026 il regime è per **categoria**, non più unico: viaggi e vitto/alloggio
+si vendono in modo indipendente perché i contratti li trattano in modo indipendente.
 
-Se `Spese_Comprese = No` e `Valore_Spese_std` è vuoto, il regime è **a consuntivo**:
-si addebita al cliente quello che si è effettivamente speso.
+| Campo | Valori | Significato |
+|---|---|---|
+| `Spese_Comprese_Viaggi` | `Si` / `No` | `Si` = i viaggi sono già dentro il valore giornata. `No` = si addebitano a parte. |
+| `Valore_Spese_std_Viaggi` | numero o vuoto | La **diaria viaggi**: quanto si addebita per ogni giornata di campo in cui il viaggio c'è stato. Vuoto = a consuntivo. |
+| `Spese_Comprese_Vitto_Alloggio` | `Si` / `No` | Stesso significato per vitto, alloggio e altri costi. |
+| `Valore_Spese_std_Vitto_Alloggio` | numero o vuoto | La **diaria vitto/alloggio**, per ogni giornata di campo. Vuoto = a consuntivo. |
+
+Ciascuna diaria è compilabile **solo** se la categoria non è compresa: il form la
+nasconde e `TaskAPI` la azzera a `null` in salvataggio, così non resta un valore
+orfano pronto a riemergere se il regime tornasse a `No`.
+
+I campi storici `Spese_Comprese` e `Valore_Spese_std` restano in tabella come rete
+di sicurezza, ma nessun codice li legge più. Si rimuovono con una migration
+separata a verifica avvenuta in produzione.
 
 ### Sulla giornata (`FACT_GIORNATE`) — il **costo reale**
 
@@ -31,16 +41,21 @@ si addebita al cliente quello che si è effettivamente speso.
 |---|---|
 | `Spese_Viaggi` | esborso viaggi A/R |
 | `Vitto_alloggio` | esborso vitto e alloggio |
-| `Altri_costi` | altri esborsi |
+| `Altri_costi` | altri esborsi — seguono il regime del vitto/alloggio |
 | `Spese_Fatturate_VP` | quota già fatturata direttamente a V&P dal fornitore — **non** va rimborsata al collaboratore |
+| `Viaggio` | `Si` (default) / `No`. Dice se la trasferta c'è stata: chi si ferma in loco fra due giornate consecutive non fa il viaggio del secondo giorno, e al cliente non va addebitato. |
 
-### La ripartizione attuale del parco task
+### La ripartizione del parco task (dump `260804`, 96 task)
 
-| Regime | Task |
-|---|---|
-| `Spese_Comprese = Si` (spese nel prezzo giornata) | **33** |
-| Diaria `Valore_Spese_std > 0` | **26** |
-| A consuntivo (`No`, senza diaria) | **36** |
+| Regime | Viaggi | Vitto/Alloggio |
+|---|---|---|
+| Compreso nel valore giornata | **34** | **60** |
+| A diaria | **26** | **0** |
+| A consuntivo | **36** | **36** |
+
+Il vitto/alloggio risulta compreso su 60 task perché la migration ha applicato il
+default conservativo: i 26 task a diaria avevano un forfait unico di 50–90 € che
+copriva viaggio e pasto insieme. Vanno rivisti uno a uno.
 
 ---
 
@@ -190,12 +205,26 @@ da chi l'ha materialmente pagata.
 
 ### Ricavo spese — prezzo al cliente
 
+Le due categorie si calcolano separatamente e si sommano.
+
+**Viaggi**
 ```
 giornata non 'Campo', oppure Desk = 'Si'   →  0
-Spese_Comprese = 'Si'                      →  0   (già dentro il valore giornata)
-Valore_Spese_std > 0                       →  la diaria, per ogni giornata di campo
-altrimenti (consuntivo)                    →  spese effettive LORDE della giornata
+Viaggio = 'No'                             →  0   (nessuna trasferta quel giorno)
+Spese_Comprese_Viaggi = 'Si'               →  0   (già dentro il valore giornata)
+Valore_Spese_std_Viaggi > 0                →  la diaria viaggi, per ogni giornata di campo
+altrimenti (consuntivo)                    →  Spese_Viaggi effettive della giornata
 ```
+
+**Vitto/alloggio + altre**
+```
+giornata non 'Campo', oppure Desk = 'Si'   →  0
+Spese_Comprese_Vitto_Alloggio = 'Si'       →  0
+Valore_Spese_std_Vitto_Alloggio > 0        →  la diaria V/A, per ogni giornata di campo
+altrimenti (consuntivo)                    →  Vitto_alloggio + Altri_costi della giornata
+```
+
+Il flag `Viaggio` **non** tocca il vitto/alloggio: chi si ferma mangia e dorme comunque.
 
 ### Costo spese — esborso di V&P
 
@@ -203,8 +232,9 @@ altrimenti (consuntivo)                    →  spese effettive LORDE della gior
 sempre, in ogni regime  →  Spese_Viaggi + Vitto_alloggio + Altri_costi
 ```
 
-Nessuna eccezione: né `Spese_Comprese = Si` né la presenza di una diaria riducono il costo,
-perché il costo è quello che V&P ha sborsato e non dipende da come lo si è venduto.
+Nessuna eccezione: né una categoria compresa, né la presenza di una diaria, né
+`Viaggio = 'No'` riducono il costo, perché il costo è quello che V&P ha sborsato e
+non dipende da come lo si è venduto.
 
 ### Margine di commessa
 
@@ -222,6 +252,18 @@ perché il costo è quello che V&P ha sborsato e non dipende da come lo si è ve
    dovuto al collaboratore, non il costo aziendale. Il nome inganna, il codice ora lo dice.)*
 2. **Le mezze giornate pagano la diaria intera.** La trasferta c'è comunque, quindi la
    spesa si contabilizza per intero anche con `gg = 0,50`.
+
+### Tre dettagli decisi il 07/08/2026
+
+1. **`Altri_costi` segue il vitto/alloggio.** È la coppia già usata nelle etichette di
+   Management ("Costo Vitto/Alloggio + Altre"), e nel database vale 80 € in tutto: non
+   meritava una terza categoria. Si riaddebita quando quella categoria è a consuntivo.
+2. **`Viaggio = 'No'` è un veto assoluto sul ricavo viaggi**, in ogni regime: azzera sia
+   la diaria sia il riaddebito a consuntivo delle `Spese_Viaggi`. Se il viaggio non c'è
+   stato non c'è nulla da vendere; se una spesa risulta comunque registrata, resta a costo.
+3. **Il flag si compila a mano, non si deduce.** `Spese_Viaggi = 0` non significa
+   "nessun viaggio": su TAS00064 (LINDT, 14 giornate a diaria 70 €) non c'è alcuna spesa
+   viaggio registrata, perché con la diaria i consulenti spesso non registrano l'esborso.
 
 ### Nota sul fatturato
 
@@ -249,6 +291,7 @@ già divergenti fra loro: finché la logica resta duplicata, torna a divergere.
 | `GiornateAPI` | stessa regola di prima, ma delegata a `CalcoloSpese`; commento che chiarisce cosa sia davvero `Costo_Spese` |
 | `CommesseAPI::getMaturatoMensile()` | diaria per giornata anziché una volta al mese; `Costo_TOT` usa l'esborso reale; nuovo campo `Costo_Spese` per mese |
 | Card commessa ed export CSV | il costo somma `spese_totali` (esborso) invece di `Valore_spese` (prezzo) |
+| Export CSV giornate (04/08/2026) | la colonna `Valore Spese` legge `Valore_spese` dall'API anziché ricalcolare l'esborso; nuova colonna `Costo Spese` con l'esborso lordo |
 
 La **sezione Clienti non è stata toccata**: sommava già `Valore_spese` per giornata, che
 con la regola nuova è la lettura corretta. Da fonte dell'incoerenza è diventata il
@@ -290,6 +333,66 @@ per la prima volta compare un esborso reale che prima non veniva contato.
 
 ---
 
+## 8. La separazione in due categorie — 07/08/2026
+
+Fatto sopra all'implementazione del 03/08, che non era ancora arrivata in produzione:
+in produzione le due modifiche arrivano insieme.
+
+### Cosa cambia nel database
+
+`ANA_TASK` guadagna quattro colonne (`Spese_Comprese_Viaggi`,
+`Spese_Comprese_Vitto_Alloggio`, `Valore_Spese_std_Viaggi`,
+`Valore_Spese_std_Vitto_Alloggio`) e `FACT_GIORNATE` una (`Viaggio`, default `Si`).
+Migration: [DB/migrations/add_spese_viaggi_vitto.sql](../DB/migrations/add_spese_viaggi_vitto.sql)
+con runner PHP a fianco; in produzione si esegue lo `.sql` da phpMyAdmin, perché il
+runner blocca l'esecuzione da host remoto.
+
+Il popolamento è **conservativo per costruzione**: il regime unico si replica su
+entrambe le categorie, la vecchia diaria diventa diaria viaggi, e i 26 task che ne
+avevano una passano a `Spese_Comprese_Vitto_Alloggio = 'Si'` — perché quel forfait
+di 50–90 € copriva viaggio e pasto insieme. Tutte le giornate storiche partono con
+`Viaggio = 'Si'`.
+
+### Cosa cambia nel codice
+
+| Punto | Cosa è cambiato |
+|---|---|
+| `CalcoloSpese` | `ricavoGiornata()` somma `ricavoViaggiGiornata()` e `ricavoVittoGiornata()`; nuovi `viaggioAddebitabile()`, `sqlViaggiAddebitabili()`, `sqlSpeseViaggi()`, `sqlSpeseVitto()` |
+| `CalcoloSpese::ricavoAggregato()` | cambia firma: prende un array di aggregati, perché le due categorie hanno basi di conteggio diverse |
+| `TaskAPI::aggregaSpeseTask()` | la query restituisce anche `n_con_viaggio`, `viaggi_sum`, `vitto_sum` |
+| `GiornateAPI` | legge i quattro campi nuovi in join; espone `Valore_spese_viaggi` e `Valore_spese_vitto` accanto al totale |
+| `CommesseAPI::getMaturatoMensile()` | stessi aggregati per task e mese |
+| `ConsuntivazioneAPI` | accetta e persiste `viaggio` in inserimento, modifica e duplicazione |
+| Form task in Management | due riquadri affiancati, uno per categoria, ciascuno con "Compresi" e "Diaria (€/gg)" e il proprio toggle indipendente |
+| Form giornate e consuntivazione | switch "Viaggio effettuato", acceso di default, disabilitato su giornate Desk o non di campo |
+
+### Verifica
+
+Sul database vero, con la migration applicata: il **ricavo spese complessivo resta
+17.685,52 €**, identico a prima della separazione — la migration è economicamente
+neutra e ogni variazione arriverà solo dalla revisione manuale dei task. Il percorso
+per giornata e quello aggregato concordano su tutti e 96 i task.
+
+Campioni: TAS00083 → 935,00 € di ricavo e 2.069,00 € di costo; TAS00052 → 250,00 €;
+TAS00037 (compreso) → 0 € di ricavo e 175,00 € di costo; TAS00007 (consuntivo, con
+40 € di `Altri_costi`) → 1.904,50 €.
+
+### Cosa resta da fare
+
+1. Rivedere in Management i **26 task a diaria**, decidendo per ciascuno se il
+   vitto/alloggio sia davvero compreso. I 9 dove la scelta cambia il maturato:
+   TAS00085, TAS00083, TAS00090, TAS00073, TAS00040, TAS00056, TAS00072, TAS00049,
+   TAS00082 — in totale +2.361 € se passassero tutti a consuntivo.
+2. Correggere **TAS00104** (370 €, LACTALIS PORCARI) e **TAS00099** (500 €, EMU):
+   sono forfait una tantum censiti come diarie giornaliere, quindi oggi si moltiplicano
+   per il numero di giornate.
+3. Compilare il flag `Viaggio` sulle giornate future. Le 12 giornate storiche
+   consecutive su task a diaria (1.125 €) si correggono a mano solo se il cliente non
+   è ancora stato fatturato.
+4. A verifica avvenuta, `DROP COLUMN Spese_Comprese, Valore_Spese_std` su `ANA_TASK`.
+
+---
+
 ## Stato
 
 - **Decise il 02/08/2026:** diaria giornaliera; margine totale con esborso reale a costo;
@@ -299,3 +402,11 @@ per la prima volta compare un esborso reale che prima non veniva contato.
   pagano la diaria intera.
 - **Implementato il 03/08/2026** e verificato in locale sul database vero. Resta da
   guardare le schermate in Management prima di portare in produzione.
+- **Corretto il 04/08/2026:** l'export CSV delle giornate era rimasto fuori
+  dall'allineamento — scriveva l'esborso nella colonna `Valore Spese`, quindi su
+  TAS00083 dava 2.069 € contro i 935 € della scheda task. Ora le due fonti concordano
+  e il CSV espone entrambi i lati (`Costo Spese` = 2.069 €, `Valore Spese` = 935 €).
+- **Deciso e implementato il 07/08/2026:** regime di spesa separato per viaggi e
+  vitto/alloggio; flag `Viaggio` sulla giornata; `Altri_costi` agganciato al
+  vitto/alloggio. Migration economicamente neutra, verificata in locale (§ 8).
+  **Non ancora in produzione**, insieme all'implementazione del 03/08.

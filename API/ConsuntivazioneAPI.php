@@ -277,6 +277,7 @@ class ConsuntivazioneAPI {
                         g.gg,
                         g.Tipo,
                         g.Desk,
+                        COALESCE(g.Viaggio, 'Si') as Viaggio,
                         COALESCE(g.Spese_Viaggi, 0) as Spese_Viaggi,
                         COALESCE(g.Vitto_alloggio, 0) as Vitto_alloggio,
                         COALESCE(g.Altri_costi, 0) as Altri_costi,
@@ -572,6 +573,7 @@ class ConsuntivazioneAPI {
                         g.gg,
                         g.Tipo,
                         g.Desk,
+                        COALESCE(g.Viaggio, 'Si') as Viaggio,
                         g.ID_TASK,
                         COALESCE(g.Spese_Viaggi, 0) as Spese_Viaggi,
                         COALESCE(g.Vitto_alloggio, 0) as Vitto_alloggio,
@@ -667,6 +669,7 @@ class ConsuntivazioneAPI {
                         ID_TASK = ?,
                         Tipo = ?,
                         Desk = ?,
+                        Viaggio = ?,
                         gg = ?,
                         Spese_Viaggi = ?,
                         Vitto_alloggio = ?,
@@ -683,6 +686,7 @@ class ConsuntivazioneAPI {
                 $data['id_task'],
                 $data['tipo'] ?? 'Campo',
                 $data['desk'] ?? 'No',
+                $data['viaggio'] ?? 'Si',
                 $data['gg'],
                 $data['spese_viaggi'] ?? 0,
                 $data['vitto_alloggio'] ?? 0,
@@ -819,6 +823,8 @@ class ConsuntivazioneAPI {
                 'ID_TASK' => $data['task'],
                 'Tipo' => $data['tipo'] ?? 'Campo',
                 'Desk' => $data['desk'] ?? 'No',
+                // Il viaggio si presume effettuato: chi si ferma in loco toglie il flag.
+                'Viaggio' => $data['viaggio'] ?? 'Si',
                 'gg' => floatval($data['giornate_lavorate']),
                 'Spese_Viaggi' => floatval($data['spese_viaggio'] ?? 0),
                 'Vitto_alloggio' => floatval($data['vitto_alloggio'] ?? 0),
@@ -832,11 +838,11 @@ class ConsuntivazioneAPI {
 
             // Inserimento nel database
             $sql = "INSERT INTO FACT_GIORNATE (
-                        ID_GIORNATA, Data, ID_COLLABORATORE, ID_TASK, Tipo, Desk,
+                        ID_GIORNATA, Data, ID_COLLABORATORE, ID_TASK, Tipo, Desk, Viaggio,
                         gg, Spese_Viaggi, Vitto_alloggio, Altri_costi, Spese_Fatturate_VP,
                         Confermata, Note, Data_Creazione, ID_UTENTE_CREAZIONE
                     ) VALUES (
-                        :ID_GIORNATA, :Data, :ID_COLLABORATORE, :ID_TASK, :Tipo, :Desk,
+                        :ID_GIORNATA, :Data, :ID_COLLABORATORE, :ID_TASK, :Tipo, :Desk, :Viaggio,
                         :gg, :Spese_Viaggi, :Vitto_alloggio, :Altri_costi, :Spese_Fatturate_VP,
                         :Confermata, :Note, :Data_Creazione, :ID_UTENTE_CREAZIONE
                     )";

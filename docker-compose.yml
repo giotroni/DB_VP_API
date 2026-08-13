@@ -29,10 +29,12 @@ services:
     volumes:
       - db_data:/var/lib/mysql
       # Eseguiti in ordine alfabetico al PRIMO avvio (volume vuoto): il dump di
-      # produzione, poi la tabella che manca nel dump, poi l'utente di test.
-      - ./DB/Backup/${BACKUP_DATE:-20260730}/vaglioty_DB_VP.sql:/docker-entrypoint-initdb.d/01-dump.sql:ro
+      # produzione, poi la tabella che manca nel dump, poi l'utente di test,
+      # infine le migration non ancora comprese nel dump.
+      - ./DB/Backup/${BACKUP_DATE:-260804}_vaglioty_DB_VP.sql:/docker-entrypoint-initdb.d/01-dump.sql:ro
       - ./docker/initdb/02-fact_fatture_collaboratori.sql:/docker-entrypoint-initdb.d/02-fact_fatture_collaboratori.sql:ro
       - ./docker/initdb/03-utente-test-locale.sql:/docker-entrypoint-initdb.d/03-utente-test-locale.sql:ro
+      - ./docker/initdb/04-spese-viaggi-vitto.sql:/docker-entrypoint-initdb.d/04-spese-viaggi-vitto.sql:ro
     healthcheck:
       test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
       interval: 5s

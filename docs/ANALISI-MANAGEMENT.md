@@ -9,6 +9,11 @@ software sull'ambiente locale con i dati reali del backup (vedi `AMBIENTE-LOCALE
 I numeri dell'esempio al § 8 sono stati letti dal sistema in funzione, non ricavati
 solo dalla lettura del codice.
 
+> **Aggiornato il 04/08/2026.** Le anomalie contabili sulle spese (A2, A3) sono state
+> risolte il 03/08/2026: le regole decise e la loro implementazione stanno in
+> [REGOLE-SPESE.md](REGOLE-SPESE.md), il calcolo in [API/CalcoloSpese.php](../API/CalcoloSpese.php).
+> I §§ 4, 5, 8 e 10 riflettono il comportamento attuale.
+
 ---
 
 ## 1. Cosa fa e per chi
@@ -49,6 +54,15 @@ ManagementApp (management.js)
     ├── giornate         GiornateSection
     └── statistiche      StatisticheSection       ← stub, "sezione in sviluppo"
 ```
+
+**Formattazione degli importi.** Tutti i valori economici di Management passano da
+`Utils.formatCurrency()`; `consuntivazione.html` non carica `utils.js` e usa il proprio
+`formatItalianNumber()` ([consuntivazione.js:1766](../assets/js/consuntivazione.js#L1766)).
+Entrambi dichiarano `useGrouping: 'always'`: la locale italiana ha
+`minimumGroupingDigits = 2` e senza quel flag **non** separa le migliaia sui numeri di
+quattro cifre (`1550,00` invece di `1.550,00`) mentre le separa da cinque in su. Corretto
+il 04/08/2026, insieme a quattro importi di Consuntivazione ancora in formato inglese.
+Gli export CSV usano formattatori dedicati e restano fuori da questa regola.
 
 Il ciclo di vita di una sezione è definito da `BaseSection.initialize()`:
 `showLoading() → loadData() → render() → bindEvents()`. `render()` rigenera l'HTML
@@ -114,7 +128,7 @@ letto con dati correlati e **campi calcolati**. È lì che nasce quasi tutta la 
 graph LR
     CLI[ANA_CLIENTI] --> COM[ANA_COMMESSE<br/>Commissione]
     COL[ANA_COLLABORATORI] --> COM
-    COM --> TSK[ANA_TASK<br/>Valore_gg · Spese_Comprese<br/>Valore_Spese_std · Tipo]
+    COM --> TSK[ANA_TASK<br/>Valore_gg · Tipo<br/>regime spese Viaggi e Vitto/Alloggio]
     TSK --> GIO[FACT_GIORNATE<br/>gg · Desk · Spese_Viaggi<br/>Vitto_alloggio · Altri_costi<br/>Spese_Fatturate_VP]
     COL --> GIO
     COL --> TAR[ANA_TARIFFE_COLLABORATORI<br/>Tariffa_gg · Dal · ID_COMMESSA]
@@ -138,17 +152,25 @@ I campi che determinano i calcoli:
   - task `Campo`: **prezzo in euro** di una giornata venduta al cliente (es. 1550,00);
   - task `Monitoraggio`: **percentuale** in frazione (es. 0,10 = 10%) da applicare al
     valore Campo della commessa.
-- `Spese_Comprese` (`Si`/`No`) — se `Si`, le spese sono già incluse nella tariffa
-  giornaliera e **non** vengono ribaltate a parte.
-- `Valore_Spese_std` — forfait spese da addebitare al cliente in alternativa alle
-  spese reali.
+- `Spese_Comprese_Viaggi` e `Spese_Comprese_Vitto_Alloggio` (`Si`/`No`) — dal 07/08/2026
+  il regime di spesa è **per categoria**: se `Si`, quella categoria è già inclusa nella
+  tariffa giornaliera e **non** viene ribaltata a parte.
+- `Valore_Spese_std_Viaggi` e `Valore_Spese_std_Vitto_Alloggio` — la **diaria giornaliera**
+  concordata col cliente per ciascuna categoria, in alternativa alle spese reali.
+  Compilabile solo se la categoria non è compresa.
+- `Spese_Comprese` e `Valore_Spese_std` — i campi storici, sostituiti dai quattro sopra.
+  Restano in tabella come rete di sicurezza, nessun codice li legge più.
 - `gg_previste` — solo per la barra di avanzamento, non entra nei calcoli economici.
 
 **`FACT_GIORNATE`** — il fatto generatore
 - `gg` — frazione di giornata (0,5 = mezza giornata).
 - `Tipo` — ricalcato su quello del task; solo `Campo` genera valore e costo.
 - `Desk` (`Si`/`No`) — giornata svolta da remoto: genera valore ma **non** spese ribaltabili.
+- `Viaggio` (`Si`/`No`, default `Si`) — dice se la trasferta c'è stata. Chi si ferma in loco
+  fra due giornate consecutive non viaggia il secondo giorno, e il viaggio non va addebitato
+  al cliente. Tocca solo il ricavo viaggi, mai il vitto/alloggio né il costo.
 - `Spese_Viaggi`, `Vitto_alloggio`, `Altri_costi` — spese realmente sostenute dal collaboratore.
+  `Altri_costi` segue il regime del vitto/alloggio.
 - `Spese_Fatturate_VP` — quota già fatturata direttamente a V&P dal fornitore, quindi
   **non** da rimborsare al collaboratore (13 giornate su 457 la usano).
 - `Confermata` — validazione della giornata; **non filtra i calcoli** (vedi § 10).
@@ -180,6 +202,11 @@ dall'API viene arricchita con quattro campi calcolati:
 | `Valore_spese` | spese **ribaltate al cliente** | vedi tabella § 5.2 |
 | `Costo_gg` | costo del collaboratore | `Tipo='Campo' ? tariffa_attiva × gg : 0` |
 | `Costo_Spese` | spese **da rimborsare** | `(Viaggi + Vitto + Altri) − Spese_Fatturate_VP` |
+
+Attenzione al nome di `Costo_Spese`: **non** è il costo di commessa, è il rimborso dovuto
+al collaboratore. Il costo di commessa è la spesa **lorda** (`spese_totali`), perché la
+quota `Spese_Fatturate_VP` è pagata con la carta di credito V&P e resta un esborso
+aziendale a tutti gli effetti.
 
 Due asimmetrie da notare:
 
@@ -243,9 +270,13 @@ con due regole aggiuntive:
    già `Chiuso`/`Archiviato` sono esclusi dal confronto e mantengono il proprio valore
    storico.
 
-**Spese del task** (`calcolaValoreSpese`): `Spese_Comprese='Si'` → 0; altrimenti se
-`Valore_Spese_std > 0` → **il forfait una sola volta per task**; altrimenti la somma
-delle spese reali di tutte le giornate. Su quel "una sola volta" vedi § 10, anomalia A2.
+**Spese del task** (`calcolaValoreSpese`, delegato a `CalcoloSpese::ricavoAggregato()`):
+per ciascuna delle due categorie, compresa → 0; con diaria → **la diaria per ogni giornata
+di campo addebitabile**; altrimenti la somma delle spese reali di quella categoria. I
+viaggi contano solo le giornate con `Viaggio = 'Si'`, quindi `aggregaSpeseTask()`
+restituisce due conteggi distinti (`n_addebitabili` e `n_con_viaggio`) oltre alle due
+somme. Dal 03/08/2026 `TaskAPI` espone anche `costo_spese_maturato`, l'esborso lordo
+del task. Vedi [REGOLE-SPESE.md](REGOLE-SPESE.md).
 
 **Filtri di periodo** — se la richiesta porta `?anno=` o `?anno_mese=`, `TaskAPI`
 calcola *anche* le varianti `_filtrato` dei tre valori. La UI di Management però non
@@ -264,7 +295,8 @@ valoreComplessivoLavori = sommaValoreCampo + sommaValoreMonitoraggio
 valoreComplessivoSpese  = Σ task.valore_spese_maturato     (tutti i task)
 valoreTotale            = valoreComplessivoLavori + valoreComplessivoSpese   ← badge nero
 
-costoCampoDalleGiornate = Σ (giornata.Costo_gg + giornata.Valore_spese)  sui task Campo
+costoCampoDalleGiornate = Σ (giornata.Costo_gg + giornata.spese_totali)  sui task Campo
+                                                 └─ esborso lordo, non il prezzo di vendita
 costoMonitoraggio       = Σ task.valore_gg_maturato dei task Monitoraggio
 costo_totale_attivita   = costoCampoDalleGiornate + costoMonitoraggio        ← badge grigio
 
@@ -273,27 +305,86 @@ margineAssoluto         = valoreTotale − costo_totale_attivita − costoAccoun
 marginalita %           = margineAssoluto / valoreTotale × 100               ← badge azzurro
 ```
 
+**La base dell'accounting è il solo valore Campo**, cioè il maturato delle giornate
+vendute al cliente. Ne restano fuori due voci:
+
+- il **ricavo spese** (`valore_spese_maturato`), sia a diaria sia a consuntivo — la
+  provvigione non si paga sul ribaltamento delle trasferte;
+- il valore dei task di **Monitoraggio**, che è già un compenso a sé riconosciuto al
+  coordinatore.
+
+Esempio su COM2025018 (LACTALIS STAB CORTEOLONA SVILUPPO 2026): valore lavori 31.968,75 €
+di cui 2.906,25 € di monitoraggio, più 1.155,00 € di spese, per un valore totale di
+33.123,75 €. La base è **29.062,50 €** e con `Commissione` 0,27 l'accounting vale
+**7.846,88 €** — non 8.943,41 € (sul totale) né 8.631,56 € (col monitoraggio).
+
+La regola è identica nelle tre implementazioni: card di commessa, totali della barra
+statistiche ([:1185-1189](../assets/js/modules/sections/commesse-task-section.js#L1185-L1189))
+e maturato mensile ([CommesseAPI.php:857](../API/CommesseAPI.php#L857)), che moltiplica
+`valore_campo` — già al netto di monitoraggio e spese.
+
+#### Cosa comprende «Costo totale attività»
+
+È il badge grigio della testata di commessa, e comprende **tre** voci:
+
+| Componente | Formula |
+|---|---|
+| Costo consulenti | Σ `giornata.Costo_gg` — tariffa attiva × gg, sulle giornate dei task `Campo` |
+| Costo spese | Σ `giornata.spese_totali` — viaggi + vitto/alloggio + altri, **al lordo** |
+| Costo monitoraggio | Σ `task.valore_gg_maturato` dei task `Monitoraggio` |
+
+**Il costo accounting non è compreso**: è una voce a sé, mostrata nell'intestazione della
+commessa e sottratta separatamente nel calcolo del margine.
+
+Le spese qui sono lorde, quindi includono la quota `Spese_Fatturate_VP` che il
+collaboratore non fattura perché pagata con la carta aziendale. È la differenza rispetto
+alla sezione Collaboratori (§ 5.3), che lavora sul netto.
+
+Dettaglio minore: le spese vengono sommate su **tutte** le giornate dei task `Campo`,
+anche su una giornata che non sia essa stessa di tipo `Campo`; il `Costo_gg` invece è
+zero per quelle. È coerente — una spesa sostenuta è un esborso a prescindere dal tipo
+di giornata.
+
 La struttura del conto economico di commessa è quindi:
 
 | Voce | Natura |
 |---|---|
 | **+ Valore lavori** | giornate Campo vendute + quota monitoraggio |
 | **+ Valore spese** | spese ribaltate al cliente |
-| **− Costo attività** | tariffe dei collaboratori + spese ribaltate + compenso monitoraggio |
-| **− Costo accounting** | provvigione al responsabile: `valore Campo × Commissione` |
+| **− Costo attività** | tariffe dei collaboratori + **esborso reale** delle spese + compenso monitoraggio |
+| **− Costo accounting** | provvigione al responsabile: `valore Campo × Commissione`, **al netto di spese e monitoraggio** |
 | **= Margine** | |
 
 Il **monitoraggio compare due volte**, come ricavo e come costo: il cliente lo paga e
-il coordinatore lo incassa, quindi a margine è neutro per costruzione. Stessa cosa per
-le spese ribaltate: entrano come ricavo (`valoreComplessivoSpese`) e come costo
-(dentro `costoCampoDalleGiornate`). **Il margine si forma quindi in due soli punti**:
-lo spread tra il prezzo giornata venduto e la tariffa pagata al collaboratore, meno
-la provvigione di accounting.
+il coordinatore lo incassa, quindi a margine è neutro per costruzione. **Le spese no.**
+Fino al 03/08/2026 lo erano anche loro — il costo usava lo stesso `Valore_spese` del
+ricavo, quindi lo spread era zero per costruzione (§ 10, A2). Oggi il ricavo è il prezzo
+concordato (diaria o consuntivo) e il costo è l'esborso reale: **il margine si forma in
+tre punti**, lo spread sulle giornate, lo spread sulle spese, meno la provvigione di
+accounting. Nel regime a consuntivo lo spread sulle spese resta zero, ma è una
+conseguenza dei dati, non della formula.
 
-Nota tecnica: il costo usa `giornata.Costo_gg`, cioè il campo calcolato da
-`GiornateAPI`, mentre il ricavo usa `task.valore_*_maturato`, calcolato da `TaskAPI`.
-Sono due catene indipendenti; nella maggior parte dei casi coincidono, ma sulle spese
-divergono (§ 10, anomalia A2).
+Nota tecnica: il costo usa `giornata.Costo_gg` e `giornata.spese_totali`, campi calcolati
+da `GiornateAPI`, mentre il ricavo usa `task.valore_*_maturato`, calcolato da `TaskAPI`.
+Sono due catene indipendenti, ma dal 03/08/2026 condividono le regole sulle spese
+tramite [`CalcoloSpese`](../API/CalcoloSpese.php): prima divergevano.
+
+#### Come leggere le etichette a schermo
+
+Le diciture della card del task sono state riviste il 04/08/2026 per non chiamare
+«spese» cose diverse:
+
+| Etichetta | Grandezza |
+|---|---|
+| `Costo Spese A/R` | esborso viaggi (era «Spese A/R») |
+| `Costo Vitto/Alloggio + Altre` | esborso vitto, alloggio e altro (era «Vitto/Alloggio + Altre») |
+| `Val. Spese` | **ricavo**, prezzo addebitato al cliente (era «Tot Spese») |
+
+Il modale «Visualizza *nn* Date» espone le stesse grandezze riga per riga: `Costo Viaggi`,
+`Costo Vitto/Alloggio + Altre`, `Valore Spese`, `Valore gg`. La colonna `Costo_gg` è stata
+tolta — il costo del collaboratore si legge nella sezione Collaboratori (§ 5.3). Su un
+task a diaria le colonne di costo e quella di ricavo divergono per costruzione, e la
+differenza è ora leggibile giornata per giornata.
 
 ### 4.4 Livello mensile — un motore parallelo, non usato
 
@@ -301,17 +392,17 @@ divergono (§ 10, anomalia A2).
 ([CommesseAPI.php:579-910](../API/CommesseAPI.php#L579-L910)), raggiungibile con
 `?resource=commesse&action=maturato[&id=COM0001]`, produce lo stesso conto economico
 **spaccato per mese**: `valore_campo`, `valore_monitoraggio`, `valore_spese`,
-`Costo_gg`, `Costo_TOT`, `costo_accounting`, `margine`.
+`Costo_gg`, `Costo_Spese`, `Costo_TOT`, `costo_accounting`, `margine`.
 
 **Nessuna parte del front-end lo chiama.** È un endpoint completo e funzionante ma
 orfano — utile se in futuro si vuole una vista mensile o l'export di un conto economico
 per periodo, ma oggi è codice che nessuno esercita (e che quindi nessuno verifica).
 
-Due differenze rispetto al calcolo del front-end, da tenere presenti se lo si adotta:
-usa **sempre** la tariffa del collaboratore che ha svolto la giornata, ignorando
-`Valore_gg` del task ([CommesseAPI.php:872-874](../API/CommesseAPI.php#L872-L874)); e
-somma `valore_spese` (il ricavo spese) dentro `Costo_TOT`, coerentemente con la scelta
-fatta anche nella card di commessa.
+Sulle spese è ora allineato alla card: dal 03/08/2026 applica la diaria per giornata
+anziché una volta al mese, `Costo_TOT` usa l'esborso reale e c'è un `Costo_Spese`
+mensile. Resta **una** differenza rispetto al front-end, da tenere presente se lo si
+adotta: usa **sempre** la tariffa del collaboratore che ha svolto la giornata, ignorando
+`Valore_gg` del task ([CommesseAPI.php:872-874](../API/CommesseAPI.php#L872-L874)).
 
 ---
 
@@ -326,34 +417,57 @@ che coincidono solo nel caso più semplice:
 
 | | Campo | Chi lo sostiene | Dove si vede |
 |---|---|---|---|
-| **Spesa sostenuta** | `Spese_Viaggi + Vitto_alloggio + Altri_costi` | il collaboratore | `spese_totali` |
-| **Spesa rimborsata** | `Costo_Spese` = sostenuta − `Spese_Fatturate_VP` | V&P → collaboratore | sezione Collaboratori |
+| **Spesa sostenuta** | `Spese_Viaggi + Vitto_alloggio + Altri_costi` | V&P, comunque | `spese_totali` — è il **costo di commessa** |
+| **Spesa rimborsata** | `Costo_Spese` = sostenuta − `Spese_Fatturate_VP` | V&P → collaboratore | sezione Collaboratori, consuntivazione |
 | **Spesa ribaltata** | `Valore_spese` | il cliente → V&P | valore commessa, sezione Clienti |
 
 `Spese_Fatturate_VP` è la quota che il fornitore ha già fatturato direttamente a V&P
 (tipicamente un hotel o un treno pagato dall'azienda): il collaboratore l'ha dichiarata
-ma non deve essere rimborsato per quella parte.
+ma non deve essere rimborsato per quella parte. **Non riduce il costo di commessa**: V&P
+quella spesa l'ha sostenuta comunque, semplicemente con la carta aziendale anziché per
+rimborso.
 
 ### 5.2 Come si determina la spesa ribaltata al cliente
 
-Logica in [GiornateAPI.php:448-461](../API/GiornateAPI.php#L448-L461), in cascata:
+Logica in [CalcoloSpese](../API/CalcoloSpese.php), applicata da `GiornateAPI`. Dal
+07/08/2026 le due categorie si valutano separatamente e si sommano: `Valore_spese` è la
+somma di `Valore_spese_viaggi` e `Valore_spese_vitto`, entrambi esposti dall'API.
 
-| Condizione | `Valore_spese` |
+**Viaggi** — `CalcoloSpese::ricavoViaggiGiornata()`, in cascata:
+
+| Condizione | `Valore_spese_viaggi` |
 |---|---|
-| Giornata non di tipo `Campo` | **0** |
-| Giornata `Campo` con `Desk = 'Si'` | **0** |
-| Task con `Spese_Comprese = 'Si'` | **0** — già dentro la tariffa giornaliera |
-| Task con `Valore_Spese_std > 0` | **il forfait**, indipendente dalle spese reali |
-| Altrimenti | **le spese reali** (`spese_totali`, al lordo di `Spese_Fatturate_VP`) |
+| Giornata non di tipo `Campo`, o `Desk = 'Si'` | **0** |
+| Giornata con `Viaggio = 'No'` | **0** — nessuna trasferta quel giorno |
+| Task con `Spese_Comprese_Viaggi = 'Si'` | **0** — già dentro la tariffa giornaliera |
+| Task con `Valore_Spese_std_Viaggi > 0` | **la diaria viaggi**, intera su ogni giornata di campo e indipendente dalle spese reali (anche sulle mezze giornate: la trasferta c'è comunque) |
+| Altrimenti | **`Spese_Viaggi` reali** (al lordo di `Spese_Fatturate_VP`) |
+
+**Vitto/alloggio + altre** — `CalcoloSpese::ricavoVittoGiornata()`:
+
+| Condizione | `Valore_spese_vitto` |
+|---|---|
+| Giornata non di tipo `Campo`, o `Desk = 'Si'` | **0** |
+| Task con `Spese_Comprese_Vitto_Alloggio = 'Si'` | **0** |
+| Task con `Valore_Spese_std_Vitto_Alloggio > 0` | **la diaria V/A**, intera su ogni giornata di campo |
+| Altrimenti | **`Vitto_alloggio + Altri_costi` reali** |
+
+Il flag `Viaggio` non compare in questa seconda tabella: chi si ferma mangia e dorme comunque.
+
+Il **costo** segue una regola sola, senza eccezioni: `Spese_Viaggi + Vitto_alloggio +
+Altri_costi`, in ogni regime e a prescindere dal flag `Viaggio`. Non dipende da come la
+spesa è stata venduta.
 
 Tre osservazioni che contano nella pratica:
 
 1. **Con `Valore_Spese_std` il rischio spese passa a V&P.** Se il collaboratore spende
-   più del forfait, la differenza è margine perso; se spende meno, è margine guadagnato.
-   Sui dati reali 26 task su 72 di tipo Campo usano il forfait.
-2. **Con `Spese_Comprese = 'Si'` il cliente non paga nulla di separato, ma V&P rimborsa
-   comunque il collaboratore.** Quel rimborso non compare nel costo di commessa (§ 10,
-   anomalia A3). 24 task su 72 sono in questa configurazione.
+   più della diaria, la differenza è margine perso; se spende meno, è margine guadagnato.
+   Sui dati reali 26 task usano la diaria, e su parecchi copre meno della metà della
+   trasferta (TAS00083: 935 € incassati contro 2.069 € sostenuti). Dal 03/08/2026 questo
+   scarto **si vede nel margine di commessa**; prima no.
+2. **Con `Spese_Comprese = 'Si'` il cliente non paga nulla di separato, ma V&P sostiene
+   comunque la spesa.** Quel costo entra nel conto economico di commessa come tutti gli
+   altri (era l'anomalia A3, risolta il 03/08/2026). 33 task sono in questa configurazione.
 3. **La spesa ribaltata è calcolata al lordo di `Spese_Fatturate_VP`.** Se un hotel da
    200 € è stato fatturato direttamente a V&P, il cliente viene comunque addebitato di
    200 € (giusto: è un costo sostenuto per lui) e il collaboratore non riceve rimborso
@@ -368,7 +482,10 @@ La sezione **Collaboratori** presenta, per ciascuno, tre grandezze distinte
   V&P gli deve per giornate lavorate e spese anticipate;
 - **Valore Monitoraggio** = per i task di monitoraggio a lui assegnati, la percentuale
   applicata al valore Campo della commessa;
-- **Accounting** = per le commesse di cui è **responsabile**, `Σ (valore_calcolato × Commissione)`.
+- **Accounting** = per le commesse di cui è **responsabile**, `Σ (valore_calcolato × Commissione)`
+  sulle giornate dei soli task `Campo`
+  ([:1180-1195](../assets/js/modules/sections/collaboratori-section.js#L1180-L1195)) — stessa
+  base della card di commessa, quindi senza spese né monitoraggio.
 
 Le tre voci hanno origini diverse e si sommano: un collaboratore senior può percepire
 contemporaneamente la tariffa giornaliera per il lavoro svolto, la percentuale di
@@ -377,7 +494,39 @@ commessa. Sono i tre modi in cui il sistema riconosce valore a una persona, e so
 calcolati a partire dallo stesso fatto: le giornate consuntivate.
 
 Il dettaglio è navigabile per mese e per commessa (accordion nella card del collaboratore),
-ed esportabile in CSV con le colonne `Rimborso_Attivita`, `Valore_Monitoraggio`, `Accounting`.
+ed esportabile in CSV.
+
+#### A cosa serve questa pagina: quanto il collaboratore deve fatturare
+
+È la chiave di lettura dell'intera sezione, e spiega perché i suoi numeri **non** coincidono
+con quelli del conto economico di commessa. Qui si guarda il **debito verso la persona**,
+quindi le spese sono al netto di `Spese_Fatturate_VP`: quella quota il collaboratore non
+l'ha anticipata, quindi non la fattura. Nel § 4.3 invece il costo è la spesa **lorda**,
+perché V&P quell'esborso lo sostiene comunque. Le due viste sono volutamente diverse.
+
+Lo scarto riguarda oggi due sole persone, per 1.415,00 € complessivi: Giorgio Troni
+(1.061,00 €) e Francesco Silvestri (354,00 €). Per tutti gli altri quanto fatturano e
+quanto costano coincidono.
+
+L'export CSV ([collaboratori-section.js:143-160](../assets/js/modules/sections/collaboratori-section.js#L143-L160))
+ha 14 colonne; le sei economiche sono:
+
+| Colonna | Contenuto |
+|---|---|
+| `Rimborso_Attivita_Giornate` | Σ `Costo_gg` — solo la tariffa per le giornate lavorate |
+| `Rimborso_Spese` | Σ `Costo_Spese` — solo le spese anticipate, **al netto** di `Spese_Fatturate_VP` |
+| `Rimborso_Totale` | somma delle due |
+| `Valore_Monitoraggio` | compenso di coordinamento |
+| `Accounting` | provvigione da responsabile di commessa |
+| `Totale` | `Rimborso_Totale + Valore_Monitoraggio + Accounting` — **quanto il collaboratore fattura** |
+
+La componente giornate è calcolata per differenza dal totale, così le tre colonne di
+rimborso quadrano sempre anche quando scatta il fallback sul calcolo delle spese.
+
+`Totale` mescola compensi e restituzione di anticipi: il solo guadagno è
+`Totale − Rimborso_Spese`, ed è il motivo per cui le due componenti stanno separate.
+Il costo aziendale pieno sarebbe invece `Totale + Spese_Fatturate_VP`, colonna che oggi
+non esiste perché la pagina risponde alla domanda «quanto mi fattura», non «quanto mi costa».
 
 ---
 
@@ -464,7 +613,7 @@ da lì discende su task e giornate. Risorsa per risorsa, un utente `User` vede:
 | Risorsa | Righe | Colonne escluse |
 |---|---|---|
 | `commesse` | solo quelle assegnate | `Commissione` |
-| `task` | dei suoi commesse | `Valore_gg`, `Valore_Spese_std`, `Spese_Comprese`, valori maturati |
+| `task` | dei suoi commesse | `Valore_gg`, i quattro campi di regime spese, valori maturati |
 | `giornate` | dei task dei suoi commesse | spese, `Costo_gg`, `Costo_Spese`, `Valore_spese`, `valore_calcolato`, `task_info` |
 | `clienti` | dei suoi commesse | tutto tranne `ID_CLIENTE` e `Cliente` |
 | `collaboratori` | sé stesso + responsabili e assegnatari dei suoi commesse | tutto tranne `ID_COLLABORATORE` e `Collaboratore` |
@@ -495,7 +644,7 @@ Numeri letti dall'ambiente locale sui dati reali, per rendere concreto tutto qua
 
 **Task:**
 
-| Task | Tipo | Valore_gg | Spese_Comprese | gg | valore_gg_maturato |
+| Task | Tipo | Valore_gg | Spese comprese | gg | valore_gg_maturato |
 |---|---|---|---|---|---|
 | TAS00001 | Campo | 1.550,00 € | Si | 5,5 | 8.525,00 € |
 | TAS00002 | Campo | 1.450,00 € | Si | 29,0 | 42.050,00 € |
@@ -509,28 +658,29 @@ Verifica del monitoraggio: valore Campo = 8.525 + 42.050 + 5.800 = **56.375,00 �
 
 ```
   Valore lavori     56.375,00 (Campo) + 5.637,50 (Monitoraggio)  =  62.012,50
-  Valore spese                                                   =       0,00   (tutti i task Spese_Comprese='Si')
+  Valore spese                                                   =       0,00   (spese comprese su tutti i task)
   ─────────────────────────────────────────────────────────────────────────────
   VALORE TOTALE                                                  =  62.012,50
 
   Costo giornate    Σ Costo_gg (tariffe dei collaboratori)       =  34.750,00
-  Spese ribaltate   Σ Valore_spese                               =       0,00
+  Costo spese       Σ (Viaggi + Vitto + Altri), esborso reale    =     175,00
   Costo monitoraggio                                             =   5.637,50
   ─────────────────────────────────────────────────────────────────────────────
-  COSTO ATTIVITÀ                                                 =  40.387,50
+  COSTO ATTIVITÀ                                                 =  40.562,50
 
   COSTO ACCOUNTING  56.375,00 × 0,27                             =  15.221,25
   ─────────────────────────────────────────────────────────────────────────────
-  MARGINE           62.012,50 − 40.387,50 − 15.221,25            =   6.403,75   (10,3%)
+  MARGINE           62.012,50 − 40.562,50 − 15.221,25            =   6.228,75   (10,0%)
 ```
 
 Si legge bene la struttura: su 62.012 € di valore, 34.750 € vanno ai collaboratori come
 tariffe, 5.637 € al coordinatore, 15.221 € al responsabile come provvigione, e restano
-6.403 € (10,3%) all'azienda.
+6.228 € (10,0%) all'azienda.
 
-Le stesse giornate portano `Σ Costo_Spese = 175,00 €` di spese rimborsate ai
-collaboratori che **non compaiono in nessuna riga qui sopra**, perché i task hanno
-`Spese_Comprese = 'Si'` (§ 10, anomalia A3). Il margine reale è quindi 6.228,75 €.
+I 175,00 € di spese sono un caso di scuola del regime `Spese_Comprese = 'Si'`: il cliente
+non le paga a parte (ricavo spese 0), ma V&P le sostiene, quindi stanno a costo e basta.
+Fino al 03/08/2026 non comparivano in nessuna riga e il margine risultava 6.403,75 €
+(§ 10, anomalia A3).
 
 ---
 
@@ -541,6 +691,7 @@ collaboratori che **non compaiono in nessuna riga qui sopra**, perché i task ha
 | [management.html](../management.html) | guscio: modali, script, loading screen |
 | [assets/js/management.js](../assets/js/management.js) | `ManagementApp`: auth, layout, routing, caricamento dati |
 | [assets/js/modules/api.js](../assets/js/modules/api.js) | `APIClient`: unico punto di uscita HTTP |
+| [assets/js/modules/utils.js](../assets/js/modules/utils.js) | `formatCurrency()`: **unico** punto di formattazione degli importi di Management |
 | [assets/js/modules/sections/commesse-task-section.js](../assets/js/modules/sections/commesse-task-section.js) | **conto economico di commessa**, card task, export |
 | [assets/js/modules/sections/collaboratori-section.js](../assets/js/modules/sections/collaboratori-section.js) | rimborsi, monitoraggio, accounting per collaboratore |
 | [assets/js/modules/sections/clienti-section.js](../assets/js/modules/sections/clienti-section.js) | maturato per cliente |
@@ -548,6 +699,7 @@ collaboratori che **non compaiono in nessuna riga qui sopra**, perché i task ha
 | [assets/js/modules/sections/giornate-section.js](../assets/js/modules/sections/giornate-section.js) | consultazione giornate consuntivate |
 | [API/index.php](../API/index.php) | router `?resource=` |
 | [API/BaseAPI.php](../API/BaseAPI.php) | CRUD, paginazione, audit, hook `processRecord()` |
+| [API/CalcoloSpese.php](../API/CalcoloSpese.php) | **regole delle spese in un punto solo**: ricavo (diaria/consuntivo) e costo (esborso lordo) |
 | [API/GiornateAPI.php](../API/GiornateAPI.php) | **`valore_calcolato`, `Valore_spese`, `Costo_gg`, `Costo_Spese`, tariffa attiva** |
 | [API/TaskAPI.php](../API/TaskAPI.php) | **valori maturati, logica monitoraggio** |
 | [API/CommesseAPI.php](../API/CommesseAPI.php) | commesse, visibilità per ruolo, maturato mensile (non usato) |
@@ -558,7 +710,8 @@ collaboratori che **non compaiono in nessuna riga qui sopra**, perché i task ha
 ## 10. Anomalie e punti d'attenzione
 
 Emersi durante l'analisi, verificati sull'ambiente locale. Ordinati per impatto.
-Nessuno è stato corretto: sono segnalazioni.
+Le voci risolte restano qui con la data: servono a capire perché i numeri storici
+non coincidono con quelli di oggi.
 
 ### S1 — Le API non richiedevano autenticazione · *sicurezza, alto* · **RISOLTO il 31/07/2026**
 
@@ -622,41 +775,45 @@ pensasse di reintrodurlo aggiungendo la colonna `Al`, la nota nel codice spiega 
 non va fatto — valorizzerebbe le giornate alla tariffa di costo, inventando ricavo sulle
 commesse interne e producendo margine zero per costruzione su quelle cliente.
 
-### A2 — Le spese forfettarie sono contate una volta per task come ricavo, una volta per giornata come costo · *contabile, medio*
+### A2 — Le spese forfettarie erano contate una volta per task come ricavo, una volta per giornata come costo · *contabile, medio* · **RISOLTO il 03/08/2026**
 
-Con `Valore_Spese_std > 0`, `TaskAPI::calcolaValoreSpese()` restituisce **il forfait una
-sola volta per task**, mentre `GiornateAPI` assegna **il forfait intero a ogni giornata**.
-La card di commessa usa entrambe le fonti: il ricavo spese da `task.valore_spese_maturato`,
+Con `Valore_Spese_std > 0`, `TaskAPI::calcolaValoreSpese()` restituiva **il forfait una
+sola volta per task**, mentre `GiornateAPI` assegnava **il forfait intero a ogni giornata**.
+La card di commessa usava entrambe le fonti: il ricavo spese da `task.valore_spese_maturato`,
 il costo spese da `Σ giornata.Valore_spese`.
 
 Verificato su TAS00083 (forfait 55 €, 17 giornate): `valore_spese_maturato = 55,00 €`
-lato task, `Σ Valore_spese = 935,00 €` lato giornate. La stessa voce entra nel conto
+lato task, `Σ Valore_spese = 935,00 €` lato giornate. La stessa voce entrava nel conto
 economico come 55 € di ricavo e 935 € di costo — 880 € di margine negativo fittizio.
+Sui 26 task a diaria lo scarto complessivo era di 7.460 €.
 
-La sezione Clienti usa la convenzione per-giornata (935), la card di commessa la mescola,
-`CommesseAPI::getMaturatoMensile()` usa una terza variante (il forfait una volta al mese,
-[CommesseAPI.php:792-795](../API/CommesseAPI.php#L792-L795)). **Tre interpretazioni
-diverse dello stesso dato.**
+C'erano **tre interpretazioni diverse dello stesso dato**: per task (card, ricavo), per
+giornata (sezione Clienti e card, costo), per mese (`getMaturatoMensile()`).
 
-Va deciso cosa significa `Valore_Spese_std`: forfait per giornata, per task o per mese.
-È una domanda di business, non tecnica — per questo non ho scelto io. 26 task su 72
-usano il forfait, quindi l'impatto è ampio.
+**Risoluzione.** Il 02/08/2026 è stato deciso che `Valore_Spese_std` è una **diaria
+giornaliera**; le letture per task e per mese sono state eliminate e le regole
+accentrate in [`CalcoloSpese`](../API/CalcoloSpese.php). Le tre fonti ora concordano.
+16 commesse hanno cambiato margine. Dettaglio in [REGOLE-SPESE.md](REGOLE-SPESE.md).
 
-### A3 — Le spese rimborsate sui task `Spese_Comprese='Si'` spariscono dal costo di commessa · *contabile, basso-medio*
+Coda della stessa anomalia, **corretta il 04/08/2026**: l'export CSV delle giornate era
+rimasto fuori dall'allineamento e scriveva l'esborso nella colonna `Valore Spese`
+(2.069 € su TAS00083 invece di 935 €). Ora legge `Valore_spese` dall'API ed espone
+l'esborso in una colonna `Costo Spese` separata.
 
-Il costo di commessa somma `Costo_gg + Valore_spese` (la spesa **ribaltata**), non
-`Costo_Spese` (la spesa **rimborsata**). Quando `Spese_Comprese = 'Si'`, `Valore_spese`
-è 0 per definizione, ma V&P il rimborso lo paga comunque: quel costo non compare da
-nessuna parte nel conto economico della commessa, che risulta più redditizia del reale.
+### A3 — Le spese sui task `Spese_Comprese='Si'` sparivano dal costo di commessa · *contabile, basso-medio* · **RISOLTO il 03/08/2026**
 
-Su COM0001 sono 175 €; sul totale del database le spese registrate sono 12.255,62 €, di
+Il costo di commessa sommava `Costo_gg + Valore_spese` (la spesa **ribaltata**), non
+l'esborso. Quando `Spese_Comprese = 'Si'`, `Valore_spese` è 0 per definizione, ma V&P la
+spesa la sostiene comunque: quel costo non compariva da nessuna parte nel conto economico
+della commessa, che risultava più redditizia del reale.
+
+Su COM0001 erano 175 €; sul totale del database le spese registrate sono 12.255,62 €, di
 cui 1.415,00 € già fatturate a V&P.
 
-Nel codice c'è un commento esplicito — *"Usare Valore_spese come richiesto (non
-Costo_Spese)"* ([commesse-task-section.js:167](../assets/js/modules/sections/commesse-task-section.js#L167))
-— quindi la scelta sembra deliberata e non un errore. La segnalo perché la conseguenza
-(margine sovrastimato sui task a spese comprese) potrebbe non essere stata valutata
-quando la richiesta è stata fatta.
+**Risoluzione.** Il costo ora è l'esborso lordo in **ogni** regime, senza eccezioni:
+né `Spese_Comprese = 'Si'` né la presenza di una diaria lo riducono. Il commento nel
+codice che imponeva `Valore_spese` come costo è stato rimosso e sostituito con il
+rimando a [REGOLE-SPESE.md](REGOLE-SPESE.md).
 
 ### A4 — La colonna `Totale_Giornate` dell'export commesse è sempre 0 · *cosmetico*
 
@@ -700,12 +857,13 @@ ricalcolato dai fatti senza denormalizzazioni da mantenere allineate. La provvig
 responsabile e la percentuale di monitoraggio sono modellate in modo elegante, con
 regole non banali (finestra temporale, anti-duplicazione) implementate correttamente.
 
-I due limiti strutturali sono altrove: **la contabilità delle spese ha tre convenzioni
-diverse** che convivono nello stesso conto economico (A2, A3), e **il maturato non è mai
-riconciliato con il fatturato** (§ 6), che resta un inserimento manuale. Il primo è un
-problema di definizione da chiudere con una decisione di business; il secondo è la
-funzionalità che manca perché il portale chiuda il cerchio dalla giornata consuntivata
-alla fattura emessa.
+Dei due limiti strutturali segnalati nella prima stesura ne resta uno. La contabilità
+delle spese aveva tre convenzioni diverse che convivevano nello stesso conto economico
+(A2, A3): era un problema di definizione, chiuso il 02/08/2026 con una decisione di
+business — la diaria è giornaliera, il costo è l'esborso reale — e implementato il giorno
+dopo in un punto solo del codice. **Il maturato non è invece mai riconciliato con il
+fatturato** (§ 6), che resta un inserimento manuale: è la funzionalità che manca perché
+il portale chiuda il cerchio dalla giornata consuntivata alla fattura emessa.
 
-Il fronte sicurezza è invece chiuso: l'accesso anonimo alle API (S1) e l'autorizzazione
+Il fronte sicurezza è chiuso: l'accesso anonimo alle API (S1) e l'autorizzazione
 per ruolo fra utenti autenticati (S2) sono stati risolti il 31/07/2026.

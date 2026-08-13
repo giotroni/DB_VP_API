@@ -189,9 +189,13 @@ class GiornateSection extends BaseSection {
                     const vitto = parseFloat(g.Vitto_alloggio ?? g.Vitto_Alloggio ?? g.vitto_alloggio ?? 0) || 0;
                     const altre = parseFloat(g.Altri_costi ?? g.AltriSpese ?? g.altri_costi ?? 0) || 0;
                     const fatturate = parseFloat(g.Spese_Fatturate_VP ?? g.Spese_Fatturate ?? g.spese_fatturate_vp ?? 0) || 0;
-                    const valoreSpese = parseFloat(g.spese_totali ?? g.Spese_Totali ?? (viaggio + vitto + altre) ?? 0) || 0;
+                    // Ricavo spese: quanto si addebita al cliente. Lo calcola l'API con le
+                    // regole di CalcoloSpese (diaria per giornata di campo, oppure consuntivo).
+                    // NON è l'esborso: quello va nella colonna 'Costo Spese'.
+                    const valoreSpese = parseFloat(g.Valore_spese ?? g.valore_spese ?? 0) || 0;
+                    const costoSpese = viaggio + vitto + altre;
                     const valoreGg = parseFloat(g.valore_calcolato ?? g.Valore_Calcolato ?? 0) || 0;
-                    const speseRimborsabili = viaggio + vitto + altre - fatturate;
+                    const speseRimborsabili = costoSpese - fatturate;
                     rows.push({
                         'Collaboratore': coll.collaboratore_nome,
                         'Data': this.app.utils.formatDate(g.Data),
@@ -199,12 +203,14 @@ class GiornateSection extends BaseSection {
                         'Commessa': g.commessa_info?.Commessa || '',
                         'Task': g.task_info?.Task || '',
                         'Giorni': g.gg,
+                        'Viaggio': (g.Viaggio === 'No') ? 'No' : 'Si',
                         'Spese Viaggio': parseFloat(g.Spese_Viaggi ?? g.Spese_Viaggio ?? g.spese_viaggio ?? 0) || 0,
                         'Vitto/Alloggio': parseFloat(g.Vitto_alloggio ?? g.Vitto_Alloggio ?? g.vitto_alloggio ?? 0) || 0,
                         'Altre Spese': parseFloat(g.Altri_costi ?? g.AltriSpese ?? g.altri_costi ?? 0) || 0,
                         'Spese Fatturate VP': parseFloat(g.Spese_Fatturate_VP ?? g.Spese_Fatturate ?? g.spese_fatturate_vp ?? 0) || 0,
                         'Spese Rimborsabili': speseRimborsabili,
                         'Costo gg': parseFloat(g.Costo_gg ?? g.costo_gg ?? g.CostoGg ?? 0) || 0,
+                        'Costo Spese': costoSpese,
                         'Valore Spese': valoreSpese,
                         'Valore gg': valoreGg,
                         'Valore TOT': (valoreSpese + valoreGg),
@@ -220,14 +226,14 @@ class GiornateSection extends BaseSection {
         }
 
     // Costruisci CSV (punto e virgola come separatore per Excel italiano) - ordine richiesto dall'utente
-    const headers = ['Collaboratore','Data','Commessa','Task','Giorni','Spese Viaggio','Vitto/Alloggio','Altre Spese','Spese Fatturate VP','Spese Rimborsabili','Costo gg','Valore Spese','Valore gg','Valore TOT','Note'];
+    const headers = ['Collaboratore','Data','Commessa','Task','Giorni','Viaggio','Spese Viaggio','Vitto/Alloggio','Altre Spese','Spese Fatturate VP','Spese Rimborsabili','Costo gg','Costo Spese','Valore Spese','Valore gg','Valore TOT','Note'];
     const csvLines = [headers.join(';')];
 
         rows.forEach(r => {
             const line = headers.map(h => {
                 let v = r[h] ?? '';
                 // numeri con decimale con la virgola per Excel locale
-                if (['Giorni','Valore Spese','Valore gg','Valore TOT','Costo gg','Spese Viaggio','Vitto/Alloggio','Altre Spese','Spese Fatturate VP','Spese Rimborsabili'].includes(h)) {
+                if (['Giorni','Valore Spese','Valore gg','Valore TOT','Costo gg','Costo Spese','Spese Viaggio','Vitto/Alloggio','Altre Spese','Spese Fatturate VP','Spese Rimborsabili'].includes(h)) {
                     const num = parseFloat(v);
                     v = isNaN(num) ? '' : num.toString().replace('.', ',');
                 }
@@ -429,6 +435,7 @@ class GiornateSection extends BaseSection {
                                 <th class="text-center">GG</th>
                                 <th>Tipo</th>
                                 <th class="text-center">Desk</th>
+                                <th class="text-center">Viaggio</th>
                                 <th>Note</th>
                                 <th class="text-center">Confermata</th>
                                 <th class="text-end">Valore Calc.</th>
@@ -459,6 +466,12 @@ class GiornateSection extends BaseSection {
             ? '<i class="fas fa-desktop text-primary" title="Sì"></i>'
             : '';
 
+        // Si segnala solo l'eccezione: il viaggio non effettuato su una giornata
+        // di campo in trasferta, l'unico caso in cui il flag cambia il ricavo.
+        const viaggioIcon = (giornata.Viaggio === 'No' && giornata.Tipo === 'Campo' && giornata.Desk !== 'Si')
+            ? '<i class="fas fa-ban text-warning" title="Nessun viaggio: non addebitato al cliente"></i>'
+            : '';
+
         // Show a small thumbnail (first image) or an icon if images exist
         let immaginiCell = '';
         try {
@@ -486,6 +499,7 @@ class GiornateSection extends BaseSection {
                 <td class="text-center"><span class="badge bg-primary">${giornata.gg}</span></td>
                 <td>${tipoHtml}</td>
                 <td class="text-center">${deskIcon}</td>
+                <td class="text-center">${viaggioIcon}</td>
                 <td class="text-truncate" style="max-width: 150px;" title="${giornata.Note || ''}">${giornata.Note || '-'}</td>
                 <td class="text-center">${confermataIcon}</td>
                 <td class="text-end fw-bold">${this.app.utils.formatCurrency(giornata.valore_calcolato)}</td>
@@ -630,6 +644,16 @@ class GiornateSection extends BaseSection {
                             </div>
                         </div>
                     </div>
+                     <div class="col-md-4 mb-3">
+                        <label class="form-label">Viaggio</label>
+                        <div class="d-flex align-items-center">
+                            <div class="form-check form-switch me-2">
+                                <input class="form-check-input" type="checkbox" id="Viaggio_toggle" name="Viaggio" ${giornata.Viaggio === 'No' ? '' : 'checked'}>
+                                <label class="form-check-label" for="Viaggio_toggle" id="Viaggio_toggle_label">${giornata.Viaggio === 'No' ? 'No' : 'Sì'}</label>
+                            </div>
+                        </div>
+                        <div class="form-text">Togliere se il consulente si è fermato in loco: il viaggio non viene addebitato al cliente.</div>
+                    </div>
                         <div class="col-md-4 mb-3">
                             <label class="form-label">Confermata</label>
                             <div class="d-flex align-items-center">
@@ -764,6 +788,26 @@ class GiornateSection extends BaseSection {
             deskToggle.addEventListener('change', updateDeskLabel);
             updateDeskLabel();
         }
+
+        // Listener per il toggle Viaggio. Il flag conta solo sulle giornate di
+        // campo in trasferta: sulle altre non c'è viaggio da addebitare, quindi
+        // lo si disabilita invece di lasciarlo modificabile a vuoto.
+        const viaggioToggle = form.querySelector('#Viaggio_toggle');
+        const viaggioLabel = form.querySelector('#Viaggio_toggle_label');
+        const tipoSelect = form.querySelector('#Tipo');
+        if (viaggioToggle && viaggioLabel) {
+            const updateViaggio = () => {
+                const inTrasferta = (!tipoSelect || tipoSelect.value === 'Campo') && !(deskToggle && deskToggle.checked);
+                viaggioToggle.disabled = !inTrasferta;
+                viaggioLabel.textContent = !inTrasferta
+                    ? 'Non applicabile'
+                    : (viaggioToggle.checked ? 'Sì' : 'No');
+            };
+            viaggioToggle.addEventListener('change', updateViaggio);
+            deskToggle?.addEventListener('change', updateViaggio);
+            tipoSelect?.addEventListener('change', updateViaggio);
+            updateViaggio();
+        }
     }
 
     async handleGiornataFormSubmit(event, giornataId = null) {
@@ -789,7 +833,16 @@ class GiornateSection extends BaseSection {
         } else if (data.Desk === 'on') {
             data.Desk = 'Si';
         }
-        
+
+        // Stesso trattamento per il flag Viaggio, che però parte acceso.
+        const viaggioEl = form.querySelector('#Viaggio_toggle');
+        if (viaggioEl) {
+            data.Viaggio = viaggioEl.checked ? 'Si' : 'No';
+        } else if (data.Viaggio === 'on') {
+            data.Viaggio = 'Si';
+        }
+
+
         // Se siamo in modalità modifica, alcuni campi possono essere "disabled" nel form
         // (es. il select #ID_TASK) e quindi non vengono inviati nella FormData.
         // Per evitare che il backend riceva FK mancanti (causa di errori SQL),

@@ -280,7 +280,7 @@ class CommesseTaskSection extends BaseSection {
             : `<p class="text-muted text-center small mt-3 mb-0"><i class="fas fa-calendar-times me-1"></i> Nessuna giornata registrata</p>`;
 
         const valoreGgContent = `<div class="fw-bold text-success">${this.app.utils.formatCurrency(task.valore_gg_maturato || 0)}</div><small class="text-muted">Valore gg</small>`;
-        const valoreSpeseContent = `<div class="fw-bold text-danger">${this.app.utils.formatCurrency(task.valore_spese_maturato || 0)}</div><small class="text-muted">Tot Spese</small>`;
+        const valoreSpeseContent = `<div class="fw-bold text-danger">${this.app.utils.formatCurrency(task.valore_spese_maturato || 0)}</div><small class="text-muted">Val. Spese</small>`;
         //console.log('Tariffa giornaliera per task:', task);
         const tariffaGg = parseFloat(task.Valore_gg ?? 0) || 0;
         const tariffaGgContent = `<div class="fw-bold text-secondary">${this.app.utils.formatCurrency(tariffaGg)}</div><small class="text-muted">Tariffa gg</small>`;
@@ -320,13 +320,13 @@ class CommesseTaskSection extends BaseSection {
                         ${!isUser ? (() => {
                             const parts = [];
                             if ((totaleSpeseAR || 0) > 0) {
-                                parts.push(`<div class="col-4"><div class="fw-bold text-info" data-bs-toggle="tooltip" title="Spese di viaggio andata/ritorno (A/R)"><i class="fas fa-plane me-1"></i>${this.app.utils.formatCurrency(totaleSpeseAR)}</div><small class="text-muted">Spese A/R</small></div>`);
+                                parts.push(`<div class="col-4"><div class="fw-bold text-info" data-bs-toggle="tooltip" title="Esborso reale per viaggi andata/ritorno (A/R)"><i class="fas fa-plane me-1"></i>${this.app.utils.formatCurrency(totaleSpeseAR)}</div><small class="text-muted">Costo Spese A/R</small></div>`);
                             }
                             if ((totaleVittoAlloggioEAltre || 0) > 0) {
-                                parts.push(`<div class="col-4"><div class="fw-bold text-danger" data-bs-toggle="tooltip" title="Vitto/Alloggio + Altre spese maturate nelle giornate">${this.app.utils.formatCurrency(totaleVittoAlloggioEAltre)}</div><small class="text-muted">Vitto/Alloggio + Altre</small></div>`);
+                                parts.push(`<div class="col-4"><div class="fw-bold text-danger" data-bs-toggle="tooltip" title="Esborso reale per vitto/alloggio e altre spese delle giornate">${this.app.utils.formatCurrency(totaleVittoAlloggioEAltre)}</div><small class="text-muted">Costo Vitto/Alloggio + Altre</small></div>`);
                             }
                             if ((task.valore_spese_maturato || 0) > 0) {
-                                parts.push(`<div class="col-4"><div class="fw-bold text-danger" data-bs-toggle="tooltip" title="Totale spese maturate per questo task">${this.app.utils.formatCurrency(task.valore_spese_maturato || 0)}</div><small class="text-muted">Tot Spese</small></div>`);
+                                parts.push(`<div class="col-4"><div class="fw-bold text-danger" data-bs-toggle="tooltip" title="Spese addebitate al cliente: diaria per giornata di campo, oppure spese effettive se il task e' a consuntivo">${this.app.utils.formatCurrency(task.valore_spese_maturato || 0)}</div><small class="text-muted">Val. Spese</small></div>`);
                             }
                             return parts.length > 0 ? `<div class="row text-center mt-2">${parts.join('')}</div>` : '';
                         })() : ''}
@@ -596,7 +596,8 @@ class CommesseTaskSection extends BaseSection {
         const modalTitle = `Nuovo Task per: ${commessa.Commessa}`;
         const defaultTaskData = {
             ID_COMMESSA: commessaId, Tipo: 'Campo', Stato_Task: 'In corso',
-            Data_Apertura_Task: new Date().toISOString().split('T')[0], Spese_Comprese: 'No'
+            Data_Apertura_Task: new Date().toISOString().split('T')[0],
+            Spese_Comprese_Viaggi: 'No', Spese_Comprese_Vitto_Alloggio: 'No'
         };
         const modalBody = this.getTaskFormHTML(defaultTaskData);
         const modalId = `newTaskModal_${commessaId}`;
@@ -698,8 +699,7 @@ class CommesseTaskSection extends BaseSection {
                     if (isUser) {
                         modalBody = `${baseDetails}${giornateSection}`;
                     } else {
-                        const showSpeseStd = task.Spese_Comprese === 'No' && parseFloat(task.Valore_Spese_std) > 0;
-                        modalBody = `${baseDetails}<hr><h5>Dettagli Economici</h5><dl class="row"><dt class="col-sm-4">Valore Giorno (€)</dt><dd class="col-sm-8">${this.app.utils.formatCurrency(task.Valore_gg)}</dd><dt class="col-sm-4">Valore Maturato (€)</dt><dd class="col-sm-8"><strong>${this.app.utils.formatCurrency(valore_gg_maturato)}</strong></dd><dt class="col-sm-4">Spese Comprese</dt><dd class="col-sm-8">${task.Spese_Comprese}</dd>${showSpeseStd ? `<dt class="col-sm-4">Valore Spese Standard (€)</dt><dd class="col-sm-8">${this.app.utils.formatCurrency(task.Valore_Spese_std)}</dd>` : ''}<dt class="col-sm-4">Spese Maturate (€)</dt><dd class="col-sm-8"><strong>${this.app.utils.formatCurrency(valore_spese_maturato)}</strong></dd></dl>${giornateSection}`;
+                        modalBody = `${baseDetails}<hr><h5>Dettagli Economici</h5><dl class="row"><dt class="col-sm-4">Valore Giorno (€)</dt><dd class="col-sm-8">${this.app.utils.formatCurrency(task.Valore_gg)}</dd><dt class="col-sm-4">Valore Maturato (€)</dt><dd class="col-sm-8"><strong>${this.app.utils.formatCurrency(valore_gg_maturato)}</strong></dd><dt class="col-sm-4">Viaggi</dt><dd class="col-sm-8">${this.descrizioneRegimeSpese(task.Spese_Comprese_Viaggi, task.Valore_Spese_std_Viaggi)}</dd><dt class="col-sm-4">Vitto/Alloggio + Altre</dt><dd class="col-sm-8">${this.descrizioneRegimeSpese(task.Spese_Comprese_Vitto_Alloggio, task.Valore_Spese_std_Vitto_Alloggio)}</dd><dt class="col-sm-4">Spese Maturate (€)</dt><dd class="col-sm-8"><strong>${this.app.utils.formatCurrency(valore_spese_maturato)}</strong></dd></dl>${giornateSection}`;
                     }
                     break;
                 }
@@ -745,27 +745,35 @@ class CommesseTaskSection extends BaseSection {
             const modalBody = giornateTask.length === 0
                 ? '<p class="text-muted">Nessuna giornata registrata per questo task nel periodo selezionato.</p>'
                 : (() => {
+                    // Esborso reale della giornata, spaccato nelle due voci che
+                    // interessano: viaggi A/R da una parte, vitto/alloggio e altro
+                    // dall'altra. Non e' il prezzo addebitato al cliente, che sta
+                    // nella colonna Valore Spese.
+                    const costoViaggiGiornata = (g) => parseFloat(g.Spese_Viaggi ?? g.Spese_viaggi ?? g.spese_viaggi ?? 0) || 0;
+                    const costoVittoAltreGiornata = (g) => (parseFloat(g.Vitto_alloggio ?? g.Vitto_Alloggio ?? g.vitto_alloggio ?? 0) || 0)
+                        + (parseFloat(g.Altri_costi ?? g.altri_costi ?? g.Altri_Costi ?? 0) || 0);
+
                     const totals = giornateTask.reduce((acc, g) => {
                         const gg = parseFloat(g.gg) || 0;
                         const valore = parseFloat(g.valore_calcolato ?? g.Valore_calcolato ?? 0) || 0;
-                        const costoGg = parseFloat(g.Costo_gg ?? g.costo_gg ?? g.Valore_gg ?? 0) || 0;
                         const valoreSpese = parseFloat(g.Valore_spese ?? g.valore_spese ?? 0) || 0;
                         acc.num_gg += (g.Tipo === 'Campo' ? gg : 0);
                         acc.valore_tot += valore;
-                        acc.costo_gg += costoGg;
+                        acc.costo_viaggi += costoViaggiGiornata(g);
+                        acc.costo_vitto_altre += costoVittoAltreGiornata(g);
                         acc.valore_spese += valoreSpese;
                         return acc;
-                    }, { num_gg: 0, valore_tot: 0, costo_gg: 0, valore_spese: 0 });
+                    }, { num_gg: 0, valore_tot: 0, costo_viaggi: 0, costo_vitto_altre: 0, valore_spese: 0 });
 
                     return `<div class="table-responsive">
                         <table class="table table-sm table-hover">
-                            <thead><tr><th>Data</th><th>Collaboratore</th><th>gg</th><th>Tipo</th><th>Note</th>${!isUser ? '<th>Valore (€)</th><th>Costo_gg (€)</th><th>Valore Spese (€)</th>' : ''}</tr></thead>
+                            <thead><tr><th>Data</th><th>Collaboratore</th><th>gg</th><th>Tipo</th><th>Note</th>${!isUser ? '<th class="text-end">Costo Viaggi (€)</th><th class="text-end">Costo Vitto/Alloggio + Altre (€)</th><th class="text-end">Valore Spese (€)</th><th class="text-end">Valore gg (€)</th>' : ''}</tr></thead>
                             <tbody>
                                 ${giornateTask.map(g => {
                                     const collab = this.app.collaboratori.find(c => c.ID_COLLABORATORE === g.ID_COLLABORATORE);
                                     const valoreGiornata = this.app.utils.formatCurrency(g.valore_calcolato || g.Valore_calcolato || 0);
-                                    const costoGgRaw = parseFloat(g.Costo_gg ?? g.costo_gg ?? g.Valore_gg ?? 0) || 0;
-                                    const costoGg = this.app.utils.formatCurrency(costoGgRaw);
+                                    const costoViaggi = this.app.utils.formatCurrency(costoViaggiGiornata(g));
+                                    const costoVittoAltre = this.app.utils.formatCurrency(costoVittoAltreGiornata(g));
                                     const valoreSpese = this.app.utils.formatCurrency(g.Valore_spese || g.valore_spese || 0);
                                     return `<tr>
                                         <td>${new Date(g.Data).toLocaleDateString('it-IT')}</td>
@@ -773,7 +781,7 @@ class CommesseTaskSection extends BaseSection {
                                         <td><span class="badge bg-primary">${g.gg}g</span></td>
                                         <td>${g.Tipo}</td>
                                         <td>${g.Note || '-'}</td>
-                                        ${!isUser ? `<td class="text-end fw-bold">${valoreGiornata}</td><td class="text-end fw-bold">${costoGg}</td><td class="text-end fw-bold text-danger">${valoreSpese}</td>` : ''}
+                                        ${!isUser ? `<td class="text-end fw-bold">${costoViaggi}</td><td class="text-end fw-bold">${costoVittoAltre}</td><td class="text-end fw-bold text-danger">${valoreSpese}</td><td class="text-end fw-bold">${valoreGiornata}</td>` : ''}
                                     </tr>`;
                                 }).join('')}
                             </tbody>
@@ -783,7 +791,7 @@ class CommesseTaskSection extends BaseSection {
                                     <td class="text-end"><strong>${totals.num_gg.toFixed(1)}</strong></td>
                                     <td></td>
                                     <td></td>
-                                    ${!isUser ? `<td class="text-end"><strong>${this.app.utils.formatCurrency(totals.valore_tot)}</strong></td><td class="text-end"><strong>${this.app.utils.formatCurrency(totals.costo_gg)}</strong></td><td class="text-end"><strong>${this.app.utils.formatCurrency(totals.valore_spese)}</strong></td>` : ''}
+                                    ${!isUser ? `<td class="text-end"><strong>${this.app.utils.formatCurrency(totals.costo_viaggi)}</strong></td><td class="text-end"><strong>${this.app.utils.formatCurrency(totals.costo_vitto_altre)}</strong></td><td class="text-end"><strong>${this.app.utils.formatCurrency(totals.valore_spese)}</strong></td><td class="text-end"><strong>${this.app.utils.formatCurrency(totals.valore_tot)}</strong></td>` : ''}
                                 </tr>
                             </tfoot>
                         </table>
@@ -871,12 +879,16 @@ class CommesseTaskSection extends BaseSection {
         form.addEventListener('submit', (e) => this.handleTaskFormSubmit(e, taskId));
         const tipoSelect = form.querySelector('#Tipo');
         const assegnatoContainer = form.querySelector('#assegnatoAContainer');
-        const speseSelect = form.querySelector('#Spese_Comprese');
-        const speseStdContainer = form.querySelector('#valoreSpeseStdContainer');
+        const speseViaggiSelect = form.querySelector('#Spese_Comprese_Viaggi');
+        const speseViaggiContainer = form.querySelector('#valoreSpeseViaggiContainer');
+        const speseVittoSelect = form.querySelector('#Spese_Comprese_Vitto_Alloggio');
+        const speseVittoContainer = form.querySelector('#valoreSpeseVittoContainer');
         const statoSelect = form.querySelector('#Stato_Task');
         const dataFineInput = form.querySelector('#Data_Fine');
         const toggleAssegnato = () => { assegnatoContainer.style.display = tipoSelect.value === 'Monitoraggio' ? 'block' : 'none'; };
-        const toggleSpeseStd = () => { speseStdContainer.style.display = speseSelect.value === 'No' ? 'block' : 'none'; };
+        // La diaria ha senso solo se la categoria NON è già compresa nel valore giornata.
+        const toggleSpeseViaggi = () => { speseViaggiContainer.style.display = speseViaggiSelect.value === 'No' ? 'block' : 'none'; };
+        const toggleSpeseVitto = () => { speseVittoContainer.style.display = speseVittoSelect.value === 'No' ? 'block' : 'none'; };
         // Quando lo stato diventa Chiuso/Archiviato, imposta Data_Fine a oggi se vuota
         const handleStatoChange = () => {
             if ((statoSelect.value === 'Chiuso' || statoSelect.value === 'Archiviato') && dataFineInput && !dataFineInput.value) {
@@ -942,11 +954,13 @@ class CommesseTaskSection extends BaseSection {
         commessaSelect?.addEventListener('change', checkValoreGg);
         valoreGgInput?.addEventListener('input', checkValoreGg);
         statoSelect?.addEventListener('change', checkValoreGg);
-        speseSelect?.addEventListener('change', toggleSpeseStd);
+        speseViaggiSelect?.addEventListener('change', toggleSpeseViaggi);
+        speseVittoSelect?.addEventListener('change', toggleSpeseVitto);
         statoSelect?.addEventListener('change', handleStatoChange);
         dataFineInput?.addEventListener('change', handleDataFineChange);
         toggleAssegnato();
-        toggleSpeseStd();
+        toggleSpeseViaggi();
+        toggleSpeseVitto();
         checkMonitoraggioAttivo();
         checkValoreGg();
     }
@@ -1235,6 +1249,17 @@ class CommesseTaskSection extends BaseSection {
         `;
     }
 
+    /**
+     * Come si legge il regime di una categoria di spesa nella scheda task.
+     * I tre casi sono quelli di CalcoloSpese: compreso, a diaria, a consuntivo.
+     */
+    descrizioneRegimeSpese(compreso, diaria) {
+        if (compreso === 'Si') return 'Compreso nel valore giornata';
+        const valore = parseFloat(diaria);
+        if (valore > 0) return `Diaria di ${this.app.utils.formatCurrency(valore)} per giornata di campo`;
+        return 'A consuntivo, sulla spesa effettiva';
+    }
+
     getTaskFormHTML(task = {}) {
         const formId = task.ID_TASK ? `editTaskModal_${task.ID_TASK}_form` : `newTaskModal_${task.ID_COMMESSA}_form`;
         const tipiTask = ['Campo', 'Monitoraggio', 'Promo', 'Sviluppo', 'Formazione'];
@@ -1271,10 +1296,30 @@ class CommesseTaskSection extends BaseSection {
                 <h5>Dettagli Economici</h5>
                 <div class="row align-items-end">
                     <div class="col-md-4 mb-3"><label for="gg_previste" class="form-label">Giorni Previsti</label><input type="number" step="0.5" class="form-control" id="gg_previste" name="gg_previste" value="${task.gg_previste || ''}"></div>
-                    <div class="col-md-4 mb-3"><label for="Spese_Comprese" class="form-label">Spese Comprese</label><select class="form-select" id="Spese_Comprese" name="Spese_Comprese"><option value="No" ${task.Spese_Comprese === 'No' || !task.Spese_Comprese ? 'selected' : ''}>No</option><option value="Si" ${task.Spese_Comprese === 'Si' ? 'selected' : ''}>Si</option></select></div>
-                    <div class="col-md-4 mb-3" id="valoreSpeseStdContainer" style="display: none;"><label for="Valore_Spese_std" class="form-label">Valore Spese Standard (€)</label><input type="number" step="0.01" class="form-control" id="Valore_Spese_std" name="Valore_Spese_std" value="${task.Valore_Spese_std || ''}"></div>
+                    <div class="col-md-4 mb-3"><label for="Valore_gg" class="form-label">Valore Giorno (€)</label><input type="number" step="0.01" class="form-control" id="Valore_gg" name="Valore_gg" value="${task.Valore_gg || ''}"></div>
                 </div>
-                 <div class="row"><div class="col-md-4 mb-3"><label for="Valore_gg" class="form-label">Valore Giorno (€)</label><input type="number" step="0.01" class="form-control" id="Valore_gg" name="Valore_gg" value="${task.Valore_gg || ''}"></div></div>
+                <h6 class="text-muted mt-2">Spese addebitate al cliente</h6>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <div class="border rounded p-2 h-100">
+                            <div class="fw-semibold mb-2">Viaggi</div>
+                            <div class="row g-2">
+                                <div class="col-6"><label for="Spese_Comprese_Viaggi" class="form-label">Compresi</label><select class="form-select" id="Spese_Comprese_Viaggi" name="Spese_Comprese_Viaggi"><option value="No" ${task.Spese_Comprese_Viaggi === 'No' || !task.Spese_Comprese_Viaggi ? 'selected' : ''}>No</option><option value="Si" ${task.Spese_Comprese_Viaggi === 'Si' ? 'selected' : ''}>Si</option></select></div>
+                                <div class="col-6" id="valoreSpeseViaggiContainer" style="display: none;"><label for="Valore_Spese_std_Viaggi" class="form-label">Diaria (€/gg)</label><input type="number" step="0.01" min="0" class="form-control" id="Valore_Spese_std_Viaggi" name="Valore_Spese_std_Viaggi" value="${task.Valore_Spese_std_Viaggi || ''}" placeholder="a consuntivo"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="border rounded p-2 h-100">
+                            <div class="fw-semibold mb-2">Vitto/Alloggio + Altre</div>
+                            <div class="row g-2">
+                                <div class="col-6"><label for="Spese_Comprese_Vitto_Alloggio" class="form-label">Comprese</label><select class="form-select" id="Spese_Comprese_Vitto_Alloggio" name="Spese_Comprese_Vitto_Alloggio"><option value="No" ${task.Spese_Comprese_Vitto_Alloggio === 'No' || !task.Spese_Comprese_Vitto_Alloggio ? 'selected' : ''}>No</option><option value="Si" ${task.Spese_Comprese_Vitto_Alloggio === 'Si' ? 'selected' : ''}>Si</option></select></div>
+                                <div class="col-6" id="valoreSpeseVittoContainer" style="display: none;"><label for="Valore_Spese_std_Vitto_Alloggio" class="form-label">Diaria (€/gg)</label><input type="number" step="0.01" min="0" class="form-control" id="Valore_Spese_std_Vitto_Alloggio" name="Valore_Spese_std_Vitto_Alloggio" value="${task.Valore_Spese_std_Vitto_Alloggio || ''}" placeholder="a consuntivo"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-text mb-2">Diaria vuota: si riaddebita la spesa reale. La diaria si addebita intera per ogni giornata di campo, anche sulle mezze giornate; i viaggi solo sulle giornate con il flag Viaggio attivo.</div>
             </form>
         `;
     }

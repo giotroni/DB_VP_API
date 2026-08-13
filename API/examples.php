@@ -107,8 +107,10 @@ $taskData = [
     'Tipo' => 'Campo',
     'Data_Apertura_Task' => date('Y-m-d'),
     'gg_previste' => 5.0,
-    'Spese_Comprese' => 'No',
-    'Valore_Spese_std' => 300.00,
+    // Viaggi a diaria giornaliera, vitto/alloggio riaddebitato a consuntivo
+    'Spese_Comprese_Viaggi' => 'No',
+    'Valore_Spese_std_Viaggi' => 70.00,
+    'Spese_Comprese_Vitto_Alloggio' => 'No',
     'Valore_gg' => 1200.00
 ];
 

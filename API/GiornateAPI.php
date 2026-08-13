@@ -19,6 +19,7 @@ class GiornateAPI extends BaseAPI {
             'ID_TASK' => ['required' => true, 'max_length' => 50],
             'Tipo' => ['enum' => ['Campo', 'Promo', 'Sviluppo', 'Formazione']],
             'Desk' => ['enum' => ['Si', 'No']],
+            'Viaggio' => ['enum' => ['Si', 'No']],
             'gg' => ['required' => true, 'numeric' => true, 'min' => 0, 'max' => 1],
             'Spese_Viaggi' => ['numeric' => true, 'min' => 0],
             'Vitto_alloggio' => ['numeric' => true, 'min' => 0],
@@ -261,6 +262,12 @@ class GiornateAPI extends BaseAPI {
                 $data['Desk'] = 'No';
             }
 
+            // Il viaggio si presume effettuato: è il caso normale, e chi si
+            // ferma in loco lo dichiara togliendo il flag.
+            if (!isset($data['Viaggio']) || $data['Viaggio'] === '') {
+                $data['Viaggio'] = 'Si';
+            }
+
             if (!isset($data['Confermata']) || $data['Confermata'] === '') {
                 $data['Confermata'] = 'No';
             }
@@ -284,6 +291,10 @@ class GiornateAPI extends BaseAPI {
 
             if (array_key_exists('Desk', $data) && $data['Desk'] === '') {
                 $data['Desk'] = 'No';
+            }
+
+            if (array_key_exists('Viaggio', $data) && $data['Viaggio'] === '') {
+                $data['Viaggio'] = 'Si';
             }
 
             if (array_key_exists('Confermata', $data) && $data['Confermata'] === '') {
@@ -328,7 +339,7 @@ class GiornateAPI extends BaseAPI {
     protected function getRestrictedUserFields() {
         return [
             'ID_GIORNATA', 'Data', 'ID_COLLABORATORE', 'ID_TASK', 'Tipo',
-            'Desk', 'gg', 'Confermata', 'Note'
+            'Desk', 'Viaggio', 'gg', 'Confermata', 'Note'
         ];
     }
 
@@ -453,7 +464,9 @@ class GiornateAPI extends BaseAPI {
             $taskInfo = null;
             $commessaId = null; // Inizializza ID commessa per uso successivo
             if (!empty($record['ID_TASK'])) {
-                $taskFields = ['Task', 'ID_COMMESSA', 'Valore_gg', 'Tipo', 'Spese_Comprese', 'Valore_Spese_std'];
+                $taskFields = ['Task', 'ID_COMMESSA', 'Valore_gg', 'Tipo',
+                               'Spese_Comprese_Viaggi', 'Spese_Comprese_Vitto_Alloggio',
+                               'Valore_Spese_std_Viaggi', 'Valore_Spese_std_Vitto_Alloggio'];
                 $taskInfo = $this->getRelatedData('ANA_TASK', 'ID_TASK', $record['ID_TASK'], $taskFields);
                 $record['task_info'] = $taskInfo;
                 
@@ -476,11 +489,17 @@ class GiornateAPI extends BaseAPI {
                 $record['valore_calcolato'] = floatval($taskInfo['Valore_gg']) * floatval($record['gg']);
             }
 
-            // Ricavo spese della giornata: prezzo addebitato al cliente.
+            // Ricavo spese della giornata: prezzo addebitato al cliente, diviso
+            // per categoria perché le due seguono regimi indipendenti e solo i
+            // viaggi risentono del flag Viaggio.
             // Regole in CalcoloSpese, condivise con TaskAPI e CommesseAPI.
-            $record['Valore_spese'] = $taskInfo
-                ? CalcoloSpese::ricavoGiornata($taskInfo, $record)
+            $record['Valore_spese_viaggi'] = $taskInfo
+                ? CalcoloSpese::ricavoViaggiGiornata($taskInfo, $record)
                 : 0;
+            $record['Valore_spese_vitto'] = $taskInfo
+                ? CalcoloSpese::ricavoVittoGiornata($taskInfo, $record)
+                : 0;
+            $record['Valore_spese'] = $record['Valore_spese_viaggi'] + $record['Valore_spese_vitto'];
 
             // --- INIZIO NUOVO CODICE ---
             // --- INIZIO CODICE AGGIORNATO ---

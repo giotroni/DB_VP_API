@@ -140,15 +140,24 @@ class CollaboratoriSection extends BaseSection {
     const data = Array.isArray(this.lastFilteredCollaboratori) ? this.lastFilteredCollaboratori : (Array.isArray(this.collaboratoriConGiornate) ? this.collaboratoriConGiornate : this.groupGiornateByCollaboratore());
 
         // Costruiamo una rappresentazione semplice: una riga per collaboratore e alcune colonne chiave
-        const headers = ['ID_COLLABORATORE','Collaboratore','Email','User','Ruolo','Commesse_Assegnate','Totale_Giornate','Giornate_Campo','Rimborso_Attivita','Valore_Monitoraggio','Accounting'];
+        const headers = ['ID_COLLABORATORE','Collaboratore','Email','User','Ruolo','Commesse_Assegnate','Totale_Giornate','Giornate_Campo','Rimborso_Attivita_Giornate','Rimborso_Spese','Rimborso_Totale','Valore_Monitoraggio','Accounting','Totale'];
 
         const rows = (Array.isArray(data) ? data : []).map(coll => {
             const giornateTot = coll.giornate.length;
             const giornateCampo = coll.giornate.reduce((s,g) => s + ((g.Tipo === 'Campo') ? (parseFloat(g.gg) || 0) : 0), 0);
-            const rimborso = coll.giornate.reduce((s,g) => s + (g.costo_calcolato || 0), 0);
+            // Il rimborso dovuto al collaboratore, spaccato nelle due componenti:
+            // la tariffa per le giornate lavorate e le spese che ha anticipato.
+            // Le giornate si ricavano per differenza dal totale, cosi' le tre
+            // colonne quadrano sempre anche quando scatta il fallback sulle spese.
+            const rimborsoTotale = coll.giornate.reduce((s,g) => s + (g.costo_calcolato || 0), 0);
+            const rimborsoSpese = coll.giornate.reduce((s,g) => s + this.calculateGiornataRimborsoSpese(g), 0);
+            const rimborsoGiornate = rimborsoTotale - rimborsoSpese;
             const monitor = this.computeMonitoraggioTotalForCollaboratore(coll) || 0;
             const accounting = this.computeAccountingTotalForCollaboratore(coll) || 0;
-            return [coll.ID_COLLABORATORE, coll.Collaboratore, coll.Email || '', coll.User || '', coll.Ruolo || '', coll.statistics?.commesse_assegnate || 0, giornateTot, giornateCampo, rimborso, monitor, accounting];
+            // Quanto la persona matura in tutto: rimborso, monitoraggio, provvigione.
+            // Le tre voci hanno origini diverse e si sommano (vedi docs/ANALISI-MANAGEMENT.md § 5.3).
+            const totale = rimborsoTotale + monitor + accounting;
+            return [coll.ID_COLLABORATORE, coll.Collaboratore, coll.Email || '', coll.User || '', coll.Ruolo || '', coll.statistics?.commesse_assegnate || 0, giornateTot, giornateCampo, rimborsoGiornate, rimborsoSpese, rimborsoTotale, monitor, accounting, totale];
         });
 
         const csvLines = [headers.join(';')];
@@ -1014,7 +1023,7 @@ class CollaboratoriSection extends BaseSection {
                                         <th>Tipo</th>
                                         <th class="text-end">Costo Gg (€)</th>
                                         <th class="text-end">Costo Spese (€)</th>
-                                        <th class="text-end">RImborso Totale (€)</th>
+                                        <th class="text-end">Rimborso Totale (€)</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -1157,6 +1166,26 @@ class CollaboratoriSection extends BaseSection {
         const giorniLavorati = parseFloat(giornata.gg) || 0;
         const valoreSpese = parseFloat(giornata.Valore_spese) || 0;
         return (tariffaGiornaliera * giorniLavorati) + valoreSpese;
+    }
+
+    /**
+     * Quota di rimborso spese di una giornata: e' la parte di 'costo_calcolato'
+     * che non e' tariffa del collaboratore.
+     *
+     * Usa Costo_Spese calcolato dall'API, cioe' le spese sostenute meno la quota
+     * gia' fatturata direttamente a V&P: e' quanto va effettivamente riconosciuto
+     * al collaboratore, non il costo di commessa (che e' la spesa lorda).
+     */
+    calculateGiornataRimborsoSpese(giornata) {
+        if (giornata.Tipo !== 'Campo') return 0;
+
+        if (typeof giornata.Costo_Spese !== 'undefined') {
+            return parseFloat(giornata.Costo_Spese) || 0;
+        }
+
+        // Stesso fallback di calculateGiornataCost: se l'API non fornisce il
+        // campo, si ripiega sulle spese ribaltate note alla giornata.
+        return parseFloat(giornata.Valore_spese) || 0;
     }
 
     findTariffa(collaboratoreId, data) {
