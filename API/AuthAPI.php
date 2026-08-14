@@ -72,6 +72,8 @@ class AuthAPI {
                     'id' => $user['ID_COLLABORATORE'],
                     'nome' => explode(' ', $user['Collaboratore'])[0] ?? $user['Collaboratore'],
                     'cognome' => explode(' ', $user['Collaboratore'], 2)[1] ?? '',
+                    // Nome e cognome completi: è quello che l'interfaccia mostra in alto a destra
+                    'name' => $user['Collaboratore'],
                     'email' => $user['Email'],
                     'ruolo' => $user['Ruolo'],
                     // For compatibility with other parts of the code that expect 'role'
@@ -178,6 +180,8 @@ class AuthAPI {
             'id' => $_SESSION['user_id'],
             'nome' => explode(' ', $_SESSION['user_name'])[0] ?? $_SESSION['user_name'],
             'cognome' => explode(' ', $_SESSION['user_name'], 2)[1] ?? '',
+            // Nome e cognome completi: è quello che l'interfaccia mostra in alto a destra
+            'name' => $_SESSION['user_name'],
             'email' => $_SESSION['user_email'],
             'ruolo' => $_SESSION['user_role'],
             // alias in inglese per compatibilità col client/server

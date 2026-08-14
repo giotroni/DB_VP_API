@@ -624,6 +624,14 @@ class ConsuntivazioneAPI {
     /**
      * Aggiorna una consuntivazione (solo se non confermata)
      */
+    /**
+     * Admin e Manager operano anche sulle giornate degli altri collaboratori
+     * (è l'impersonazione del selettore in alto nella pagina di consuntivazione).
+     */
+    private function puoGestireAltriCollaboratori($user) {
+        return isset($user['ruolo']) && in_array($user['ruolo'], ['Admin', 'Manager']);
+    }
+
     public function updateConsuntivazione($data) {
         try {
             if (!$this->authAPI->isAuthenticated()) {
@@ -643,26 +651,31 @@ class ConsuntivazioneAPI {
                 ];
             }
             
-            // Verifica che la consuntivazione esista e non sia confermata
-            $checkSql = "SELECT Confermata FROM FACT_GIORNATE WHERE ID_GIORNATA = ? AND ID_COLLABORATORE = ?";
+            // Verifica che la consuntivazione esista e non sia confermata.
+            // Admin e Manager possono intervenire sulle giornate di chiunque.
+            $puoGestireAltri = $this->puoGestireAltriCollaboratori($user);
+            $filtroProprietario = $puoGestireAltri ? '' : ' AND ID_COLLABORATORE = ?';
+            $checkParams = $puoGestireAltri ? [$idGiornata] : [$idGiornata, $user['id']];
+
+            $checkSql = "SELECT Confermata FROM FACT_GIORNATE WHERE ID_GIORNATA = ?" . $filtroProprietario;
             $checkStmt = $this->db->prepare($checkSql);
-            $checkStmt->execute([$idGiornata, $user['id']]);
+            $checkStmt->execute($checkParams);
             $existing = $checkStmt->fetch();
-            
+
             if (!$existing) {
                 return [
                     'success' => false,
                     'message' => 'Consuntivazione non trovata'
                 ];
             }
-            
+
             if ($existing['Confermata'] === 'Si') {
                 return [
                     'success' => false,
                     'message' => 'Non è possibile modificare una consuntivazione già confermata'
                 ];
             }
-            
+
             // Aggiorna la consuntivazione
             $sql = "UPDATE FACT_GIORNATE SET 
                         Data = ?,
@@ -678,10 +691,10 @@ class ConsuntivazioneAPI {
                         Note = ?,
                         Data_Modifica = NOW(),
                         ID_UTENTE_MODIFICA = ?
-                    WHERE ID_GIORNATA = ? AND ID_COLLABORATORE = ?";
-            
+                    WHERE ID_GIORNATA = ?" . $filtroProprietario;
+
             $stmt = $this->db->prepare($sql);
-            $result = $stmt->execute([
+            $paramsUpdate = [
                 $data['data'],
                 $data['id_task'],
                 $data['tipo'] ?? 'Campo',
@@ -694,9 +707,12 @@ class ConsuntivazioneAPI {
                 $data['spese_fatturate_vp'] ?? 0,
                 $data['note'] ?? '',
                 $user['id'], // ID_UTENTE_MODIFICA
-                $idGiornata,
-                $user['id']  // ID_COLLABORATORE per WHERE
-            ]);
+                $idGiornata
+            ];
+            if (!$puoGestireAltri) {
+                $paramsUpdate[] = $user['id']; // ID_COLLABORATORE per WHERE
+            }
+            $result = $stmt->execute($paramsUpdate);
             
             if ($result) {
                 return [
@@ -739,19 +755,24 @@ class ConsuntivazioneAPI {
             
             $user = $this->authAPI->getCurrentUser();
             
-            // Verifica che la consuntivazione esista e non sia confermata
-            $checkSql = "SELECT Confermata FROM FACT_GIORNATE WHERE ID_GIORNATA = ? AND ID_COLLABORATORE = ?";
+            // Verifica che la consuntivazione esista e non sia confermata.
+            // Admin e Manager possono intervenire sulle giornate di chiunque.
+            $puoGestireAltri = $this->puoGestireAltriCollaboratori($user);
+            $filtroProprietario = $puoGestireAltri ? '' : ' AND ID_COLLABORATORE = ?';
+            $checkParams = $puoGestireAltri ? [$idGiornata] : [$idGiornata, $user['id']];
+
+            $checkSql = "SELECT Confermata FROM FACT_GIORNATE WHERE ID_GIORNATA = ?" . $filtroProprietario;
             $checkStmt = $this->db->prepare($checkSql);
-            $checkStmt->execute([$idGiornata, $user['id']]);
+            $checkStmt->execute($checkParams);
             $existing = $checkStmt->fetch();
-            
+
             if (!$existing) {
                 return [
                     'success' => false,
                     'message' => 'Consuntivazione non trovata'
                 ];
             }
-            
+
             if ($existing['Confermata'] === 'Si') {
                 return [
                     'success' => false,
@@ -760,9 +781,9 @@ class ConsuntivazioneAPI {
             }
             
             // Cancella la consuntivazione
-            $sql = "DELETE FROM FACT_GIORNATE WHERE ID_GIORNATA = ? AND ID_COLLABORATORE = ?";
+            $sql = "DELETE FROM FACT_GIORNATE WHERE ID_GIORNATA = ?" . $filtroProprietario;
             $stmt = $this->db->prepare($sql);
-            $result = $stmt->execute([$idGiornata, $user['id']]);
+            $result = $stmt->execute($checkParams);
             
             if ($result) {
                 return [
@@ -812,6 +833,32 @@ class ConsuntivazioneAPI {
                 ];
             }
 
+            // Impersonazione: Admin e Manager possono consuntivare per un altro
+            // collaboratore. Chiunque altro salva sempre e solo per sé stesso.
+            $idCollaboratore = $user['id'];
+            $richiesto = $data['collaboratore_id'] ?? null;
+            if ($richiesto && $richiesto !== $user['id']) {
+                if (!in_array($user['ruolo'], ['Admin', 'Manager'])) {
+                    return [
+                        'success' => false,
+                        'message' => 'Non sei autorizzato a consuntivare per un altro collaboratore'
+                    ];
+                }
+
+                $check = $this->db->prepare(
+                    "SELECT ID_COLLABORATORE FROM ANA_COLLABORATORI WHERE ID_COLLABORATORE = ?"
+                );
+                $check->execute([$richiesto]);
+                if (!$check->fetch()) {
+                    return [
+                        'success' => false,
+                        'message' => 'Collaboratore non trovato'
+                    ];
+                }
+
+                $idCollaboratore = $richiesto;
+            }
+
             // Genera ID univoco per la giornata
             $idGiornata = 'GIO' . date('YmdHis') . mt_rand(100, 999);
 
@@ -819,7 +866,7 @@ class ConsuntivazioneAPI {
             $insertData = [
                 'ID_GIORNATA' => $idGiornata,
                 'Data' => $data['data'],
-                'ID_COLLABORATORE' => $user['id'],
+                'ID_COLLABORATORE' => $idCollaboratore,
                 'ID_TASK' => $data['task'],
                 'Tipo' => $data['tipo'] ?? 'Campo',
                 'Desk' => $data['desk'] ?? 'No',

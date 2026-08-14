@@ -550,3 +550,20 @@ body {
     color: #5a67d8;
     text-decoration: underline;
 }
+/* Foto allegata il cui file non è più sul server (404 su serve_image):
+   invece dell'icona di immagine rotta si mostra un riquadro tratteggiato. */
+.immagine-mancante {
+    display: inline-block;
+    border: 1px dashed #adb5bd;
+    border-radius: 6px;
+    background: #f8f9fa;
+    color: #6c757d;
+    font-size: 0.65rem;
+    line-height: 1.1;
+    text-align: center;
+    overflow: hidden;
+}
+
+.immagine-mancante img {
+    object-fit: contain !important;
+}

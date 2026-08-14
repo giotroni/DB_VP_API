@@ -100,6 +100,19 @@ class ConsuntivazioneApp {
         });
     }
     
+    /**
+     * Porta l'utente restituito dal backend nella forma usata dal client.
+     * Il backend espone i campi in italiano ('nome', 'cognome', 'ruolo'):
+     * l'interfaccia usa 'name' e 'role', che qui vengono garantiti sempre.
+     */
+    normalizeUser(user) {
+        const u = Object.assign({}, user || {});
+        const nomeCompleto = [u.nome, u.cognome].filter(Boolean).join(' ').trim();
+        u.name = u.name || nomeCompleto || u.username || u.email || '';
+        u.role = u.role || u.ruolo || '';
+        return u;
+    }
+
     async checkAuthentication() {
         try {
             const response = await fetch('API/auth.php', {
@@ -113,16 +126,9 @@ class ConsuntivazioneApp {
             const result = await response.json();
             
             if (result.success && result.authenticated) {
-            // Normalize user object coming from the backend to the fields used by the client
-            const user = result.user || {};
-            // Several backend fields: 'nome' (first name), 'cognome', 'username', 'ruolo'
-            // The UI expects 'name' and 'role' properties, so set them if missing.
-            user.name = user.name || user.nome || (user.username ? user.username : (user.email || ''));
-            user.role = user.role || user.ruolo || user.role || '';
-
-            this.currentUser = user;
-            // Inizializza selectedCollaboratore con l'utente corrente (id)
-            this.selectedCollaboratore = user.id;
+                this.currentUser = this.normalizeUser(result.user);
+                // Inizializza selectedCollaboratore con l'utente corrente (id)
+                this.selectedCollaboratore = this.currentUser.id;
                 return true;
             }
             
@@ -812,7 +818,8 @@ class ConsuntivazioneApp {
             const result = await response.json();
             
             if (result.success) {
-                this.currentUser = result.user;
+                this.currentUser = this.normalizeUser(result.user);
+                this.selectedCollaboratore = this.currentUser.id;
                 this.showMessage('Login effettuato con successo!', 'success', messageDiv);
                 
                 // Aspetta un momento e poi carica il dashboard
@@ -1290,7 +1297,7 @@ class ConsuntivazioneApp {
                 ${cons.Note ? `<div class="mt-1"><small><em>"${cons.Note}"</em></small></div>` : ''}
                 ${cons.images && cons.images.length ? `
                 <div class="consuntivazione-images mt-2">
-                    ${cons.images.map(img => `<a href="${img.url}" target="_blank" class="me-1"><img src="${img.url}" style="width:60px;height:60px;object-fit:cover;border-radius:6px"></a>`).join('')}
+                    ${cons.images.map(img => `<a href="${img.url}" target="_blank" class="me-1" title="${img.original_name || ''}"><img src="${img.url}" alt="foto non disponibile" style="width:60px;height:60px;object-fit:cover;border-radius:6px" onerror="this.closest('a').classList.add('immagine-mancante')"></a>`).join('')}
                 </div>
                 ` : ''}
 
@@ -1717,7 +1724,7 @@ class ConsuntivazioneApp {
                         ${cons.Note ? `<small>${cons.Note}</small>` : '<span class="text-muted">-</span>'}
                         ${cons.images && cons.images.length ? `
                             <div class="mt-2">
-                                ${cons.images.map(img => `<a href="${img.url}" target="_blank" class="me-1"><img src="${img.url}" style="width:40px;height:40px;object-fit:cover;border-radius:4px"></a>`).join('')}
+                                ${cons.images.map(img => `<a href="${img.url}" target="_blank" class="me-1" title="${img.original_name || ''}"><img src="${img.url}" alt="foto non disponibile" style="width:40px;height:40px;object-fit:cover;border-radius:4px" onerror="this.closest('a').classList.add('immagine-mancante')"></a>`).join('')}
                             </div>
                         ` : ''}
                     </td>
