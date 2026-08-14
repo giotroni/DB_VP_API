@@ -5,6 +5,12 @@ DB/config.php
 .env
 DB/Backup/
 
+# Documenti reali dei clienti: fatture emesse, registro incassi, ordini ricevuti.
+# Servono per le verifiche (vedi docs/REGOLE-FATTURAZIONE.md) ma stanno solo
+# in locale e su OneDrive, non nel repository.
+docs/Fatture/
+docs/Ordini/
+
 # Log
 DB/logs/
 API/logs/

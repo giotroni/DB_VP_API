@@ -296,6 +296,15 @@ Dal DATE  -- Data inizio validità tariffa
 
 ## 📚 Documentazione Completa
 
+### Regole di calcolo — leggere prima di toccare i numeri
+
+- **[REGOLE-SPESE.md](REGOLE-SPESE.md)** - come si vendono e si contabilizzano le spese: diaria giornaliera, margine totale, viaggi e vitto/alloggio separati
+- **[REGOLE-FATTURAZIONE.md](REGOLE-FATTURAZIONE.md)** - fatture e note di accredito: segno degli importi, scadenze, storni collegati alla fattura annullata, stato di incasso, e l'allineamento ai documenti cartacei
+- **[STATISTICHE.md](STATISTICHE.md)** - il registro attività, riservato agli amministratori
+
+### Ambiente e guide
+
+- **[AMBIENTE-LOCALE.md](AMBIENTE-LOCALE.md)** - ambiente di test Docker con i dati veri: avvio, indirizzi, reset
 - **[API Documentation](API/README.md)** - Documentazione completa delle API
 - **[Task Interface Guide](TASK_INTERFACE_DOCS.md)** - Guida interfaccia web task
 - **[Consuntivazione App Guide](CONSUNTIVAZIONE_DOCS.md)** - Guida app consuntivazione

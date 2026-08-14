@@ -13,6 +13,11 @@ solo dalla lettura del codice.
 > risolte il 03/08/2026: le regole decise e la loro implementazione stanno in
 > [REGOLE-SPESE.md](REGOLE-SPESE.md), il calcolo in [API/CalcoloSpese.php](../API/CalcoloSpese.php).
 > I §§ 4, 5, 8 e 10 riflettono il comportamento attuale.
+>
+> **Aggiornato il 14/08/2026.** Il fronte fatture è stato ripreso a parte e ha una
+> documentazione propria: [REGOLE-FATTURAZIONE.md](REGOLE-FATTURAZIONE.md) copre il segno
+> delle note di accredito, gli storni collegati alla fattura annullata e l'allineamento
+> dell'archivio ai documenti cartacei. Il § 6 di questo documento è aggiornato in coda.
 
 ---
 
@@ -564,6 +569,14 @@ La struttura dati per farlo c'è già: `FACT_FATTURE` ha `ID_COMMESSA`, e la sep
 `Fatturato_gg` / `Fatturato_Spese` rispecchia esattamente la separazione
 `valore lavori` / `valore spese` del maturato.
 
+> **Aggiornamento 14/08/2026.** La riconciliazione resta da fare, ma il quadro è cambiato in
+> due punti. Statistiche non è più uno stub: ospita il registro attività
+> ([STATISTICHE.md](STATISTICHE.md)). E l'archivio fatture è stato riallineato ai documenti
+> cartacei ([REGOLE-FATTURAZIONE.md](REGOLE-FATTURAZIONE.md) §§ 5-6), il che ha portato a
+> galla l'ostacolo vero: `ID_COMMESSA` è valorizzato solo su 3 delle 40 fatture 2026, quindi
+> oggi il confronto per commessa non sarebbe possibile nemmeno volendo. Dai PDF la commessa
+> non si ricava: serve una mappatura fatta a mano.
+
 ---
 
 ## 7. Ruoli, permessi e sicurezza
@@ -863,7 +876,9 @@ delle spese aveva tre convenzioni diverse che convivevano nello stesso conto eco
 business — la diaria è giornaliera, il costo è l'esborso reale — e implementato il giorno
 dopo in un punto solo del codice. **Il maturato non è invece mai riconciliato con il
 fatturato** (§ 6), che resta un inserimento manuale: è la funzionalità che manca perché
-il portale chiuda il cerchio dalla giornata consuntivata alla fattura emessa.
+il portale chiuda il cerchio dalla giornata consuntivata alla fattura emessa. La
+ricognizione del 14/08/2026 ha mostrato che il primo ostacolo non è il calcolo ma il dato:
+`ID_COMMESSA` è compilato su 3 fatture 2026 su 40 (contro 43 su 44 nel 2025).
 
 Il fronte sicurezza è chiuso: l'accesso anonimo alle API (S1) e l'autorizzazione
 per ruolo fra utenti autenticati (S2) sono stati risolti il 31/07/2026.

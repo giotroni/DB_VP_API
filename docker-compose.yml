@@ -35,6 +35,10 @@ services:
       - ./docker/initdb/02-fact_fatture_collaboratori.sql:/docker-entrypoint-initdb.d/02-fact_fatture_collaboratori.sql:ro
       - ./docker/initdb/03-utente-test-locale.sql:/docker-entrypoint-initdb.d/03-utente-test-locale.sql:ro
       - ./docker/initdb/04-spese-viaggi-vitto.sql:/docker-entrypoint-initdb.d/04-spese-viaggi-vitto.sql:ro
+      - ./docker/initdb/05-note-accredito.sql:/docker-entrypoint-initdb.d/05-note-accredito.sql:ro
+      - ./docker/initdb/06-allinea-fatture-pdf.sql:/docker-entrypoint-initdb.d/06-allinea-fatture-pdf.sql:ro
+      - ./docker/initdb/07-allinea-incassi.sql:/docker-entrypoint-initdb.d/07-allinea-incassi.sql:ro
+      - ./docker/initdb/08-storno-note-accredito.sql:/docker-entrypoint-initdb.d/08-storno-note-accredito.sql:ro
     healthcheck:
       test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
       interval: 5s

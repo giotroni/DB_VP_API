@@ -10,7 +10,8 @@
       "Bash(git commit *)",
       "Bash(grep -rniE \"\\(password|passwd|secret|api_key|token\\)\\\\s*=\\\\s*['\\\\\"][^'\\\\\"]{4,}['\\\\\"]\" . --include=\"*.php\")",
       "Bash(grep -viE '\\\\?\\\\?|\\\\$_POST|\\\\$_GET|\\\\$input|required|max_length|->|str_repeat|class=|<div')",
-      "Bash(git log *)"
+      "Bash(git log *)",
+      "Bash(grep -n 'validationRules\\\\|allowedFields\\\\|fillable\\\\|INSERT INTO {$this->table}\\\\|function create\\\\|function update' API/BaseAPI.php)"
     ]
   }
 }

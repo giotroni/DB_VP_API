@@ -27,6 +27,21 @@ Al primo avvio il container `db` esegue in ordine gli script di `docker/initdb`:
 | 01 | `DB/Backup/<BACKUP_DATE>_vaglioty_DB_VP.sql` | importa il dump (9 tabelle) |
 | 02 | `02-fact_fatture_collaboratori.sql` | crea `FACT_FATTURE_COLLABORATORI`, **assente dal dump** |
 | 03 | `03-utente-test-locale.sql` | aggiunge l'utente `testadmin` |
+| 04 | `04-spese-viaggi-vitto.sql` | separa le spese in viaggi e vitto/alloggio ([REGOLE-SPESE](REGOLE-SPESE.md)) |
+| 05 | `05-note-accredito.sql` | note di accredito negative e senza scadenza ([REGOLE-FATTURAZIONE](REGOLE-FATTURAZIONE.md)) |
+| 06 | `06-allinea-fatture-pdf.sql` | allinea l'archivio alle fatture cartacee: numerazioni, doppioni, importi, due documenti mancanti, riferimenti d'ordine |
+| 07 | `07-allinea-incassi.sql` | i 26 incassi presi dal registro Excel e tre date divergenti |
+| 08 | `08-storno-note-accredito.sql` | colonna `ID_FATTURA_STORNATA` e i sette collegamenti nota → fattura |
+
+Gli script dal 04 all'08 replicano migration che **in produzione non sono ancora
+state eseguite**: qui servono perché il reset riparte dal dump, che ha ancora lo
+schema e i dati vecchi. Vanno tenuti allineati alle rispettive migration in
+`DB/migrations/` finché il dump non le contiene già.
+
+**L'ordine conta.** Il 06 sistema le numerazioni e il 07 cerca le fatture per
+numero: invertirli lascerebbe 26 incassi non registrati, in silenzio. Dopo un
+reset i tre totali di controllo sono **13.705,50** (2024), **312.163,50** (2025)
+e **401.687,50** (2026).
 
 Quando `docker compose ps` mostra `vp_db` come `healthy`, l'ambiente e' pronto.
 
@@ -51,7 +66,11 @@ per l'installazione XAMPP presente sulla macchina.
 
 Il volume `db_data` viene ricreato da zero: **le modifiche fatte in locale al
 database si perdono**, i file del progetto no. L'ultimo allineamento è del
-**04/08/2026** (dump `260804`, 96 task e 463 giornate).
+**13/08/2026** (dump `260813`, 96 task e 463 giornate).
+
+Rispetto al dump precedente (`260804`) la produzione era cambiata in quattro punti:
+il ruolo di CONS011 (User → Manager), il vitto/alloggio di una giornata del 05/08
+con la foto allegata, e il solo utente di modifica su due task.
 
 ### Credenziali di accesso all'app
 
@@ -100,7 +119,7 @@ docker compose exec web bash      # shell nel container PHP
   righe di `GIORNATE_IMMAGINI` ma non i file binari: in `DB/uploads/consuntivazioni`
   ci sono solo i file gia' presenti in locale. Per l'anteprima completa serve copiare
   `DB/uploads/` dal server.
-- **`FACT_FATTURE_COLLABORATORI` parte vuota.** La tabella manca dal dump del
-  30/07/2026: resta da verificare su phpMyAdmin del server se in produzione esista
-  (e contenga dati) oppure se non sia mai stata creata.
+- **`FACT_FATTURE_COLLABORATORI` parte vuota.** La tabella manca da tutti i dump
+  esportati finora, compreso il `260813`: in produzione non esiste, e il ciclo
+  passivo resta disattivato anche nel front-end.
 - L'invio email (reset password) non funziona: nel container non c'e' un MTA.

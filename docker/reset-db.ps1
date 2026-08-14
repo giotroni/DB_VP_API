@@ -1,6 +1,8 @@
 # Riporta il database locale allo stato del dump di produzione.
 # Cancella il volume db_data e lo ricrea, riesegue gli script in docker/initdb:
-# dump -> FACT_FATTURE_COLLABORATORI -> utente di test.
+# dump -> FACT_FATTURE_COLLABORATORI -> utente di test -> migration non ancora
+# in produzione (spese viaggi/vitto, note di accredito, allineamento delle
+# fatture ai PDF, incassi dal registro, storni collegati alle note).
 #
 #   .\docker\reset-db.ps1
 #

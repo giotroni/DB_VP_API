@@ -479,60 +479,93 @@ Gestione delle fatture emesse.
 ### GET /../API/index.php?resource=fatture
 Recupera la lista delle fatture.
 
+Gli importi sono **al netto dell'IVA**: il gestionale non la registra. Le regole che
+governano note di accredito e storni stanno in
+[docs/REGOLE-FATTURAZIONE.md](../docs/REGOLE-FATTURAZIONE.md) — vanno lette prima di
+scrivere su questa risorsa.
+
 **Filtri disponibili:**
-- `cliente`: Filtra per ID cliente
-- `numero`: Filtra per numero fattura (ricerca parziale)
-- `data_da` / `data_a`: Range date emissione (YYYY-MM-DD)
+- `cliente` / `commessa`: Filtra per ID
+- `tipo`: `Fattura` oppure `Nota_Accredito`
+- `numero`: Filtra per numero documento (ricerca parziale)
+- `data_da` / `data_a`: Range date (YYYY-MM-DD)
+- `anno`, `mese` (`mese` richiede `anno`)
 - `importo_min` / `importo_max`: Range importo
+- `stato_pagamento`: `pagata`, `non_pagata`, `scaduta`, `in_scadenza`, `stornata`,
+  `nota_accredito`. Le note di accredito e le fatture stornate sono escluse dagli stati
+  di incasso: non sono un credito
 
 **Campi nella risposta:**
-- `Fattura_ID`: ID unico della fattura
-- `Numero_Fattura`: Numero progressivo
-- `Data_Emissione`: Data emissione (YYYY-MM-DD)
-- `Cliente_ID`: ID del cliente
-- `Cliente`: Nome del cliente (JOIN)
-- `Imponibile`: Importo imponibile (decimale)
-- `IVA`: Importo IVA (decimale)
-- `Totale`: Importo totale (decimale)
-- `Scadenza`: Data scadenza (YYYY-MM-DD)
-- `Pagata`: Flag pagamento (boolean)
+- `ID_FATTURA`: ID del documento (`FAT{yy}###`)
+- `NR`: Numero, nella forma `nn/aa`
+- `Data`: Data del documento (YYYY-MM-DD)
+- `TIPO`: `Fattura` o `Nota_Accredito`
+- `ID_CLIENTE`, `ID_COMMESSA`: riferimenti; `cliente_info` e `commessa_info` contengono i nomi
+- `Fatturato_gg`, `Fatturato_Spese`, `Fatturato_TOT`: importi. **Negativi su una nota di accredito**
+- `ID_FATTURA_STORNATA`: solo sulle note di accredito, la fattura che la nota annulla
+- `Riferimento_Ordine`, `Data_Ordine`: l'ordine del cliente
+- `Tempi_Pagamento`, `Scadenza_Pagamento`, `Data_Pagamento`, `Valore_Pagato`: incasso.
+  I primi due sono sempre `null` su una nota di accredito
+
+**Campi calcolati, non presenti a database:**
+- `stato_pagamento`: `pagata`, `parzialmente_pagata`, `non_pagata`, `in_scadenza`,
+  `scaduta`, `nota_accredito`, `stornata`, `stornata_parzialmente`
+- `stornato`: quanto le note collegate hanno annullato (0 se nessuna)
+- `residuo`: `Fatturato_TOT - stornato - Valore_Pagato`, cioè quanto resta esigibile
+- `note_storno`: le note di accredito che stornano questa fattura
+- `fattura_stornata_info`: su una nota, numero e data della fattura annullata
+- `giorni_scadenza`, `percentuale_pagata`
 
 ### GET /../API/index.php?resource=fatture&id={id}
-Recupera una singola fattura per ID con dettagli completi.
+Recupera un singolo documento per ID con dettagli completi.
 
 ### POST /../API/index.php?resource=fatture
-Crea una nuova fattura.
+Crea un nuovo documento.
 
 **Campi richiesti:**
-- `Cliente_ID`: ID del cliente
-- `Data_Emissione`: Data emissione (YYYY-MM-DD)
-- `Imponibile`: Importo imponibile (decimale)
-- `IVA`: Importo IVA (decimale)
+- `Data`: Data del documento (YYYY-MM-DD)
+- `ID_CLIENTE`: ID del cliente
+- `NR`: Numero, univoco nell'anno
 
 **Campi opzionali:**
-- `Numero_Fattura`: Numero (auto-generato se omesso)
-- `Scadenza`: Data scadenza (default: +30 giorni)
-- `Pagata`: Flag pagamento (default: false)
-- `Note`: Note aggiuntive
+- `TIPO`: default `Fattura`
+- `Fatturato_gg`, `Fatturato_Spese`: importi. `Fatturato_TOT` è la loro somma se omesso
+- `ID_COMMESSA`, `Riferimento_Ordine`, `Data_Ordine`, `Note`
+- `Tempi_Pagamento`: giorni; `Scadenza_Pagamento` viene calcolata da `Data` + giorni
+- `ID_FATTURA_STORNATA`: solo su una nota di accredito
+
+**Cosa fa il server senza chiederlo:** su una nota di accredito rovescia il segno degli
+importi (sul documento cartaceo sono positivi) e azzera termini e scadenza. Su una fattura
+un importo negativo viene **respinto**: per stornare si emette una nota.
+
+**Cosa viene rifiutato su `ID_FATTURA_STORNATA`:** un documento che non esiste, una nota
+invece di una fattura, una fattura di un altro cliente o successiva alla nota, e uno storno
+che supera quanto resta da stornare.
 
 **Esempio:**
 ```json
 POST /../API/index.php?resource=fatture
 {
-  "Cliente_ID": 1,
-  "Data_Emissione": "2024-01-15",
-  "Imponibile": 1000.00,
-  "IVA": 220.00,
-  "Scadenza": "2024-02-15",
-  "Note": "Fattura per servizi gennaio"
+  "Data": "2026-04-15",
+  "ID_CLIENTE": "CLI0009",
+  "NR": "14/26",
+  "TIPO": "Nota_Accredito",
+  "Fatturato_gg": 27924.75,
+  "Fatturato_Spese": 0,
+  "Fatturato_TOT": 27924.75,
+  "ID_FATTURA_STORNATA": "FAT26006",
+  "Note": "Storno totale nostra fattura 03 del 31/01/26 per errata fatturazione"
 }
 ```
+Salvata, la nota avrà `Fatturato_TOT` a `-27924.75` e nessuna scadenza.
 
 ### PUT /../API/index.php?resource=fatture&id={id}
 Aggiorna una fattura esistente.
 
 ### DELETE /../API/index.php?resource=fatture&id={id}
-Elimina una fattura.
+Elimina un documento. Viene rifiutato se la fattura è già pagata o se è stornata da una
+nota di accredito: la chiave esterna scollegherebbe la nota in silenzio, lasciandola senza
+riferimento.
 
 ---
 
