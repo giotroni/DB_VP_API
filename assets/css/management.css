@@ -218,6 +218,17 @@ body {
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
 }
 
+/* Il numero della card si adatta alla sua larghezza.
+   Serve per gli importi: Intl.NumberFormat separa il simbolo di valuta con uno
+   spazio unificatore (U+00A0), che non e' un punto di a capo valido. A 2,5rem
+   fisse "186.384,00 EUR" e' piu' largo della card e veniva tagliato a meta'
+   invece di andare a capo o rimpicciolirsi. */
+.stat-card-management .stat-number {
+  font-size: clamp(1.4rem, 1.6vw + 0.7rem, 2.5rem);
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
 .search-filters {
   background: var(--vp-card-bg);
   border-radius: 12px;

@@ -32,7 +32,7 @@ class FattureSection extends BaseSection {
                 <div class="row gy-3">
                     <div class="col-lg-3 col-md-6"><label class="form-label">Cerca</label><input type="text" class="form-control" id="searchFatture" placeholder="Numero, cliente..."></div>
                     <div class="col-lg-2 col-md-6"><label class="form-label">Cliente</label><select class="form-select" id="filterCliente"><option value="">Tutti</option>${this.app.clienti.map(c => `<option value="${c.ID_CLIENTE}">${c.Cliente}</option>`).join('')}</select></div>
-                    <div class="col-lg-2 col-md-6"><label class="form-label">Stato Pagamento</label><select class="form-select" id="filterStatoPagamento"><option value="">Tutti</option><option value="pagata">Pagata</option><option value="non_pagata">Non pagata</option><option value="scaduta">Scaduta</option><option value="in_scadenza">In scadenza</option><option value="parzialmente_pagata">Parzialmente pagata</option></select></div>
+                    <div class="col-lg-2 col-md-6"><label class="form-label">Stato Pagamento</label><select class="form-select" id="filterStatoPagamento"><option value="">Tutti</option><option value="pagata">Pagata</option><option value="non_pagata">Non pagata</option><option value="scaduta">Scaduta</option><option value="in_scadenza">In scadenza</option><option value="parzialmente_pagata">Parzialmente pagata</option><option value="stornata">Annullate da nota</option><option value="nota_accredito">Note di accredito</option></select></div>
                     <div class="col-lg-1 col-md-3"><label class="form-label">Anno</label><div class="dropdown"><button class="btn btn-outline-secondary dropdown-toggle w-100" type="button" id="filterAnnoBtn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">${currentYear}</button><ul class="dropdown-menu" id="filterAnno" aria-labelledby="filterAnnoBtn"><li><a class="dropdown-item fw-bold" href="#" data-action="toggle-all-filter" data-target-filter="filterAnno">Seleziona/Deseleziona</a></li><li><hr class="dropdown-divider"></li>${yearOptions}</ul></div></div>
                     <div class="col-lg-2 col-md-3"><label class="form-label">Mese</label><div class="dropdown"><button class="btn btn-outline-secondary dropdown-toggle w-100" type="button" id="filterMeseBtn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">Tutti</button><ul class="dropdown-menu" id="filterMese" aria-labelledby="filterMeseBtn"><li><a class="dropdown-item fw-bold" href="#" data-action="toggle-all-filter" data-target-filter="filterMese">Seleziona/Deseleziona</a></li><li><hr class="dropdown-divider"></li>${monthOptions}</ul></div></div>
                     <div class="col-lg-2 col-md-6"><label class="form-label">&nbsp;</label><div class="d-flex gap-2"><button class="btn btn-vp-primary" data-action="filter" title="Applica Filtri"><i class="fas fa-search"></i></button><button class="btn btn-outline-primary" data-action="toggle-all-fatture" id="toggleAllBtn" title="Espandi/Comprimi tutto"><i class="fas fa-expand-arrows-alt"></i></button></div></div>
@@ -338,6 +338,7 @@ class FattureSection extends BaseSection {
                             ${commessaInfo}
                             <li><i class="fas fa-tag me-2"></i><strong>Tipo:</strong> ${fattura.TIPO}</li>
                             <li><i class="fas fa-info-circle me-2"></i><strong>Stato:</strong> <span class="badge ${this.getStatoClass(fattura.stato_pagamento)}">${statoFattura}</span></li>
+                            ${this.getStornoInfoHTML(fattura)}
                             <li><i class="fas fa-sticky-note me-2"></i><strong>Note:</strong> ${fattura.Note || 'N/D'}</li>
                         </ul>
                     </div>
@@ -376,17 +377,45 @@ class FattureSection extends BaseSection {
         const inputData = form.querySelector('#Data');
         const inputTempi = form.querySelector('#Tempi_Pagamento');
         const inputScadenza = form.querySelector('#Scadenza_Pagamento');
+        const inputTipo = form.querySelector('#TIPO');
+        const notaHint = form.querySelector('#notaAccreditoHint');
+        const inputCliente = form.querySelector('#ID_CLIENTE');
+        const inputStorno = form.querySelector('#ID_FATTURA_STORNATA');
+        const rigaStorno = form.querySelector('#rigaStorno');
+
+        // Le due regole della nota di accredito, lato form: importi negativi e
+        // nessuna scadenza. Il backend le riapplica comunque in salvataggio, qui
+        // servono a far vedere subito cosa verrà salvato.
+        const isNotaAccredito = () => inputTipo?.value === 'Nota_Accredito';
+
+        // Solo le note di accredito vengono normalizzate. Un importo negativo
+        // digitato su una fattura resta com'è e lo respinge il backend: è quasi
+        // sempre uno storno messo nel documento sbagliato, e correggerlo in
+        // silenzio nasconderebbe l'errore invece di segnalarlo.
+        const applicaSegno = (input) => {
+            if (!input || input.value === '' || !isNotaAccredito()) return;
+            const n = parseFloat(input.value);
+            if (isNaN(n) || n <= 0) return;
+            input.value = (-n).toFixed(2);
+        };
 
         const computeTotal = () => {
             const gg = parseFloat(inputGg?.value || 0) || 0;
             const sp = parseFloat(inputSpese?.value || 0) || 0;
+            const somma = gg + sp;
             if (inputTot) {
-                inputTot.value = (gg + sp).toFixed(2);
+                inputTot.value = (isNotaAccredito() ? -Math.abs(somma) : somma).toFixed(2);
             }
         };
 
         const computeScadenza = () => {
             if (!inputData || !inputTempi || !inputScadenza) return;
+            // Una nota di accredito non si incassa: niente termini, niente scadenza.
+            if (isNotaAccredito()) {
+                inputTempi.value = '';
+                inputScadenza.value = '';
+                return;
+            }
             const dataVal = inputData.value;
             const tempiVal = parseInt(inputTempi.value, 10);
             if (!dataVal || isNaN(tempiVal)) {
@@ -407,15 +436,76 @@ class FattureSection extends BaseSection {
             }
         };
 
+        // Le fatture che questa nota può stornare: stesso cliente, emesse prima,
+        // e non già stornate per intero da altre note. La selezione fatta resta
+        // se è ancora valida, così cambiare tipo o data non la perde.
+        const aggiornaOpzioniStorno = () => {
+            if (!inputStorno) return;
+            const scelta = inputStorno.value || fattura.ID_FATTURA_STORNATA || '';
+            const cliente = inputCliente?.value || '';
+            const dataNota = inputData?.value || '';
+
+            const candidate = (this.app.fatture || []).filter(f => {
+                if (f.TIPO === 'Nota_Accredito') return false;
+                if (cliente && String(f.ID_CLIENTE) !== String(cliente)) return false;
+                if (dataNota && f.Data && f.Data > dataNota) return false;
+                // Già stornata del tutto: non c'è più capienza. Resta però
+                // selezionabile se è proprio quella collegata a questa nota.
+                if (f.stato_pagamento === 'stornata' && f.ID_FATTURA !== scelta) return false;
+                return true;
+            }).sort((a, b) => new Date(b.Data) - new Date(a.Data));
+
+            const opzioni = candidate.map(f => {
+                const importo = this.app.utils.formatCurrency(f.Fatturato_TOT);
+                const data = this.app.utils.formatDate(f.Data);
+                return `<option value="${f.ID_FATTURA}" ${f.ID_FATTURA === scelta ? 'selected' : ''}>${f.NR} — ${data} — ${importo}</option>`;
+            }).join('');
+
+            inputStorno.innerHTML = `<option value="">Nessuna</option>${opzioni}`;
+            inputStorno.value = candidate.some(f => f.ID_FATTURA === scelta) ? scelta : '';
+        };
+
+        // Blocca i campi di incasso quando il documento è una nota di accredito,
+        // così non restano compilabili campi che il salvataggio azzera comunque.
+        const aggiornaTipo = () => {
+            const nota = isNotaAccredito();
+            if (rigaStorno) rigaStorno.classList.toggle('d-none', !nota);
+            if (nota) {
+                aggiornaOpzioniStorno();
+            } else if (inputStorno) {
+                // Una fattura non storna nulla: il campo si svuota, altrimenti
+                // resterebbe un collegamento che il backend scarta comunque.
+                inputStorno.value = '';
+            }
+            [inputTempi, inputScadenza].forEach(el => {
+                if (!el) return;
+                el.readOnly = nota;
+                el.classList.toggle('bg-body-secondary', nota);
+            });
+            if (notaHint) notaHint.classList.toggle('d-none', !nota);
+            applicaSegno(inputGg);
+            applicaSegno(inputSpese);
+            computeTotal();
+            computeScadenza();
+        };
+
         // Bind eventi se gli elementi esistono
-        if (inputGg) inputGg.addEventListener('input', computeTotal);
-        if (inputSpese) inputSpese.addEventListener('input', computeTotal);
-        if (inputData) inputData.addEventListener('change', computeScadenza);
+        if (inputGg) {
+            inputGg.addEventListener('input', computeTotal);
+            inputGg.addEventListener('change', () => { applicaSegno(inputGg); computeTotal(); });
+        }
+        if (inputSpese) {
+            inputSpese.addEventListener('input', computeTotal);
+            inputSpese.addEventListener('change', () => { applicaSegno(inputSpese); computeTotal(); });
+        }
+        if (inputData) inputData.addEventListener('change', () => { computeScadenza(); if (isNotaAccredito()) aggiornaOpzioniStorno(); });
         if (inputTempi) inputTempi.addEventListener('input', computeScadenza);
+        if (inputTipo) inputTipo.addEventListener('change', aggiornaTipo);
+        // Cambiare cliente cambia le fatture stornabili.
+        if (inputCliente) inputCliente.addEventListener('change', () => { if (isNotaAccredito()) aggiornaOpzioniStorno(); });
 
         // Esegui inizializzazione al caricamento del modal
-        computeTotal();
-        computeScadenza();
+        aggiornaTipo();
 
         // Inizializza i tooltip Bootstrap presenti nel form
         try {
@@ -482,7 +572,10 @@ class FattureSection extends BaseSection {
     // ========================================================================
     
     updateStats(data) {
-        const fattureCount = data.reduce((sum, c) => sum + c.fatture.length, 0);
+        // Il segno delle note di accredito è nel dato (importi negativi, vedi
+        // docs/REGOLE-FATTURAZIONE.md): il netto è quindi una somma semplice.
+        // Il conteggio invece riguarda le sole fatture emesse.
+        const fattureCount = data.reduce((sum, c) => sum + c.fatture.filter(f => f.TIPO !== 'Nota_Accredito').length, 0);
         const fatturatoTotale = data.reduce((sum, c) => sum + c.fatture.reduce((fSum, f) => fSum + (parseFloat(f.Fatturato_TOT) || 0), 0), 0);
         const incassatoTotale = data.reduce((sum, c) => sum + c.fatture.reduce((fSum, f) => fSum + (parseFloat(f.Valore_Pagato) || 0), 0), 0);
         // Rimosso conteggio 'in_scadenza' su richiesta: rimaniamo con scadute e altri riepiloghi
@@ -495,7 +588,7 @@ class FattureSection extends BaseSection {
             statsContainer.innerHTML = `
                 <div class="stats-row">
                     ${this.ui.createStatsCard('fas fa-file-invoice', fattureCount, 'Totale Fatture')}
-                    ${this.ui.createStatsCard('fas fa-euro-sign', this.app.utils.formatCurrency(fatturatoTotale), 'Fatturato Totale')}
+                    ${this.ui.createStatsCard('fas fa-euro-sign', this.app.utils.formatCurrency(fatturatoTotale), 'Fatturato Netto')}
                     ${this.ui.createStatsCard('fas fa-piggy-bank', this.app.utils.formatCurrency(incassatoTotale), 'Totale Incassato')}
                     ${this.ui.createStatsCard('fas fa-times-circle', nonPagate, 'Fatture Non Pagate')}
                     ${this.ui.createStatsCard('fas fa-exclamation-triangle', scadute, 'Fatture Scadute')}
@@ -574,9 +667,17 @@ class FattureSection extends BaseSection {
             return num.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         };
 
+        // Il numero fattura va protetto dalla conversione automatica di Excel:
+        // "09/26" verrebbe letto come una data e mostrato come "set-26". La
+        // forma ="testo" e' l'unico modo per imporre il tipo testo da CSV.
+        const testoLetterale = (v) => {
+            const s = String(v ?? '');
+            return s === '' ? '' : `="${s.replace(/"/g, '""')}"`;
+        };
+
         rows.forEach(r => {
             const lineArr = [
-                r.NR,
+                testoLetterale(r.NR),
                 r.Tipo,
                 r.Cliente,
                 r.Commessa,
@@ -634,8 +735,18 @@ class FattureSection extends BaseSection {
                     <div class="col-md-6 mb-3"><label for="TIPO" class="form-label">Tipo</label><select class="form-select" id="TIPO" name="TIPO" required>${tipiOptions}</select></div>
                     <div class="col-md-6 mb-3"><label for="Riferimento_Ordine" class="form-label">Riferimento Ordine</label><input type="text" class="form-control" id="Riferimento_Ordine" name="Riferimento_Ordine" value="${fattura.Riferimento_Ordine || ''}"></div>
                 </div>
+                <div class="row d-none" id="rigaStorno">
+                    <div class="col-12 mb-3">
+                        <label for="ID_FATTURA_STORNATA" class="form-label">Fattura stornata <i class="fas fa-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="La fattura che questa nota annulla. Solo fatture dello stesso cliente, emesse prima della nota."></i></label>
+                        <select class="form-select" id="ID_FATTURA_STORNATA" name="ID_FATTURA_STORNATA"><option value="">Nessuna</option></select>
+                    </div>
+                </div>
                 <hr>
                 <h5>Dettagli Economici e Pagamento</h5>
+                <div id="notaAccreditoHint" class="alert alert-secondary py-2 small d-none">
+                    <i class="fas fa-info-circle me-1"></i>
+                    Una nota di accredito storna: gli importi si salvano <strong>negativi</strong> e non ha scadenza di incasso.
+                </div>
                 <div class="row">
                     <div class="col-md-4 mb-3"><label for="Fatturato_gg" class="form-label">Importo Giornate (€)</label><input type="number" step="0.01" class="form-control" id="Fatturato_gg" name="Fatturato_gg" value="${Fatturato_gg_val}"></div>
                     <div class="col-md-4 mb-3"><label for="Fatturato_Spese" class="form-label">Importo Spese (€)</label><input type="number" step="0.01" class="form-control" id="Fatturato_Spese" name="Fatturato_Spese" value="${Fatturato_Spese_val}"></div>
@@ -644,7 +755,7 @@ class FattureSection extends BaseSection {
                 <div class="row">
                     ${isEdit ? `<div class="col-md-4 mb-3"><label for="Valore_Pagato" class="form-label">Valore Pagato (€)</label><input type="number" step="0.01" class="form-control" id="Valore_Pagato" name="Valore_Pagato" value="${fattura.Valore_Pagato || '0'}"></div>` : ''}
                     <div class="col-md-4 mb-3"><label for="Tempi_Pagamento" class="form-label">Tempi di Pagamento (gg)</label><input type="number" step="1" class="form-control" id="Tempi_Pagamento" name="Tempi_Pagamento" value="${defaultTempi}"></div>
-                    <div class="col-md-4 mb-3"><label for="Scadenza_Pagamento" class="form-label">Scadenza <i class="fas fa-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="Calcolata automaticamente come fine mese dopo i Tempi di Pagamento impostati"></i></label><input type="date" class="form-control" id="Scadenza_Pagamento" name="Scadenza_Pagamento" value="${fattura.Scadenza_Pagamento || ''}" ${isEdit ? '' : 'readonly'}></div>
+                    <div class="col-md-4 mb-3"><label for="Scadenza_Pagamento" class="form-label">Scadenza <i class="fas fa-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="Calcolata automaticamente come Data fattura + Tempi di Pagamento. Le note di accredito non hanno scadenza."></i></label><input type="date" class="form-control" id="Scadenza_Pagamento" name="Scadenza_Pagamento" value="${fattura.Scadenza_Pagamento || ''}" ${isEdit ? '' : 'readonly'}></div>
                 </div>
                 ${isEdit ? `<div class="mb-3"><label for="Data_Pagamento" class="form-label">Data Pagamento</label><input type="date" class="form-control" id="Data_Pagamento" name="Data_Pagamento" value="${fattura.Data_Pagamento || ''}"></div>` : ''}
                 <div class="mb-3"><label for="Note" class="form-label">Note</label><textarea class="form-control" id="Note" name="Note" rows="2">${fattura.Note || ''}</textarea></div>
@@ -692,12 +803,43 @@ class FattureSection extends BaseSection {
         return fattureGrouped.sort((a, b) => (a.cliente_nome || '').localeCompare(b.cliente_nome || ''));
     }
 
+    /**
+     * La riga di dettaglio sullo storno: su una nota, la fattura che annulla;
+     * su una fattura stornata, le note che la annullano e quanto resta da
+     * incassare. Su tutto il resto non compare nulla.
+     */
+    getStornoInfoHTML(fattura) {
+        if (fattura.TIPO === 'Nota_Accredito') {
+            const stornata = fattura.fattura_stornata_info;
+            if (!stornata) return '';
+            return `<li><i class="fas fa-link me-2"></i><strong>Storna la fattura:</strong> ${stornata.NR} del ${this.app.utils.formatDate(stornata.Data)}</li>`;
+        }
+
+        const note = fattura.note_storno || [];
+        if (note.length === 0) return '';
+
+        const numeri = note.map(n => n.NR).join(', ');
+        const residuo = parseFloat(fattura.residuo || 0);
+        const rigaResiduo = Math.abs(residuo) < 0.01
+            ? ''
+            : `<li><i class="fas fa-hand-holding-usd me-2"></i><strong>Residuo da incassare:</strong> ${this.app.utils.formatCurrency(residuo)}</li>`;
+
+        return `<li><i class="fas fa-link me-2"></i><strong>Stornata da:</strong> ${numeri} (${this.app.utils.formatCurrency(fattura.stornato)})</li>${rigaResiduo}`;
+    }
+
     getStatoClass(stato) {
         switch (stato) {
             case 'pagata': return 'bg-success';
             case 'parzialmente_pagata': return 'bg-warning text-dark';
             case 'scaduta': return 'bg-danger';
             case 'in_scadenza': return 'bg-info text-dark';
+            // text-light esplicito: .status-badge non definisce un colore di
+            // testo, quindi su sfondo scuro resterebbe nero su nero.
+            case 'nota_accredito': return 'bg-dark text-light';
+            // Annullata da una nota di accredito: non è un credito e non è un
+            // incasso, quindi non prende né il verde né il rosso.
+            case 'stornata': return 'bg-dark text-light';
+            case 'stornata_parzialmente': return 'bg-warning text-dark';
             default: return 'bg-secondary';
         }
     }
@@ -708,6 +850,11 @@ class FattureSection extends BaseSection {
             case 'parzialmente_pagata': return 'Parzialmente Pagata';
             case 'scaduta': return `Scaduta da ${Math.abs(giorniScadenza)} gg`;
             case 'in_scadenza': return `In Scadenza in ${giorniScadenza} gg`;
+            // Una nota di accredito non ha un incasso da attendere: sta fuori
+            // dall'aging e non va mai mostrata come scaduta.
+            case 'nota_accredito': return 'Storno';
+            case 'stornata': return 'Annullata';
+            case 'stornata_parzialmente': return 'Stornata in parte';
             default: return 'Non Pagata';
         }
     }
