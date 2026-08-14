@@ -53,6 +53,7 @@ require_once 'GiornateAPI.php';
 require_once 'FattureAPI.php';
 require_once 'FattureCollaboratoriAPI.php';
 require_once 'CommesseVisibilitaAPI.php';
+require_once 'AttivitaAPI.php';
 
 // Le funzioni di supporto sono definite in config.php
 
@@ -157,7 +158,14 @@ try {
         case 'commesse_visibilita':
             $api = new CommesseVisibilitaAPI();
             break;
-            
+
+        case 'attivita':
+            // Registro attività: sola lettura, riservato al ruolo Admin
+            // (il controllo è dentro la classe).
+            $api = new AttivitaAPI();
+            break;
+
+
         case 'status':
             // Endpoint per verificare lo stato dell'API
             sendSuccessResponse([
@@ -224,7 +232,9 @@ try {
                     'GET /fatture/{id}' => 'Dettaglio fattura',
                     'POST /fatture' => 'Crea fattura',
                     'PUT /fatture/{id}' => 'Aggiorna fattura',
-                    'DELETE /fatture/{id}' => 'Elimina fattura'
+                    'DELETE /fatture/{id}' => 'Elimina fattura',
+
+                    'GET /attivita' => 'Registro attività su database e log, ultimi giorni (solo Admin)'
                 ]
             ], 'Benvenuto nelle API Vaglio & Partners');
             break;

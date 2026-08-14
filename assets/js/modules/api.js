@@ -178,6 +178,9 @@ class APIClient {
     async updateFatturaCollaboratore(id, data) { return this.request('fatture_collaboratori', 'update', { data, params: { id } }); }
     async deleteFatturaCollaboratore(id) { return this.request('fatture_collaboratori', 'delete', { params: { id } }); }
     async getTotalePagatoCollaboratore(params = {}) { return this.request('fatture_collaboratori', 'summary', { params }); }
+
+    // Registro attività (sezione Statistiche) - solo Admin
+    async getAttivita(params = {}) { return this.request('attivita', 'getAll', { params }); }
     
     // Giornate
     async getGiornate(options = {}) {

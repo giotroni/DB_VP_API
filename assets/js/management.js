@@ -438,6 +438,8 @@ class ManagementApp {
                     <div class="nav-item"><button class="nav-link" data-action="navigate" data-section="collaboratori"><i class="fas fa-users"></i>Collaboratori</button></div>
                     <div class="nav-item"><button class="nav-link" data-action="navigate" data-section="fatture"><i class="fas fa-file-invoice"></i>Fatture</button></div>
                     <div class="nav-item"><button class="nav-link" data-action="navigate" data-section="giornate"><i class="fas fa-calendar-alt"></i>Giornate</button></div>
+                    ` : ''}
+                    ${this.currentUser?.ruolo === 'Admin' ? `
                     <div class="nav-item"><button class="nav-link" data-action="navigate" data-section="statistiche"><i class="fas fa-chart-bar"></i>Statistiche</button></div>
                     ` : ''}
                 </nav>
@@ -565,6 +567,13 @@ class ManagementApp {
     async showSection(sectionName) {
         if (!sectionName || !this.sections[sectionName]) {
             console.error(`Sezione non esistente: "${sectionName}"`);
+            return;
+        }
+        // Statistiche è riservata agli amministratori: la voce di menu non
+        // compare, ma la navigazione può arrivare da un'altra strada. Il
+        // controllo che conta resta comunque quello dell'API.
+        if (sectionName === 'statistiche' && this.currentUser?.ruolo !== 'Admin') {
+            this.ui.showToast('Sezione riservata agli amministratori.', 'error');
             return;
         }
         this.currentSection = sectionName;
