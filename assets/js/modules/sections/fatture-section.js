@@ -325,6 +325,12 @@ class FattureSection extends BaseSection {
         
         const commessaInfo = fattura.commessa_info ? `<li><i class="fas fa-briefcase me-2"></i><strong>Commessa:</strong> ${fattura.commessa_info.Commessa}</li>` : '';
         const statoFattura = this.getStatoText(fattura.stato_pagamento, fattura.giorni_scadenza);
+
+        // L'ordine del cliente e' il riferimento da citare in fattura: la data
+        // c'e' solo su una parte degli ordini, quindi si aggiunge se presente.
+        const riferimentoOrdine = fattura.Riferimento_Ordine
+            ? this.app.utils.escapeHtml(fattura.Riferimento_Ordine) + (fattura.Data_Ordine ? ` del ${this.app.utils.formatDate(fattura.Data_Ordine)}` : '')
+            : 'N/D';
         
         const modalBody = `
             <div class="container-fluid">
@@ -336,6 +342,7 @@ class FattureSection extends BaseSection {
                             <li><i class="fas fa-calendar-day me-2"></i><strong>Data:</strong> ${this.app.utils.formatDate(fattura.Data)}</li>
                             <li><i class="fas fa-building me-2"></i><strong>Cliente:</strong> ${fattura.cliente_info?.Ragione_Sociale || 'N/D'}</li>
                             ${commessaInfo}
+                            <li><i class="fas fa-file-signature me-2"></i><strong>Riferimento Ordine:</strong> ${riferimentoOrdine}</li>
                             <li><i class="fas fa-tag me-2"></i><strong>Tipo:</strong> ${fattura.TIPO}</li>
                             <li><i class="fas fa-info-circle me-2"></i><strong>Stato:</strong> <span class="badge ${this.getStatoClass(fattura.stato_pagamento)}">${statoFattura}</span></li>
                             ${this.getStornoInfoHTML(fattura)}
