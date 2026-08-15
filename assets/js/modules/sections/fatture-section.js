@@ -31,7 +31,7 @@ class FattureSection extends BaseSection {
             <div class="search-filters">
                 <div class="row gy-3">
                     <div class="col-lg-3 col-md-6"><label class="form-label">Cerca</label><input type="text" class="form-control" id="searchFatture" placeholder="Numero, cliente..."></div>
-                    <div class="col-lg-2 col-md-6"><label class="form-label">Cliente</label><select class="form-select" id="filterCliente"><option value="">Tutti</option>${this.app.clienti.map(c => `<option value="${c.ID_CLIENTE}">${c.Cliente}</option>`).join('')}</select></div>
+                    <div class="col-lg-2 col-md-6"><label class="form-label">Cliente</label><select class="form-select" id="filterCliente"><option value="">Tutti</option>${this.app.utils.ordinaPerNome(this.app.clienti, 'Cliente').map(c => `<option value="${c.ID_CLIENTE}">${c.Cliente}</option>`).join('')}</select></div>
                     <div class="col-lg-2 col-md-6"><label class="form-label">Stato Pagamento</label><select class="form-select" id="filterStatoPagamento"><option value="">Tutti</option><option value="pagata">Pagata</option><option value="non_pagata">Non pagata</option><option value="scaduta">Scaduta</option><option value="in_scadenza">In scadenza</option><option value="parzialmente_pagata">Parzialmente pagata</option><option value="stornata">Annullate da nota</option><option value="nota_accredito">Note di accredito</option></select></div>
                     <div class="col-lg-1 col-md-3"><label class="form-label">Anno</label><div class="dropdown"><button class="btn btn-outline-secondary dropdown-toggle w-100" type="button" id="filterAnnoBtn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">${currentYear}</button><ul class="dropdown-menu" id="filterAnno" aria-labelledby="filterAnnoBtn"><li><a class="dropdown-item fw-bold" href="#" data-action="toggle-all-filter" data-target-filter="filterAnno">Seleziona/Deseleziona</a></li><li><hr class="dropdown-divider"></li>${yearOptions}</ul></div></div>
                     <div class="col-lg-2 col-md-3"><label class="form-label">Mese</label><div class="dropdown"><button class="btn btn-outline-secondary dropdown-toggle w-100" type="button" id="filterMeseBtn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">Tutti</button><ul class="dropdown-menu" id="filterMese" aria-labelledby="filterMeseBtn"><li><a class="dropdown-item fw-bold" href="#" data-action="toggle-all-filter" data-target-filter="filterMese">Seleziona/Deseleziona</a></li><li><hr class="dropdown-divider"></li>${monthOptions}</ul></div></div>
@@ -708,10 +708,12 @@ class FattureSection extends BaseSection {
     getFatturaFormHTML(fattura = {}) {
         const formId = fattura.ID_FATTURA ? `editFatturaModal_${fattura.ID_FATTURA}_form` : 'newFatturaModal_form';
         const isEdit = !!fattura.ID_FATTURA;
-        const clientiOptions = this.app.clienti
+        const clientiOptions = this.app.utils.ordinaPerNome(this.app.clienti, 'Cliente')
             .map(c => `<option value="${c.ID_CLIENTE}" ${fattura.ID_CLIENTE == c.ID_CLIENTE ? 'selected' : ''}>${c.Cliente}</option>`)
             .join('');
-        const commesseOptions = this.app.commesse.map(c => `<option value="${c.ID_COMMESSA}" ${fattura.ID_COMMESSA == c.ID_COMMESSA ? 'selected' : ''}>${c.Commessa}</option>`).join('');
+        const commesseOptions = this.app.utils.ordinaPerNome(this.app.commesse, 'Commessa')
+            .map(c => `<option value="${c.ID_COMMESSA}" ${fattura.ID_COMMESSA == c.ID_COMMESSA ? 'selected' : ''}>${c.Commessa}</option>`)
+            .join('');
         const tipi = ['Fattura', 'Nota_Accredito'];
         const tipiOptions = tipi.map(t => `<option value="${t}" ${(fattura.TIPO || 'Fattura') === t ? 'selected' : ''}>${t}</option>`).join('');
 

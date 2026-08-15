@@ -31,7 +31,7 @@ class FattureCollaboratoriSection extends BaseSection {
             <div class="search-filters">
                 <div class="row gy-3">
                     <div class="col-lg-3 col-md-6"><label class="form-label">Cerca</label><input type="text" class="form-control" id="searchFattureColl" placeholder="Descrizione, id..."></div>
-                    <div class="col-lg-3 col-md-6"><label class="form-label">Collaboratore</label><select class="form-select" id="filterCollaboratore"><option value="">Tutti</option>${this.app.collaboratori.map(c => `<option value="${c.ID_COLLABORATORE}">${c.Collaboratore}</option>`).join('')}</select></div>
+                    <div class="col-lg-3 col-md-6"><label class="form-label">Collaboratore</label><select class="form-select" id="filterCollaboratore"><option value="">Tutti</option>${this.app.utils.ordinaPerNome(this.app.collaboratori, 'Collaboratore').map(c => `<option value="${c.ID_COLLABORATORE}">${c.Collaboratore}</option>`).join('')}</select></div>
                     <div class="col-lg-2 col-md-6"><label class="form-label">Stato</label><select class="form-select" id="filterStatoColl"><option value="">Tutti</option><option value="Ricevuta">Ricevuta</option><option value="Pagata">Pagata</option><option value="Annullata">Annullata</option></select></div>
                     <div class="col-lg-1 col-md-3"><label class="form-label">Anno</label><div class="dropdown"><button class="btn btn-outline-secondary dropdown-toggle w-100" type="button" id="filterAnnoCollBtn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">Tutti</button><ul class="dropdown-menu" id="filterAnnoColl" aria-labelledby="filterAnnoCollBtn"><li><a class="dropdown-item fw-bold" href="#" data-action="toggle-all-filter" data-target-filter="filterAnnoColl">Seleziona/Deseleziona</a></li><li><hr class="dropdown-divider"></li>${yearOptions}</ul></div></div>
                     <div class="col-lg-2 col-md-3"><label class="form-label">Mese</label><div class="dropdown"><button class="btn btn-outline-secondary dropdown-toggle w-100" type="button" id="filterMeseCollBtn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">Tutti</button><ul class="dropdown-menu" id="filterMeseColl" aria-labelledby="filterMeseCollBtn"><li><a class="dropdown-item fw-bold" href="#" data-action="toggle-all-filter" data-target-filter="filterMeseColl">Seleziona/Deseleziona</a></li><li><hr class="dropdown-divider"></li>${monthOptions}</ul></div></div>
@@ -301,7 +301,7 @@ class FattureCollaboratoriSection extends BaseSection {
 
     getFatturaFormHTML(f = {}) {
         const formId = f.ID_FATTURA ? `editFatturaColl_${f.ID_FATTURA}_form` : 'newFatturaCollModal_form';
-        const collOptions = this.app.collaboratori.map(c => `<option value="${c.ID_COLLABORATORE}" ${f.ID_COLLABORATORE==c.ID_COLLABORATORE?'selected':''}>${c.Collaboratore}</option>`).join('');
+        const collOptions = this.app.utils.ordinaPerNome(this.app.collaboratori, 'Collaboratore').map(c => `<option value="${c.ID_COLLABORATORE}" ${f.ID_COLLABORATORE==c.ID_COLLABORATORE?'selected':''}>${c.Collaboratore}</option>`).join('');
         return `
             <form id="${formId}" novalidate>
                 <div class="row">

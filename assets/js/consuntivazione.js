@@ -14,7 +14,16 @@ class ConsuntivazioneApp {
         
         this.init();
     }
-    
+
+    // Gemello di Utils.ordinaPerNome del management, che qui non e' caricato:
+    // dall'API le anagrafiche arrivano nell'ordine del database, nelle tendine
+    // servono in ordine alfabetico.
+    ordinaPerNome(lista, campo) {
+        return (lista || []).slice().sort((a, b) =>
+            String(a?.[campo] ?? '').localeCompare(String(b?.[campo] ?? ''), 'it', { sensitivity: 'base', numeric: true })
+        );
+    }
+
     init() {
         // Controlla se l'utente è già autenticato
         this.checkAuthentication().then(() => {
@@ -717,7 +726,7 @@ class ConsuntivazioneApp {
             </option>
         `;
         
-        this.collaboratori.forEach(collaboratore => {
+        this.ordinaPerNome(this.collaboratori, 'Collaboratore').forEach(collaboratore => {
             if (collaboratore.ID_COLLABORATORE !== this.currentUser.id) {
                 const option = document.createElement('option');
                 option.value = collaboratore.ID_COLLABORATORE;
@@ -973,8 +982,8 @@ class ConsuntivazioneApp {
         if (!commessaSelect) return;
         
         commessaSelect.innerHTML = '<option value="">Seleziona commessa...</option>';
-        
-        this.commesse.forEach(commessa => {
+
+        this.ordinaPerNome(this.commesse, 'Commessa').forEach(commessa => {
             const option = document.createElement('option');
             option.value = commessa.ID_COMMESSA;
             option.textContent = `${commessa.Commessa}`;
@@ -1029,8 +1038,8 @@ class ConsuntivazioneApp {
         if (!taskSelect) return;
         
         taskSelect.innerHTML = '<option value="">Seleziona task/attività...</option>';
-        
-        this.tasks.forEach(task => {
+
+        this.ordinaPerNome(this.tasks, 'Task').forEach(task => {
             const option = document.createElement('option');
             option.value = task.ID_TASK;
             option.textContent = `${task.Task} (${task.Tipo})`;
@@ -1474,7 +1483,7 @@ class ConsuntivazioneApp {
             const options = selectCommessa.querySelectorAll('option:not(:first-child)');
             options.forEach(option => option.remove());
             
-            this.commessePerFiltri.forEach(commessa => {
+            this.ordinaPerNome(this.commessePerFiltri, 'Commessa').forEach(commessa => {
                 const option = document.createElement('option');
                 option.value = commessa.ID_COMMESSA;
                 option.textContent = `${commessa.Commessa}`;
@@ -2122,7 +2131,7 @@ class ConsuntivazioneApp {
         // Popola commesse
         const commessaSelect = document.getElementById('editCommessa');
         if (this.commesse) {
-            this.commesse.forEach(commessa => {
+            this.ordinaPerNome(this.commesse, 'Commessa').forEach(commessa => {
                 const option = document.createElement('option');
                 option.value = commessa.ID_COMMESSA;
                 option.textContent = `${commessa.Commessa}`;
@@ -2164,7 +2173,7 @@ class ConsuntivazioneApp {
             
             if (result.success) {
                 taskSelect.innerHTML = '<option value="">Seleziona task...</option>';
-                result.data.forEach(task => {
+                this.ordinaPerNome(result.data, 'Task').forEach(task => {
                     const option = document.createElement('option');
                     option.value = task.ID_TASK;
                     option.textContent = task.Task;

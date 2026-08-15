@@ -46,6 +46,16 @@ class Utils {
         return re.test(email);
     }
 
+    // Le anagrafiche arrivano dall'API nell'ordine del database (per ID o per
+    // data di apertura): in un menu a tendina serve invece l'ordine alfabetico.
+    // localeCompare con sensitivity 'base' ignora maiuscole e accenti, numeric
+    // mette CR 2 prima di CR 10.
+    static ordinaPerNome(lista, campo) {
+        return (lista || []).slice().sort((a, b) =>
+            String(a?.[campo] ?? '').localeCompare(String(b?.[campo] ?? ''), 'it', { sensitivity: 'base', numeric: true })
+        );
+    }
+
     static escapeHtml(text) {
         const div = document.createElement('div');
         div.textContent = text;

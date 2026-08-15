@@ -48,7 +48,7 @@ class CollaboratoriSection extends BaseSection {
                         <label for="filterCollaboratore" class="form-label">Filtra per Collaboratore</label>
                         <select class="form-select" id="filterCollaboratore">
                             <option value="">Tutti i collaboratori</option>
-                            ${Array.isArray(this.app.collaboratori) ? this.app.collaboratori.map(c => `<option value="${c.ID_COLLABORATORE}">${this.app.utils.escapeHtml(c.Collaboratore)}</option>`).join('') : ''}
+                            ${Array.isArray(this.app.collaboratori) ? this.app.utils.ordinaPerNome(this.app.collaboratori, 'Collaboratore').map(c => `<option value="${c.ID_COLLABORATORE}">${this.app.utils.escapeHtml(c.Collaboratore)}</option>`).join('') : ''}
                         </select>
                     </div>
                     <div class="col-lg-3 col-md-6">
@@ -476,7 +476,7 @@ class CollaboratoriSection extends BaseSection {
         // Populate commessa select options
         const select = tr.querySelector('.tariffa-edit-commessa');
         if (this.app && Array.isArray(this.app.commesse)) {
-            this.app.commesse.forEach(c => {
+            this.app.utils.ordinaPerNome(this.app.commesse, 'Commessa').forEach(c => {
                 const opt = document.createElement('option');
                 opt.value = c.ID_COMMESSA;
                 opt.textContent = c.Commessa;
@@ -569,7 +569,7 @@ class CollaboratoriSection extends BaseSection {
         let commessaSelect = `<select class="form-select form-select-sm tariffa-edit-commessa">`;
         commessaSelect += `<option value="">Standard</option>`;
         if (this.app && Array.isArray(this.app.commesse)) {
-            this.app.commesse.forEach(c => {
+            this.app.utils.ordinaPerNome(this.app.commesse, 'Commessa').forEach(c => {
                 const selected = (String(c.Commessa).trim() === String(commessaVal).trim() || String(c.ID_COMMESSA) === String(commessaVal)) ? 'selected' : '';
                 commessaSelect += `<option value="${c.ID_COMMESSA}" ${selected}>${this.app.utils.escapeHtml(c.Commessa)}</option>`;
             });

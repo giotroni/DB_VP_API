@@ -31,12 +31,8 @@ class GiornateSection extends BaseSection {
         const container = this.getContainer();
         
         // Prepara le opzioni per i menu a tendina dei filtri
-        const collaboratoriOptions = this.app.collaboratori.map(c => `<option value="${c.ID_COLLABORATORE}">${c.Collaboratore}</option>`).join('');
-        // Ordine alfabetico come negli altri filtri commessa: dall'API le commesse
-        // arrivano ordinate per data di apertura, non per nome.
-        const commesseOptions = (this.app.commesse || [])
-            .slice()
-            .sort((a, b) => (a.Commessa || '').localeCompare(b.Commessa || ''))
+        const collaboratoriOptions = this.app.utils.ordinaPerNome(this.app.collaboratori, 'Collaboratore').map(c => `<option value="${c.ID_COLLABORATORE}">${c.Collaboratore}</option>`).join('');
+        const commesseOptions = this.app.utils.ordinaPerNome(this.app.commesse, 'Commessa')
             .map(c => `<option value="${c.ID_COMMESSA}">${c.Commessa}</option>`)
             .join('');
 
@@ -570,17 +566,17 @@ class GiornateSection extends BaseSection {
         const giornata = giornataParam || {};
 
         const formId = `giornataModal_${giornata.ID_GIORNATA || 'new'}_form`;
-        const collaboratoriOptions = this.app.collaboratori.map(c => `<option value="${c.ID_COLLABORATORE}" ${giornata.ID_COLLABORATORE === c.ID_COLLABORATORE ? 'selected' : ''}>${c.Collaboratore}</option>`).join('');
+        const collaboratoriOptions = this.app.utils.ordinaPerNome(this.app.collaboratori, 'Collaboratore').map(c => `<option value="${c.ID_COLLABORATORE}" ${giornata.ID_COLLABORATORE === c.ID_COLLABORATORE ? 'selected' : ''}>${c.Collaboratore}</option>`).join('');
         
         const currentCommessaId = giornata.task_info?.ID_COMMESSA;
         const isEditMode = !!currentCommessaId;
 
-        const commesseOptions = this.app.commesse
+        const commesseOptions = this.app.utils.ordinaPerNome(this.app.commesse, 'Commessa')
             .filter(c => c.Stato_Commessa === 'In corso')
             .map(c => `<option value="${c.ID_COMMESSA}" ${currentCommessaId === c.ID_COMMESSA ? 'selected' : ''}>${c.Commessa}</option>`)
             .join('');
 
-        const taskOptions = isEditMode ? this.app.tasks
+        const taskOptions = isEditMode ? this.app.utils.ordinaPerNome(this.app.tasks, 'Task')
             .filter(t => t.ID_COMMESSA === currentCommessaId && t.Stato_Task === 'In corso')
             .map(t => `<option value="${t.ID_TASK}" ${giornata.ID_TASK === t.ID_TASK ? 'selected' : ''}>${t.Task}</option>`)
             .join('') : '';
@@ -712,7 +708,7 @@ class GiornateSection extends BaseSection {
             taskSelect.disabled = true;
 
             if (selectedCommessaId) {
-                const filteredTasks = this.app.tasks.filter(
+                const filteredTasks = this.app.utils.ordinaPerNome(this.app.tasks, 'Task').filter(
                     t => t.ID_COMMESSA === selectedCommessaId && t.Stato_Task === 'In corso'
                 );
 

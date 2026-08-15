@@ -29,7 +29,7 @@ class CommesseTaskSection extends BaseSection {
         const months = ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"];
         let monthOptions = months.map((month, index) => `<li><label class="dropdown-item"><input type="checkbox" class="form-check-input me-2" value="${index + 1}">${month}</label></li>`).join('');
         // Ordina le commesse alfabeticamente per il menu a tendina dei filtri
-        const commesseOptionsSorted = (this.app.commesse || []).slice().sort((a, b) => (a.Commessa || '').localeCompare(b.Commessa || ''));
+        const commesseOptionsSorted = this.app.utils.ordinaPerNome(this.app.commesse, 'Commessa');
 
         container.innerHTML = `
             <div id="stats-row-container"></div>
@@ -1242,8 +1242,8 @@ class CommesseTaskSection extends BaseSection {
 
     getCommessaFormHTML(commessa = {}) {
         const formId = commessa.ID_COMMESSA ? `editCommessaModal_${commessa.ID_COMMESSA}_form` : 'newCommessaModal_form';
-        const clientiOptions = this.app.clienti.map(c => `<option value="${c.ID_CLIENTE}" ${commessa.ID_CLIENTE == c.ID_CLIENTE ? 'selected' : ''}>${c.Cliente}</option>`).join('');
-        const collaboratoriOptions = this.app.collaboratori.map(c => `<option value="${c.ID_COLLABORATORE}" ${commessa.ID_COLLABORATORE == c.ID_COLLABORATORE ? 'selected' : ''}>${c.Collaboratore}</option>`).join('');
+        const clientiOptions = this.app.utils.ordinaPerNome(this.app.clienti, 'Cliente').map(c => `<option value="${c.ID_CLIENTE}" ${commessa.ID_CLIENTE == c.ID_CLIENTE ? 'selected' : ''}>${c.Cliente}</option>`).join('');
+        const collaboratoriOptions = this.app.utils.ordinaPerNome(this.app.collaboratori, 'Collaboratore').map(c => `<option value="${c.ID_COLLABORATORE}" ${commessa.ID_COLLABORATORE == c.ID_COLLABORATORE ? 'selected' : ''}>${c.Collaboratore}</option>`).join('');
         const stati = ['In corso', 'Sospesa', 'Chiusa', 'Archiviata'];
         const statiOptions = stati.map(s => `<option value="${s}" ${(commessa.Stato_Commessa || 'In corso') === s ? 'selected' : ''}>${s}</option>`).join('');
         const today = new Date().toISOString().split('T')[0];
@@ -1287,13 +1287,13 @@ class CommesseTaskSection extends BaseSection {
         const tipiOptions = tipiTask.map(t => `<option value="${t}" ${task.Tipo === t ? 'selected' : ''}>${t}</option>`).join('');
         const statiTask = ['In corso', 'Sospeso', 'Chiuso', 'Archiviato'];
         const statiOptions = statiTask.map(s => `<option value="${s}" ${task.Stato_Task === s ? 'selected' : ''}>${s}</option>`).join('');
-        const collaboratoriOptions = this.app.collaboratori.map(c => `<option value="${c.ID_COLLABORATORE}" ${task.ID_COLLABORATORE == c.ID_COLLABORATORE ? 'selected' : ''}>${c.Collaboratore}</option>`).join('');
+        const collaboratoriOptions = this.app.utils.ordinaPerNome(this.app.collaboratori, 'Collaboratore').map(c => `<option value="${c.ID_COLLABORATORE}" ${task.ID_COLLABORATORE == c.ID_COLLABORATORE ? 'selected' : ''}>${c.Collaboratore}</option>`).join('');
         const dataAperturaFormatted = (task.Data_Apertura_Task ? new Date(task.Data_Apertura_Task) : new Date()).toISOString().split('T')[0];
         const dataInizioFormatted = task.Data_Inizio ? task.Data_Inizio.split('T')[0] : '';
         const dataFineFormatted = task.Data_Fine ? task.Data_Fine.split('T')[0] : '';
 
         // Aggiungi le opzioni per le commesse ordinate alfabeticamente
-        const commesseOrderedOptions = this.app.commesse.slice().sort((a, b) => (a.Commessa || '').localeCompare(b.Commessa || ''));
+        const commesseOrderedOptions = this.app.utils.ordinaPerNome(this.app.commesse, 'Commessa');
         const commesseOptions = commesseOrderedOptions.map(c => `<option value="${c.ID_COMMESSA}" ${task.ID_COMMESSA == c.ID_COMMESSA ? 'selected' : ''}>${c.Commessa}</option>`).join('');
 
         return `
