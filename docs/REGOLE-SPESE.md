@@ -11,6 +11,24 @@ locale descritto in [AMBIENTE-LOCALE.md](AMBIENTE-LOCALE.md). Una prima versione
 documento usava lo snapshot CSV in [DB/Dati/](../DB/Dati/), che è più vecchio e contiene
 meno giornate: le cifre qui sotto sostituiscono quelle.
 
+> **Verifica del 15/08/2026 contro la produzione.** Confrontando la pagina Management in
+> locale e sul server sugli stessi dati (dump `260815`), lo scostamento è tutto e solo sulle
+> spese: ricavo **13.274,54** in produzione contro **17.749,54** in locale, costo
+> **17.749,54** contro **15.667,14**. Il margine complessivo cambia di **6.557,40 €**
+> (50.877,57 → 57.434,98).
+>
+> I due numeri uguali non sono un caso: il codice in produzione applica la diaria per
+> giornata al **costo** e il forfait una-tantum al **ricavo**, esattamente invertiti rispetto
+> alla regola decisa. Ne consegue che oggi le spese mostrano un margine **negativo di
+> 4.475 €** quando quello vero è positivo di 2.082 €.
+>
+> Il dettaglio per commessa e per task sta in
+> `docs/confronto-commesse-produzione-locale.xlsx`, non versionato perché contiene i dati
+> veri: **18 commesse su 44** cambiano. Il caso limite è COM2025031 *LACTALIS PORCARI
+> Seconda Fase*, aperta il 13/08 e senza giornate: in produzione vale già 2.960 € di ricavo
+> spese, perché il forfait viene contato anche sui task che non hanno mai avuto una
+> trasferta.
+
 ---
 
 ## 1. I dati che inseriamo

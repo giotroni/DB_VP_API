@@ -302,6 +302,10 @@ Dal DATE  -- Data inizio validità tariffa
 - **[REGOLE-FATTURAZIONE.md](REGOLE-FATTURAZIONE.md)** - fatture e note di accredito: segno degli importi, scadenze, storni collegati alla fattura annullata, stato di incasso, e l'allineamento ai documenti cartacei
 - **[STATISTICHE.md](STATISTICHE.md)** - il registro attività, riservato agli amministratori
 
+### Progetti in corso
+
+- **[PROGETTO-COMMESSE-ORDINI.md](PROGETTO-COMMESSE-ORDINI.md)** - collegare le fatture alla commessa e la commessa agli ordini, per leggere l'avanzamento ordinato / maturato / fatturato / incassato. *In attesa di approvazione*
+
 ### Ambiente e guide
 
 - **[AMBIENTE-LOCALE.md](AMBIENTE-LOCALE.md)** - ambiente di test Docker con i dati veri: avvio, indirizzi, reset

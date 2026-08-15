@@ -10,6 +10,9 @@ DB/Backup/
 # in locale e su OneDrive, non nel repository.
 docs/Fatture/
 docs/Ordini/
+# Fogli di analisi generati sui dati veri (confronti, prospetti)
+docs/*.xlsx
+docs/*.csv
 
 # Log
 DB/logs/
