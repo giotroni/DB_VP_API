@@ -178,6 +178,9 @@ tabella ordini.
 L'ordine resta nullable perché esistono fatture legittime senza: la 38/26 Emu è su vostra
 offerta, la 40/26 Lucchini non cita alcun riferimento.
 
+**Su `ANA_TASK`:** `Viaggi_Previsti DECIMAL(10,2) NULL`, accanto a `gg_previste` che c'è già.
+Vedi sotto perché le giornate previste non bastano.
+
 **Su `ANA_CLIENTI`:** `Codice_Fiscale`, e la compilazione di `P_IVA` sui clienti attivi.
 
 ### Chiudere la commessa quando l'ordine non è esaurito
@@ -214,6 +217,38 @@ Ne discende un controllo di coerenza da avere anche fuori dal momento della chiu
 elenco: commesse chiuse con ordini aperti, e commesse aperte con tutti gli ordini esauriti.
 Serve **anche una volta sola all'indietro**, perché delle 41 commesse attuali molte sono già
 chiuse e riceveranno i loro ordini solo in fase 4.
+
+### Il previsto delle spese: i viaggi, non le giornate
+
+Il lato previsionale esiste già a metà. `ANA_TASK.gg_previste` è compilato su **75 task su
+118** ed è mostrato nella scheda task accanto ai giorni effettuati: da lì si ricava il valore
+lavori previsto, giornate previste per `Valore_gg`.
+
+Per le spese non basta, e COM2025031 *Porcari Seconda Fase* lo mostra bene: **17,75 giornate
+previste ma 14 viaggi previsti**. I due numeri non coincidono e la differenza non è
+calcolabile, per due motivi indipendenti:
+
+- una parte delle giornate si svolge in **desk**, e lì le spese non si addebitano;
+- **una trasferta può coprire più giornate consecutive** — è la ragione per cui esiste il
+  flag `Viaggio`, che si toglie quando il consulente resta in loco dal giorno prima.
+
+Sul consuntivo la distinzione c'è ed è precisa: il calcolo conta separatamente le giornate
+addebitabili (per il vitto) e quelle con viaggio effettuato (per i viaggi). Sul previsto
+manca del tutto.
+
+Serve quindi una **quantità di viaggi previsti sul task**, accanto a `gg_previste`. Senza,
+l'avanzamento delle spese non è calcolabile: si sa quanto si è speso, non a che punto si è.
+`Importo_Previsto` sulla commessa non copre il caso, perché è un totale e non dice da quante
+trasferte è composto.
+
+Verifica su COM2025031, che oggi non ha ancora giornate:
+
+| | Valore |
+|---|---:|
+| Lavori previsti (17,75 gg × 1.550) | 27.512,50 |
+| Spese previste (14 viaggi × 370) | 5.180,00 |
+| Spese secondo il gestionale in produzione | 2.960,00 — una diaria per task, artefatto |
+| Spese secondo la regola nuova | 0,00 — corretto come consuntivo, muto come previsione |
 
 ### Commesse senza ordine
 
