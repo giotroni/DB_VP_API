@@ -826,6 +826,24 @@ class CommesseTaskSection extends BaseSection {
         };
         tipoSelect?.addEventListener('change', toggleCommessaFields);
         toggleCommessaFields();
+
+        const statoSelect = form.querySelector('#Stato_Commessa');
+        const avviso = form.querySelector('#avvisoChiusuraTask');
+        const statoIniziale = statoSelect?.value;
+        const toggleAvvisoChiusura = () => {
+            if (!avviso || !statoSelect) return;
+            const aperti = parseInt(avviso.dataset.taskAperti, 10) || 0;
+            const chiude = ['Chiusa', 'Archiviata'].includes(statoSelect.value) && statoSelect.value !== statoIniziale;
+            avviso.classList.toggle('d-none', !(chiude && aperti > 0));
+            if (chiude && aperti > 0) {
+                const archivia = statoSelect.value === 'Archiviata';
+                avviso.textContent = aperti === 1
+                    ? `Al salvataggio verrà ${archivia ? 'archiviato' : 'chiuso'} anche il task ancora aperto di questa commessa.`
+                    : `Al salvataggio verranno ${archivia ? 'archiviati' : 'chiusi'} anche i ${aperti} task ancora aperti di questa commessa.`;
+            }
+        };
+        statoSelect?.addEventListener('change', toggleAvvisoChiusura);
+        toggleAvvisoChiusura();
     }
 
     async handleCommessaFormSubmit(event, commessaId = null) {
@@ -1230,6 +1248,8 @@ class CommesseTaskSection extends BaseSection {
         const statiOptions = stati.map(s => `<option value="${s}" ${(commessa.Stato_Commessa || 'In corso') === s ? 'selected' : ''}>${s}</option>`).join('');
         const today = new Date().toISOString().split('T')[0];
         const dataApertura = commessa.Data_Apertura_Commessa ? new Date(commessa.Data_Apertura_Commessa).toISOString().split('T')[0] : today;
+        // Chiudere la commessa chiude anche i task ancora aperti: va detto prima di salvare.
+        const taskAperti = (commessa.tasks || []).filter(t => !['Chiuso', 'Archiviato'].includes(t.Stato_Task)).length;
 
         return `
             <form id="${formId}" novalidate>
@@ -1238,6 +1258,7 @@ class CommesseTaskSection extends BaseSection {
                     <div class="col-md-3 mb-3"><label for="Tipo_Commessa" class="form-label">Tipo</label><select class="form-select" id="Tipo_Commessa" name="Tipo_Commessa"><option value="Cliente" ${commessa.Tipo_Commessa === 'Cliente' ? 'selected' : ''}>Cliente</option><option value="Interna" ${commessa.Tipo_Commessa === 'Interna' ? 'selected' : ''}>Interna</option></select></div>
                     <div class="col-md-3 mb-3"><label for="Stato_Commessa" class="form-label">Stato</label><select class="form-select" id="Stato_Commessa" name="Stato_Commessa" required>${statiOptions}</select></div>
                 </div>
+                <div class="alert alert-warning py-2 d-none" id="avvisoChiusuraTask" data-task-aperti="${taskAperti}"></div>
                 <div id="clienteFieldsContainer">
                     <div class="mb-3" id="clienteFieldContainer"><label for="ID_CLIENTE" class="form-label">Cliente</label><select class="form-select" id="ID_CLIENTE" name="ID_CLIENTE"><option value="">Seleziona cliente...</option>${clientiOptions}</select></div>
                     <div class="mb-3" id="responsabileFieldContainer"><label for="ID_COLLABORATORE" class="form-label">Responsabile</label><select class="form-select" id="ID_COLLABORATORE" name="ID_COLLABORATORE"><option value="">Seleziona responsabile...</option>${collaboratoriOptions}</select></div>

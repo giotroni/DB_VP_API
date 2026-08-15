@@ -212,10 +212,69 @@ class CommesseAPI extends BaseAPI {
         if (isset($data['Data_Apertura_Commessa']) && !empty($data['Data_Apertura_Commessa'])) {
             $data['Data_Apertura_Commessa'] = date('Y-m-d', strtotime($data['Data_Apertura_Commessa']));
         }
-        
+
+        // Una commessa che si chiude si porta dietro i suoi task: non deve restare
+        // lavoro aperto sotto una commessa finita.
+        $this->propagaChiusuraAiTask($data['ID_COMMESSA'] ?? null, $data['Stato_Commessa']);
+
         return $data;
     }
-    
+
+    /**
+     * Allinea lo stato dei task quando la commessa passa a 'Chiusa' o 'Archiviata'.
+     *
+     * Agisce solo sul cambio di stato: risalvare una commessa già chiusa non
+     * richiude un task che qualcuno ha deliberatamente riaperto.
+     */
+    private function propagaChiusuraAiTask($commessaId, $nuovoStato) {
+        $statoTask = ['Chiusa' => 'Chiuso', 'Archiviata' => 'Archiviato'][$nuovoStato] ?? null;
+        if (empty($commessaId) || $statoTask === null) {
+            return;
+        }
+
+        try {
+            // Se la commessa non esiste ancora siamo in creazione: nessun task da allineare.
+            $stmt = $this->db->prepare("SELECT Stato_Commessa FROM {$this->table} WHERE ID_COMMESSA = :id");
+            $stmt->bindValue(':id', $commessaId);
+            $stmt->execute();
+            $statoPrecedente = $stmt->fetchColumn();
+
+            if ($statoPrecedente === false || $statoPrecedente === $nuovoStato) {
+                return;
+            }
+
+            // Archiviare la commessa archivia anche i task già chiusi; chiuderla
+            // tocca solo quelli ancora aperti.
+            $statiDaSaltare = $statoTask === 'Archiviato'
+                ? ['Archiviato']
+                : ['Chiuso', 'Archiviato'];
+            $placeholders = [];
+            foreach ($statiDaSaltare as $i => $stato) {
+                $placeholders[] = ":stato_$i";
+            }
+
+            $sql = "UPDATE ANA_TASK
+                       SET Stato_Task = :nuovo_stato,
+                           Data_Fine = COALESCE(Data_Fine, CURDATE()),
+                           Data_Modifica = :data_modifica,
+                           ID_UTENTE_MODIFICA = :utente
+                     WHERE ID_COMMESSA = :id
+                       AND Stato_Task NOT IN (" . implode(', ', $placeholders) . ")";
+            $stmt = $this->db->prepare($sql);
+            $stmt->bindValue(':nuovo_stato', $statoTask);
+            $stmt->bindValue(':data_modifica', date('Y-m-d H:i:s'));
+            $stmt->bindValue(':utente', $this->getCurrentUserId());
+            $stmt->bindValue(':id', $commessaId);
+            foreach ($statiDaSaltare as $i => $stato) {
+                $stmt->bindValue(":stato_$i", $stato);
+            }
+            $stmt->execute();
+
+        } catch (PDOException $e) {
+            error_log("Errore chiusura task della commessa $commessaId: " . $e->getMessage());
+        }
+    }
+
     /**
      * Override getAll per includere il nome del cliente direttamente
      */
