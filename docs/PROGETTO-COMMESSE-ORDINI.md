@@ -188,10 +188,15 @@ offerta, la 40/26 Lucchini non cita alcun riferimento.
 
 ### Chiudere la commessa quando l'ordine non è esaurito
 
-Lo stato della commessa si cambia da una tendina nel form
-([commesse-task-section.js:1239](../assets/js/modules/sections/commesse-task-section.js#L1239)):
-oggi è un campo come gli altri, senza conseguenze. Con gli ordini collegati non può più
-esserlo.
+Il meccanismo esiste già a metà: `CommesseAPI::propagaChiusuraAiTask()` allinea i task
+quando la commessa passa a `Chiusa` o `Archiviata`, e lo fa solo sul **cambio** di stato,
+così risalvare una commessa già chiusa non richiude un task riaperto di proposito. È il
+punto a cui agganciare la stessa domanda per gli ordini.
+
+Differenza importante: sui task la propagazione è automatica e silenziosa, perché un task
+senza la sua commessa non ha significato. Sugli ordini **non può esserlo**, perché un ordine
+chiuso con un residuo non fatturato è un'informazione commerciale che va registrata, non
+dedotta.
 
 Quando una commessa passa a `Chiusa` o `Archiviata` e ha ordini ancora aperti, **va chiesto
 se chiudere anche quelli**, mostrando cosa resta. La domanda cambia forma secondo il tipo:
