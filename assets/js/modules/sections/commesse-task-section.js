@@ -738,6 +738,14 @@ class CommesseTaskSection extends BaseSection {
                 });
             }
 
+            // Dalla piu' recente: l'elenco arriva nell'ordine di inserimento, che
+            // non e' quello cronologico, e la giornata che interessa e' l'ultima.
+            giornateTask = giornateTask.slice().sort((a, b) => {
+                const da = new Date(a.Data).getTime() || 0;
+                const db = new Date(b.Data).getTime() || 0;
+                return db - da;
+            });
+
             const modalTitle = `<i class="fas fa-calendar-day me-2"></i>Giornate - ${task.Task}`;
 
             const isUser = this.app.currentUser?.ruolo === 'User';
