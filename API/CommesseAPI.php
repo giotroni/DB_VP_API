@@ -759,18 +759,59 @@ class CommesseAPI extends BaseAPI {
             $monthly[$ym]['valore_campo'] += $valore;
         }
 
-        // 2) Calcola il multiplicatore di monitoraggio prendendo i task di tipo 'Monitoraggio' dalla tabella ANA_TASK
-        $sqlMon = "SELECT SUM(COALESCE(Valore_gg,0)) AS monitor_valore_sum, COUNT(*) AS monitor_tasks
-                   FROM ANA_TASK
-                   WHERE ID_COMMESSA = :id AND Tipo = 'Monitoraggio'";
+        // 2) Valore del monitoraggio, mese per mese.
+        //
+        // Una commessa può avere più task di Monitoraggio, purché le finestre
+        // Data_Apertura_Task..Data_Fine non si sovrappongano: e' la regola che
+        // TaskAPI fa rispettare in scrittura, e serve quando il coordinamento
+        // passa di mano. Ogni task percio' vale solo sulle giornate comprese
+        // nella sua finestra, come gia' fanno TaskAPI e le schede.
+        //
+        // Sommare invece le percentuali di tutti i task, come si faceva qui
+        // prima, contava il monitoraggio due volte su ogni mese.
+        $monPerMese = [];
+        try {
+            $sqlMon = "SELECT t.ID_TASK, t.ID_COLLABORATORE, MAX(t.Valore_gg) AS valore_gg,
+                              COALESCE(m.Valore_gg, 0) AS perc,
+                              DATE_FORMAT(g.Data, '%Y-%m') AS ym,
+                              SUM(g.gg) AS giorni, MAX(g.Data) AS ref_date
+                       FROM ANA_TASK m
+                       JOIN FACT_GIORNATE g
+                         ON g.Data >= COALESCE(m.Data_Apertura_Task, '1900-01-01')
+                        AND g.Data <= COALESCE(m.Data_Fine, '9999-12-31')
+                       JOIN ANA_TASK t
+                         ON t.ID_TASK = g.ID_TASK
+                        AND t.ID_COMMESSA = m.ID_COMMESSA
+                        AND t.ID_TASK <> m.ID_TASK
+                       WHERE m.ID_COMMESSA = :id
+                         AND m.Tipo = 'Monitoraggio'
+                         AND COALESCE(m.Valore_gg, 0) > 0
+                         AND g.Tipo = 'Campo'
+                       GROUP BY t.ID_TASK, t.ID_COLLABORATORE, perc, ym";
+            $stmt = $this->db->prepare($sqlMon);
+            $stmt->bindValue(':id', $commessaId);
+            $stmt->execute();
 
-        $stmt = $this->db->prepare($sqlMon);
-        $stmt->bindValue(':id', $commessaId);
-        $stmt->execute();
-        $monSummary = $stmt->fetch(PDO::FETCH_ASSOC);
+            foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
+                // Stessa valorizzazione delle giornate usata sopra per il valore campo
+                $gg = floatval($r['giorni']);
+                $taskValoreGg = floatval($r['valore_gg']);
+                if ($taskValoreGg > 0) {
+                    $valore = $gg * $taskValoreGg;
+                } else {
+                    $tarStmt->bindValue(':collab', $r['ID_COLLABORATORE']);
+                    $tarStmt->bindValue(':commessa', $commessaId);
+                    $tarStmt->bindValue(':ref_date', $r['ref_date']);
+                    $tarStmt->execute();
+                    $valore = $gg * (floatval($tarStmt->fetchColumn()) ?: 0);
+                }
 
-        $monitor_sum = floatval($monSummary['monitor_valore_sum'] ?? 0);
-        $monitor_tasks = intval($monSummary['monitor_tasks'] ?? 0);
+                $ym = $r['ym'];
+                $monPerMese[$ym] = ($monPerMese[$ym] ?? 0) + $valore * floatval($r['perc']);
+            }
+        } catch (PDOException $e) {
+            $monPerMese = [];
+        }
 
         // Recupera dettagli dei task di monitoraggio (ID_COLLABORATORE e nome collaboratore)
         $monitorDetails = [];
@@ -794,11 +835,15 @@ class CommesseAPI extends BaseAPI {
             // ignore, lasciamo monitorDetails vuoto
         }
 
-        if ($monitor_tasks > 0 && $monitor_sum > 0) {
-            foreach ($monthly as $ymKey => $_) {
-                if (!isset($monthly[$ymKey])) continue;
-                $monthly[$ymKey]['monitor_multiplier'] = $monitor_sum;
-            }
+        // Il moltiplicatore resta nell'output per compatibilita', ma ora e' un
+        // dato derivato: quanto pesa il monitoraggio su quel mese.
+        foreach ($monthly as $ymKey => $_) {
+            $valoreMonitoraggio = round($monPerMese[$ymKey] ?? 0, 2);
+            $valoreCampoMese = floatval($monthly[$ymKey]['valore_campo'] ?? 0);
+            $monthly[$ymKey]['valore_monitoraggio'] = $valoreMonitoraggio;
+            $monthly[$ymKey]['monitor_multiplier'] = $valoreCampoMese > 0
+                ? $valoreMonitoraggio / $valoreCampoMese
+                : 0;
         }
 
         // Inizializza valore_spese e contatori di costo per ogni mese
@@ -916,7 +961,9 @@ class CommesseAPI extends BaseAPI {
         foreach ($monthly as $ym => $v) {
             $valore_campo = floatval($v['valore_campo']);
             $monitor_mult = floatval($v['monitor_multiplier']);
-            $valore_monitor = ($monitor_mult > 0) ? ($valore_campo * $monitor_mult) : 0;
+            // Gia' calcolato sulle finestre dei task di monitoraggio: non si
+            // rimoltiplica per il valore campo del mese.
+            $valore_monitor = floatval($v['valore_monitoraggio'] ?? 0);
             $totale = $valore_campo + $valore_monitor;
 
             // costo accounting: valore_campo * commissione
