@@ -11,23 +11,31 @@ locale descritto in [AMBIENTE-LOCALE.md](AMBIENTE-LOCALE.md). Una prima versione
 documento usava lo snapshot CSV in [DB/Dati/](../DB/Dati/), che è più vecchio e contiene
 meno giornate: le cifre qui sotto sostituiscono quelle.
 
-> **Verifica del 15/08/2026 contro la produzione.** Confrontando la pagina Management in
-> locale e sul server sugli stessi dati (dump `260815`), lo scostamento è tutto e solo sulle
-> spese: ricavo **13.274,54** in produzione contro **17.749,54** in locale, costo
-> **17.749,54** contro **15.667,14**. Il margine complessivo cambia di **6.557,40 €**
-> (50.877,57 → 57.434,98).
+> **Verifica del 16/08/2026 contro la produzione**, rifatta caricando il backup `260815` in
+> un database separato accanto a quello locale: i numeri qui sotto sono misurati sui due
+> database, non stimati. Metodo e dettaglio in
+> [CONFRONTO-PRODUZIONE-LOCALE.md](CONFRONTO-PRODUZIONE-LOCALE.md).
 >
-> I due numeri uguali non sono un caso: il codice in produzione applica la diaria per
-> giornata al **costo** e il forfait una-tantum al **ricavo**, esattamente invertiti rispetto
-> alla regola decisa. Ne consegue che oggi le spese mostrano un margine **negativo di
-> 4.475 €** quando quello vero è positivo di 2.082 €.
+> | | Produzione | Locale | Δ |
+> |---|---:|---:|---:|
+> | Valore totale | 650.778,29 | 653.000,79 | +2.222,50 |
+> | Costo totale attività | 431.325,79 | 429.243,39 | −2.082,40 |
+> | Margine | 56.230,06 | 60.534,96 | **+4.304,90** |
 >
-> Il dettaglio per commessa e per task sta in
-> `docs/confronto-commesse-produzione-locale.xlsx`, non versionato perché contiene i dati
-> veri: **18 commesse su 44** cambiano. Il caso limite è COM2025031 *LACTALIS PORCARI
-> Seconda Fase*, aperta il 13/08 e senza giornate: in produzione vale già 2.960 € di ricavo
-> spese, perché il forfait viene contato anche sui task che non hanno mai avuto una
-> trasferta.
+> Il maturato giornate non cambia: giornate di campo e costo accounting coincidono al
+> centesimo nei due ambienti.
+>
+> Una versione precedente di questo blocco dava +6.557,40 € di margine. Era sbagliata la
+> baseline, non i dati: prendeva come "produzione" la formula di `TaskAPI` (forfait una volta
+> per task), che però **non è quella che alimenta le schede** — quelle sommano il valore per
+> giornata calcolato da `GiornateAPI`. Vedi l'anomalia ① qui sotto: in produzione le formule
+> sono tre e quale si vede dipende dalla schermata.
+>
+> Resta valido il caso limite: COM2025031 *LACTALIS PORCARI Seconda Fase*, senza nemmeno una
+> giornata, vale già 2.960 € di ricavo spese, perché `TaskAPI::calcolaValoreSpese` restituisce
+> la diaria appena è valorizzata sul task senza guardare le giornate — al contrario della
+> funzione gemella `calcolaValoreGg`, che con zero giornate ritorna 0. Stesso difetto su
+> COM2025028 (150 €) e COM2025029 (210 €): 3.320 € di ricavo esposto su commesse mai partite.
 
 ---
 
