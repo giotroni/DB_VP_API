@@ -465,7 +465,7 @@ class GiornateSection extends BaseSection {
         // Si segnala solo l'eccezione: il viaggio non effettuato su una giornata
         // di campo in trasferta, l'unico caso in cui il flag cambia il ricavo.
         const viaggioIcon = (giornata.Viaggio === 'No' && giornata.Tipo === 'Campo' && giornata.Desk !== 'Si')
-            ? '<i class="fas fa-ban text-warning" title="Nessun viaggio: non addebitato al cliente"></i>'
+            ? '<i class="fas fa-ban text-warning" title="Viaggio non addebitato al cliente"></i>'
             : '';
 
         // Show a small thumbnail (first image) or an icon if images exist

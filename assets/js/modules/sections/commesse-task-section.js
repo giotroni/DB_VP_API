@@ -792,7 +792,7 @@ class CommesseTaskSection extends BaseSection {
                                     // una giornata di campo in trasferta, l'unico caso in cui il
                                     // flag toglie la diaria viaggi dal ricavo.
                                     const viaggioIcon = (g.Viaggio === 'No' && g.Tipo === 'Campo' && g.Desk !== 'Si')
-                                        ? ' <i class="fas fa-ban text-warning" title="Nessun viaggio: non addebitato al cliente"></i>'
+                                        ? ' <i class="fas fa-ban text-warning" title="Viaggio non addebitato al cliente"></i>'
                                         : '';
                                     return `<tr>
                                         <td>${new Date(g.Data).toLocaleDateString('it-IT')}</td>
