@@ -783,11 +783,16 @@ class CommesseTaskSection extends BaseSection {
                                     const costoViaggi = this.app.utils.formatCurrency(costoViaggiGiornata(g));
                                     const costoVittoAltre = this.app.utils.formatCurrency(costoVittoAltreGiornata(g));
                                     const valoreSpese = this.app.utils.formatCurrency(g.Valore_spese || g.valore_spese || 0);
+                                    // Stessa icona della sezione Giornate: una giornata da
+                                    // remoto non ha trasferta, quindi non porta spese addebitabili.
+                                    const deskIcon = g.Desk === 'Si'
+                                        ? ' <i class="fas fa-desktop text-primary" title="Da remoto (Desk): nessuna spesa addebitata al cliente"></i>'
+                                        : '';
                                     return `<tr>
                                         <td>${new Date(g.Data).toLocaleDateString('it-IT')}</td>
                                         <td>${collab?.Collaboratore || 'N/A'}</td>
                                         <td><span class="badge bg-primary">${g.gg}g</span></td>
-                                        <td>${g.Tipo}</td>
+                                        <td>${g.Tipo}${deskIcon}</td>
                                         <td>${g.Note || '-'}</td>
                                         ${!isUser ? `<td class="text-end fw-bold">${costoViaggi}</td><td class="text-end fw-bold">${costoVittoAltre}</td><td class="text-end fw-bold text-danger">${valoreSpese}</td><td class="text-end fw-bold">${valoreGiornata}</td>` : ''}
                                     </tr>`;
