@@ -43,7 +43,7 @@ soggetto giuridico. È il beneficio maggiore, e non era l'obiettivo di partenza.
 
 ## 3. Le decisioni prese
 
-Discusse e approvate il 15/08/2026.
+Discusse e approvate il 15/08/2026, la sesta il 16/08/2026.
 
 1. **L'importo teorico della commessa entra nel database subito**, anche se non verrà usato
    per ora: il database di produzione va toccato comunque per altre modifiche, e conviene
@@ -52,6 +52,8 @@ Discusse e approvate il 15/08/2026.
 3. **Una fattura non copre più di un ordine.** Assunzione esplicita, da far rispettare.
 4. **Il documento di proposta si allega alla commessa.**
 5. **La fattura ha una natura**: acconto, avanzamento o saldo.
+6. **Si prevedono solo le attività, non le spese.** Le spese restano un dato di sola
+   consuntivazione. Deciso il 16/08/2026, vedi «Le tre letture dell'avanzamento».
 
 ### Osservazioni che cambiano la portata di queste decisioni
 
@@ -93,10 +95,11 @@ Lindt quattro. Il taglio adottato: **sulla commessa la proposta commerciale che 
 sull'ordine l'offerta specifica da cui quell'ordine è nato**. Con questa divisione la tabella
 ordini non ha bisogno di distinguere fra ordine e offerta.
 
-**Sul punto 5**, con gli acconti l'avanzamento va letto su **due righe che possono
-contraddirsi**: fatturato a stato avanzamento contro maturato, e totale fatturato contro
-ordinato. Mostrarne una sola porta prima o poi a leggere un progetto al 90% che non è ancora
-iniziato.
+**Sul punto 5**, un acconto è fatturato ma non corrisponde a lavoro svolto. Nella lettura
+economica va contato — è denaro fatturato sull'ordine — ma non va confuso con l'avanzamento
+del lavoro, che si legge sulla riga operativa. È una delle ragioni per cui le letture sono
+tre e separate: mostrarne una sola porta prima o poi a leggere un progetto al 90% che non è
+ancora iniziato.
 
 ## 4. Il modello dati
 
@@ -178,8 +181,8 @@ tabella ordini.
 L'ordine resta nullable perché esistono fatture legittime senza: la 38/26 Emu è su vostra
 offerta, la 40/26 Lucchini non cita alcun riferimento.
 
-**Su `ANA_TASK`:** `Viaggi_Previsti DECIMAL(10,2) NULL`, accanto a `gg_previste` che c'è già.
-Vedi sotto perché le giornate previste non bastano.
+**Su `ANA_TASK`:** nulla. `gg_previste` c'è già ed è l'unica previsione che serve — vedi
+«Le tre letture dell'avanzamento».
 
 **Su `ANA_CLIENTI`:** `Codice_Fiscale`, e la compilazione di `P_IVA` sui clienti attivi.
 
@@ -218,37 +221,49 @@ elenco: commesse chiuse con ordini aperti, e commesse aperte con tutti gli ordin
 Serve **anche una volta sola all'indietro**, perché delle 41 commesse attuali molte sono già
 chiuse e riceveranno i loro ordini solo in fase 4.
 
-### Il previsto delle spese: i viaggi, non le giornate
+### Le tre letture dell'avanzamento
 
-Il lato previsionale esiste già a metà. `ANA_TASK.gg_previste` è compilato su **75 task su
-118** ed è mostrato nella scheda task accanto ai giorni effettuati: da lì si ricava il valore
-lavori previsto, giornate previste per `Valore_gg`.
+Un solo numero di avanzamento non si può dare, perché le grandezze in gioco non sono
+omogenee: l'ordine comprende lavori e spese insieme, la previsione interna riguarda le
+giornate, le spese non hanno un previsto attendibile. Mescolarle produce una percentuale che
+sembra completa e non lo è.
 
-Per le spese non basta, e COM2025031 *Porcari Seconda Fase* lo mostra bene: **17,75 giornate
-previste ma 14 viaggi previsti**. I due numeri non coincidono e la differenza non è
-calcolabile, per due motivi indipendenti:
+Le letture sono tre, separate e ognuna coerente al proprio interno:
 
-- una parte delle giornate si svolge in **desk**, e lì le spese non si addebitano;
-- **una trasferta può coprire più giornate consecutive** — è la ragione per cui esiste il
-  flag `Viaggio`, che si toglie quando il consulente resta in loco dal giorno prima.
+| Lettura | Formula | Risponde a |
+|---|---|---|
+| **Economica** | fatturato / ordinato | «quanto resta da fatturare» |
+| **Operativa** | giornate consuntivate / `gg_previste` | «sto sforando» |
+| **Spese** | ricavo e costo a consuntivo, **senza denominatore e senza percentuale** | «quanto è costato» |
 
-Sul consuntivo la distinzione c'è ed è precisa: il calcolo conta separatamente le giornate
-addebitabili (per il vitto) e quelle con viaggio effettuato (per i viaggi). Sul previsto
-manca del tutto.
+Sull'economica entrambi i termini comprendono le spese, quindi il rapporto è pulito.
+Sull'operativa entrambi riguardano solo i lavori. Le spese restano una colonna a fianco.
 
-Serve quindi una **quantità di viaggi previsti sul task**, accanto a `gg_previste`. Senza,
-l'avanzamento delle spese non è calcolabile: si sa quanto si è speso, non a che punto si è.
-`Importo_Previsto` sulla commessa non copre il caso, perché è un totale e non dice da quante
-trasferte è composto.
+**Perché le spese non hanno una previsione.** È stato valutato di aggiungere una quantità di
+viaggi previsti sul task, e la scelta è stata di non farlo. Le ragioni, misurate
+sull'archivio:
 
-Verifica su COM2025031, che oggi non ha ancora giornate:
+- pesano il **2,8%** del valore (17.749,54 di ricavo spese contro 616.977,50 di lavori) e il
+  margine che ci si gioca sopra è lo **0,33%** del fatturato;
+- solo **23 commesse su 44** hanno spese movimentate: sulle altre il campo resterebbe vuoto
+  per costruzione;
+- `gg_previste`, che è la previsione con il valore informativo più alto, è compilata sul
+  **64%** dei task. Un secondo campo previsionale verrebbe compilato meno, e un previsto
+  compilato a metà è peggio di nessun previsto: fa risultare in anticipo chi non l'ha
+  riempito;
+- **il margine sulle spese non è stabile nemmeno a consuntivo**: LINDT CapiTurno 2026 e
+  Certosa risultano oggi con ricavo rispettivamente 1.260 e 1.000 e costo **zero**, perché le
+  spese non sono ancora state registrate. Prevedere una grandezza che non è affidabile
+  neanche a posteriori è lavoro sprecato;
+- la diaria è per costruzione una **partita di giro concordata**: copre la trasferta, non
+  produce margine. Prevederne lo scostamento non guida alcuna decisione.
 
-| | Valore |
-|---|---:|
-| Lavori previsti (17,75 gg × 1.550) | 27.512,50 |
-| Spese previste (14 viaggi × 370) | 5.180,00 |
-| Spese secondo il gestionale in produzione | 2.960,00 — una diaria per task, artefatto |
-| Spese secondo la regola nuova | 0,00 — corretto come consuntivo, muto come previsione |
+`Importo_Previsto` sulla commessa resta, ed è la previsione economica: essendo un totale
+commerciale comprende naturalmente anche le spese, quindi non soffre del problema di
+eterogeneità.
+
+Se un domani arrivasse una commessa con trasferte pesanti — estero, lunghe permanenze — il
+campo si aggiunge allora, con un caso vero davanti invece che per completezza.
 
 ### Commesse senza ordine
 
@@ -304,8 +319,8 @@ importo vanno inseriti a mano.
 
 ### Fase 5 — avanzamento, incassato e coerenza degli stati · *tre giorni*
 
-Il pannello con ordinato, maturato, fatturato e incassato, le due letture dell'avanzamento
-per via degli acconti, il riepilogo di portafoglio. L'incassato è già possibile: le date di
+Il pannello con ordinato, maturato, fatturato e incassato, **le tre letture separate**
+dell'avanzamento, il riepilogo di portafoglio. L'incassato è già possibile: le date di
 pagamento sono state registrate il 14/08/2026.
 
 Qui entra anche la domanda alla chiusura della commessa, l'elenco di coerenza fra stati e la
