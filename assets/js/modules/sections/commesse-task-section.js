@@ -1203,10 +1203,14 @@ class CommesseTaskSection extends BaseSection {
                 return sumTask + costoPerTask;
             }, 0);
 
-            const sommaValoreCampo = commessa.tasks.reduce((sum, task) => (task.Tipo === 'Campo' ? sum + (parseFloat(task.valore_gg_maturato) || 0) : sum), 0);
+            // Il monitoraggio si legge dal maturato del task, come nelle schede e
+            // nel valore qui sopra: ricalcolarlo come valore campo x percentuale
+            // ignorava le finestre temporali e la regola del task unico attivo,
+            // e su una commessa con due task di monitoraggio disgiunti lo contava
+            // due volte, gonfiando il costo e deprimendo il margine.
             const costoMonitor = commessa.tasks.reduce((acc, task) => {
-                if (task.Tipo === 'Monitoraggio' && parseFloat(task.Valore_gg) > 0) {
-                    return acc + (sommaValoreCampo * (parseFloat(task.Valore_gg) || 0));
+                if (task.Tipo === 'Monitoraggio') {
+                    return acc + (parseFloat(task.valore_gg_maturato) || 0);
                 }
                 return acc;
             }, 0);
