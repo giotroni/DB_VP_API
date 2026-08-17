@@ -27,29 +27,45 @@ front-end:
 | 2 | locale | produzione | isolare l'effetto delle correzioni fatte a mano in locale |
 | 3 | locale | locale | riprodurre la schermata di `127.0.0.1:8081` |
 
-**Controllo di aderenza**: valore totale e costo accounting degli scenari 1 e 3 devono
-coincidere al centesimo con le due schermate. Se non coincidono, la replica delle formule è
-sbagliata e i numeri non valgono.
+**Controllo di aderenza**: lo scenario 1 deve riprodurre l'**export CSV** del gestionale su
+tutte e quattro le voci. Al 17/08/2026 lo fa al centesimo, e coincide anche commessa per
+commessa (44 su 44) con `docs/prod_export_commesse.csv`. Se non coincide, la replica delle
+formule è sbagliata e i numeri non valgono.
+
+Usare l'export come riferimento, non la testata della pagina: la testata mostra **due valori
+diversi** a seconda di come è messo il filtro Anno, ed entrambi si leggono "Tutti" sul menu a
+tendina — vedi più avanti.
 
 Gli script (query e generatore Excel) stanno nello scratchpad di sessione; il risultato è
 `docs/scostamenti-produzione-locale.xlsx`, **non versionato** perché contiene i dati veri.
 
-## I numeri al 16/08/2026
+## I numeri al 17/08/2026
+
+Colonna produzione = export CSV, cioè la vista che si usa per i controlli.
 
 | | Produzione | Locale | Δ |
 |---|---:|---:|---:|
-| Valore totale | 650.778,29 | 653.000,79 | +2.222,50 |
+| Valore totale | 655.253,29 | 653.000,79 | −2.252,50 |
 | Costo totale attività | 431.325,79 | 429.243,39 | −2.082,40 |
-| Costo accounting | 163.222,44 | 163.222,44 | 0 |
-| Margine | 56.230,06 | 60.534,96 | **+4.304,90** |
+| Costo accounting | 163.222,43 | 163.222,43 | 0 |
+| Margine | 60.705,07 | 60.534,96 | **−170,10** |
 
 Da cosa nasce:
 
-- **+2.222,50** sul ricavo spese: diaria per giornata invece che una volta per task, più i
-  regimi rivisti a mano in locale (44 task con vitto/alloggio portato a *compreso*).
+- **−2.252,50** sul ricavo spese: le due categorie separate con regimi indipendenti, il flag
+  Viaggio che toglie la diaria dove la trasferta non c'è stata, e soprattutto i regimi rivisti
+  a mano in locale il 16-17/08 (44 task con vitto/alloggio portato a *compreso*).
 - **−2.822,40** sul costo spese: esborso reale invece del prezzo di vendita.
 - **+740,00** sul costo, che **non** dipende dalle regole: due giornate su `TAS00104` avevano
   `Desk = Si` nel backup e `No` in locale, il che le rende addebitabili (2 × 370 €).
+
+Il margine si muove quindi di appena **−170,10 €** rispetto a quello che il gestionale
+esporta oggi: le regole nuove non cambiano il risultato complessivo, cambiano **come** ci si
+arriva — ricavo e costo delle spese diventano due grandezze indipendenti invece di essere lo
+stesso numero, e il margine per commessa si redistribuisce (19 commesse su 44 si spostano).
+
+Attenzione a non confrontare questi numeri con la **testata** della pagina: sono un'altra
+cosa ancora, vedi sotto.
 
 Il maturato giornate non cambia: le regole nuove non toccano né il valore giornate né il
 monitoraggio, e infatti giornate di campo (383,8) e costo accounting coincidono.
@@ -64,6 +80,20 @@ verificare **quale copia** alimenta la schermata che si sta guardando.
 giornata (ed è quella che le schede sommano), `TaskAPI::calcolaValoreSpese` la conta una
 volta per task, `CommesseAPI::computeMaturatoForCommessa` una volta per mese. Accorparle in
 `CalcoloSpese` è stato lo scopo del lavoro di agosto.
+
+**Il filtro Anno decide quale formula vedi.** Nella pagina Commesse e Task il totale di
+testata vale:
+
+| Filtro Anno | Valore totale | Spese calcolate da |
+|---|---:|---|
+| tutti gli anni spuntati | 655.253,29 | ricalcolo lato client, per giornata |
+| nessun anno spuntato | 650.778,29 | server, diaria una volta per task |
+
+Sul menu a tendina i due stati si leggono **entrambi "Tutti"**, ma differiscono di 4.475,00 €.
+Il ramo di ricalcolo scatta quando almeno un anno o un mese è spuntato
+(`filterData()`: `activeDateFilter = (selectedYears.length > 0 || selectedMonths.length > 0)`).
+L'export CSV usa `lastFilteredData`, quindi eredita lo stesso stato: esportando con tutti gli
+anni spuntati si ottiene la versione per giornata.
 
 **Monitoraggio.** Stessa storia, trovata il 16/08 in due copie e corretta:
 

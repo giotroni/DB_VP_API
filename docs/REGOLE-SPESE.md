@@ -16,20 +16,26 @@ meno giornate: le cifre qui sotto sostituiscono quelle.
 > database, non stimati. Metodo e dettaglio in
 > [CONFRONTO-PRODUZIONE-LOCALE.md](CONFRONTO-PRODUZIONE-LOCALE.md).
 >
+> La colonna produzione riproduce l'**export CSV** del gestionale, al centesimo e su tutte e
+> 44 le commesse (`docs/prod_export_commesse.csv`, 17/08/2026).
+>
 > | | Produzione | Locale | Δ |
 > |---|---:|---:|---:|
-> | Valore totale | 650.778,29 | 653.000,79 | +2.222,50 |
+> | Valore totale | 655.253,29 | 653.000,79 | −2.252,50 |
 > | Costo totale attività | 431.325,79 | 429.243,39 | −2.082,40 |
-> | Margine | 56.230,06 | 60.534,96 | **+4.304,90** |
+> | Margine | 60.705,07 | 60.534,96 | **−170,10** |
 >
 > Il maturato giornate non cambia: giornate di campo e costo accounting coincidono al
-> centesimo nei due ambienti.
+> centesimo nei due ambienti. Sul totale il margine si muove di appena 170 €: quello che
+> cambia davvero è la **distribuzione** fra commesse (19 su 44) e il fatto che ricavo e costo
+> delle spese smettono di essere lo stesso numero.
 >
-> Una versione precedente di questo blocco dava +6.557,40 € di margine. Era sbagliata la
-> baseline, non i dati: prendeva come "produzione" la formula di `TaskAPI` (forfait una volta
-> per task), che però **non è quella che alimenta le schede** — quelle sommano il valore per
-> giornata calcolato da `GiornateAPI`. Vedi l'anomalia ① qui sotto: in produzione le formule
-> sono tre e quale si vede dipende dalla schermata.
+> Due versioni precedenti di questo blocco davano +6.557,40 e poi +4.304,90. Non erano
+> sbagliati i dati ma la baseline: prendevano come "produzione" la formula di `TaskAPI`
+> (diaria una volta per task), che alimenta la testata solo quando nessun anno è spuntato nel
+> filtro, e non l'export né le schede. Vedi l'anomalia ① qui sotto e
+> [CONFRONTO-PRODUZIONE-LOCALE.md](CONFRONTO-PRODUZIONE-LOCALE.md): in produzione le formule
+> sono tre e quale si vede dipende dalla schermata **e dal filtro**.
 >
 > Resta valido il caso limite: COM2025031 *LACTALIS PORCARI Seconda Fase*, senza nemmeno una
 > giornata, vale già 2.960 € di ricavo spese, perché `TaskAPI::calcolaValoreSpese` restituisce
