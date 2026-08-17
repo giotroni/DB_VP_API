@@ -135,24 +135,47 @@ class GiornateSection extends BaseSection {
     }
 
     /**
-     * Legge gli input checkbox nei dropdown Anno/Mese e aggiorna lo stato dei filtri.
-     * Aggiorna anche le etichette dei pulsanti dei dropdown e riapplica il filtro.
+     * Il filtro periodo letto dalle checkbox dei dropdown Anno/Mese.
+     *
+     * Si legge sempre dal DOM, mai da una copia in memoria: le checkbox sono
+     * l'unico stato vero. Dopo un ricaricamento dati _restoreFilterState() le
+     * rimette a posto e chiama filterData() senza passare di qui, quindi una
+     * copia salvata resterebbe indietro e la pagina mostrerebbe un periodo
+     * diverso da quello spuntato.
+     *
+     * Spuntare TUTTI gli anni non restringe niente: e' lo stesso insieme di
+     * dati che si ottiene senza spuntarne nessuno, e il pulsante si legge
+     * "Tutti" in entrambi i casi. Per questo un insieme completo viene
+     * normalizzato a vuoto, come gia' fa Situazione Commesse e Task.
+     */
+    leggiFiltroPeriodo() {
+        const contAnni = document.getElementById('filterAnno');
+        const contMesi = document.getElementById('filterMese');
+        const spuntati = (c) => c
+            ? Array.from(c.querySelectorAll('input[type="checkbox"]:checked')).map(cb => parseInt(cb.value, 10)).filter(v => !isNaN(v))
+            : [];
+        const quanti = (c) => c ? c.querySelectorAll('input[type="checkbox"]').length : 0;
+
+        const years = spuntati(contAnni);
+        const months = spuntati(contMesi);
+        const tutti = (sel, tot) => sel.length === 0 || (tot > 0 && sel.length === tot);
+        const anniTutti = tutti(years, quanti(contAnni));
+        const mesiTutti = tutti(months, quanti(contMesi));
+
+        return {
+            years: anniTutti ? [] : years,
+            months: mesiTutti ? [] : months,
+            attivo: !(anniTutti && mesiTutti)
+        };
+    }
+
+    /**
+     * Aggiorna le etichette dei pulsanti dei dropdown e riapplica il filtro.
      */
     updateDateFilterFromUI() {
-        const anniContainer = document.getElementById('filterAnno');
-        const mesiContainer = document.getElementById('filterMese');
-
-        const years = anniContainer
-            ? Array.from(anniContainer.querySelectorAll('input[type="checkbox"]:checked')).map(cb => parseInt(cb.value, 10)).filter(v => !isNaN(v))
-            : [];
-
-        const months = mesiContainer
-            ? Array.from(mesiContainer.querySelectorAll('input[type="checkbox"]:checked')).map(cb => parseInt(cb.value, 10)).filter(v => !isNaN(v))
-            : [];
-
+        const { years, months } = this.leggiFiltroPeriodo();
         this.activeDateFilter = { years, months };
 
-        // Aggiorna le etichette dei pulsanti
         const annoBtn = document.getElementById('filterAnnoBtn');
         if (annoBtn) {
             if (!years.length) annoBtn.textContent = 'Tutti';
@@ -332,8 +355,10 @@ class GiornateSection extends BaseSection {
                     }).filter(m => m.collaboratori.length > 0);
                 }
 
-                // Filtro anno/mese
-                if (this.activeDateFilter && (this.activeDateFilter.years.length || this.activeDateFilter.months.length)) {
+                // Filtro anno/mese, riletto dalle checkbox a ogni passata
+                const periodo = this.leggiFiltroPeriodo();
+                this.activeDateFilter = { years: periodo.years, months: periodo.months };
+                if (periodo.attivo) {
                     data = data.map(mese => {
                         // each mese contains giornate already grouped by month; but we still filter inside giornate to be safe
                         mese.collaboratori.forEach(coll => {
@@ -341,8 +366,8 @@ class GiornateSection extends BaseSection {
                                 const d = new Date(g.Data);
                                 const y = d.getFullYear();
                                 const m = d.getMonth() + 1;
-                                if (this.activeDateFilter.years.length && !this.activeDateFilter.years.includes(y)) return false;
-                                if (this.activeDateFilter.months.length && !this.activeDateFilter.months.includes(m)) return false;
+                                if (periodo.years.length && !periodo.years.includes(y)) return false;
+                                if (periodo.months.length && !periodo.months.includes(m)) return false;
                                 return true;
                             });
                             coll.totaleGiornate = coll.giornate.reduce((s, gg) => s + (parseFloat(gg.gg) || 0), 0);
