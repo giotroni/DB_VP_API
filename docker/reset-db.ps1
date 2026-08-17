@@ -2,7 +2,13 @@
 # Cancella il volume db_data e lo ricrea, riesegue gli script in docker/initdb:
 # dump -> FACT_FATTURE_COLLABORATORI -> utente di test -> migration non ancora
 # in produzione (spese viaggi/vitto, note di accredito, allineamento delle
-# fatture ai PDF, incassi dal registro, storni collegati alle note).
+# fatture ai PDF, incassi dal registro, storni collegati alle note) ->
+# collegamenti fattura-commessa.
+#
+# ATTENZIONE: quello che il reset NON rimette sono le correzioni fatte a mano
+# su task e giornate (flag Viaggio/Desk e regimi di spesa). Vedi
+# docs/260815_MODIFICHE_IN_LOCAL_ALLINEAMENTO SPESE.md: vanno rifatte, e i
+# totali spese indicati li' servono a verificare che siano tornate giuste.
 #
 #   .\docker\reset-db.ps1
 #

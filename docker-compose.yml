@@ -30,7 +30,9 @@ services:
       - db_data:/var/lib/mysql
       # Eseguiti in ordine alfabetico al PRIMO avvio (volume vuoto): il dump di
       # produzione, poi la tabella che manca nel dump, poi l'utente di test,
-      # infine le migration non ancora comprese nel dump.
+      # poi le migration non ancora comprese nel dump, infine i collegamenti
+      # fattura-commessa, che nessuna migration valorizza e che senza questo
+      # script un reset perderebbe in silenzio.
       - ./DB/Backup/${BACKUP_DATE:-260804}_vaglioty_DB_VP.sql:/docker-entrypoint-initdb.d/01-dump.sql:ro
       - ./docker/initdb/02-fact_fatture_collaboratori.sql:/docker-entrypoint-initdb.d/02-fact_fatture_collaboratori.sql:ro
       - ./docker/initdb/03-utente-test-locale.sql:/docker-entrypoint-initdb.d/03-utente-test-locale.sql:ro
@@ -39,6 +41,7 @@ services:
       - ./docker/initdb/06-allinea-fatture-pdf.sql:/docker-entrypoint-initdb.d/06-allinea-fatture-pdf.sql:ro
       - ./docker/initdb/07-allinea-incassi.sql:/docker-entrypoint-initdb.d/07-allinea-incassi.sql:ro
       - ./docker/initdb/08-storno-note-accredito.sql:/docker-entrypoint-initdb.d/08-storno-note-accredito.sql:ro
+      - ./docker/initdb/09-attribuzioni-fatture-commesse.sql:/docker-entrypoint-initdb.d/09-attribuzioni-fatture-commesse.sql:ro
     healthcheck:
       test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
       interval: 5s
