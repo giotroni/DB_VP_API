@@ -89,7 +89,13 @@ class GiornateSection extends BaseSection {
         `;
 
         this.updateStats(this.app.giornate);
-        this.bindEvents();
+        // Gli eventi NON si agganciano qui: initialize() chiama render() e poi
+        // bindEvents(), quindi farlo anche di qui aggancia due listener allo
+        // stesso nodo. Sugli altri filtri non si notava perche' riapplicare due
+        // volte lo stesso filtro da' lo stesso risultato, ma
+        // Seleziona/Deseleziona ha uno stato: il primo giro spuntava tutti gli
+        // anni e il secondo li toglieva, quindi il menu si svuotava proprio
+        // quando si chiedeva di riempirlo.
         this.updateDateFilterFromUI();
     }
     
@@ -303,6 +309,13 @@ class GiornateSection extends BaseSection {
                 break;
             case 'add-giornata':
                 this.showGiornataModal();
+                break;
+            case 'toggle-all-filter':
+                // Gia' gestita dal listener sul link dentro il dropdown. Serve
+                // comunque il caso, altrimenti finisce nel default e BaseSection
+                // annuncia "azione non ancora implementata": un avviso di errore
+                // a ogni Seleziona/Deseleziona, mentre il filtro funziona.
+                if (e && typeof e.preventDefault === 'function') e.preventDefault();
                 break;
             default:
                 // Delegare al BaseSection per default
