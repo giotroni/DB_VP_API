@@ -859,7 +859,9 @@ class CommesseAPI extends BaseAPI {
         try {
             $tasksSql = "SELECT ID_TASK,
                                 Spese_Comprese_Viaggi, Spese_Comprese_Vitto_Alloggio,
-                                Valore_Spese_std_Viaggi, Valore_Spese_std_Vitto_Alloggio
+                                Valore_Spese_std_Viaggi, Valore_Spese_std_Vitto_Alloggio,
+                                Regime_Spese_Viaggi, Valore_Spese_Viaggi,
+                                Regime_Spese_Vitto_Alloggio, Valore_Spese_Vitto_Alloggio
                          FROM ANA_TASK WHERE ID_COMMESSA = :id";
             $tasksStmt = $this->db->prepare($tasksSql);
             $tasksStmt->bindValue(':id', $commessaId);
@@ -917,6 +919,24 @@ class CommesseAPI extends BaseAPI {
             }
         }
 
+        // Un forfait a corpo appartiene al task, non al mese: va riconosciuto
+        // una volta sola, nel mese della prima giornata addebitabile. Senza
+        // questo ogni mese con giornate se lo prenderebbe per intero — è lo
+        // stesso errore che il monitoraggio faceva fino al 16/08/2026.
+        $meseForfait = [];
+        foreach ($speseByTaskMonth as $taskId => $mesi) {
+            ksort($mesi);
+            $meseForfait[$taskId] = ['vitto' => null, 'viaggi' => null];
+            foreach ($mesi as $ym => $m) {
+                if ($meseForfait[$taskId]['vitto'] === null && ($m['n_addebitabili'] ?? 0) > 0) {
+                    $meseForfait[$taskId]['vitto'] = $ym;
+                }
+                if ($meseForfait[$taskId]['viaggi'] === null && ($m['n_con_viaggio'] ?? 0) > 0) {
+                    $meseForfait[$taskId]['viaggi'] = $ym;
+                }
+            }
+        }
+
         // Applica la logica di calcolo spese (per task) su ogni mese presente in $monthly
         foreach ($tasksList as $task) {
             $taskId = $task['ID_TASK'];
@@ -926,6 +946,9 @@ class CommesseAPI extends BaseAPI {
                 if ($taskMonth === null) {
                     continue;
                 }
+
+                $taskMonth['ospita_forfait_vitto']  = (($meseForfait[$taskId]['vitto']  ?? null) === $ymKey);
+                $taskMonth['ospita_forfait_viaggi'] = (($meseForfait[$taskId]['viaggi'] ?? null) === $ymKey);
 
                 // Ricavo: per ciascuna categoria, la diaria per ogni giornata di
                 // campo del mese oppure le spese effettive se è a consuntivo.

@@ -449,6 +449,42 @@ class GiornateAPI extends BaseAPI {
         return ['canDelete' => true, 'message' => ''];
     }
     
+    /** Memoria per task delle prime giornate: una query sola per task. */
+    private $primeGiornate = [];
+
+    /**
+     * ID della prima giornata addebitabile del task, e della prima con
+     * trasferta effettuata. Serve solo al regime "a corpo", per decidere su
+     * quale giornata appoggiare un importo che è del task e non del giorno.
+     *
+     * L'ordinamento è deterministico — data, poi ID — così il forfait non salta
+     * da una giornata all'altra fra due letture.
+     */
+    private function primeGiornateDelTask($taskId) {
+        if (!array_key_exists($taskId, $this->primeGiornate)) {
+            $addebitabili = CalcoloSpese::sqlGiornateAddebitabili();
+            $conViaggio   = CalcoloSpese::sqlViaggiAddebitabili();
+            $sql = "SELECT
+                      (SELECT ID_GIORNATA FROM FACT_GIORNATE
+                        WHERE ID_TASK = :task_add AND {$addebitabili}
+                        ORDER BY Data ASC, ID_GIORNATA ASC LIMIT 1) AS prima_add,
+                      (SELECT ID_GIORNATA FROM FACT_GIORNATE
+                        WHERE ID_TASK = :task_via AND {$conViaggio}
+                        ORDER BY Data ASC, ID_GIORNATA ASC LIMIT 1) AS prima_via";
+            try {
+                $stmt = $this->db->prepare($sql);
+                $stmt->bindValue(':task_add', $taskId);
+                $stmt->bindValue(':task_via', $taskId);
+                $stmt->execute();
+                $this->primeGiornate[$taskId] = $stmt->fetch(PDO::FETCH_ASSOC)
+                    ?: ['prima_add' => null, 'prima_via' => null];
+            } catch (Exception $e) {
+                $this->primeGiornate[$taskId] = ['prima_add' => null, 'prima_via' => null];
+            }
+        }
+        return $this->primeGiornate[$taskId];
+    }
+
     /**
      * Post-processing del record (aggiunge dati correlati e calcolati)
      */
@@ -466,7 +502,9 @@ class GiornateAPI extends BaseAPI {
             if (!empty($record['ID_TASK'])) {
                 $taskFields = ['Task', 'ID_COMMESSA', 'Valore_gg', 'Tipo',
                                'Spese_Comprese_Viaggi', 'Spese_Comprese_Vitto_Alloggio',
-                               'Valore_Spese_std_Viaggi', 'Valore_Spese_std_Vitto_Alloggio'];
+                               'Valore_Spese_std_Viaggi', 'Valore_Spese_std_Vitto_Alloggio',
+                               'Regime_Spese_Viaggi', 'Valore_Spese_Viaggi',
+                               'Regime_Spese_Vitto_Alloggio', 'Valore_Spese_Vitto_Alloggio'];
                 $taskInfo = $this->getRelatedData('ANA_TASK', 'ID_TASK', $record['ID_TASK'], $taskFields);
                 $record['task_info'] = $taskInfo;
                 
@@ -487,6 +525,18 @@ class GiornateAPI extends BaseAPI {
             $record['valore_calcolato'] = 0;
             if ($record['Tipo'] === 'Campo' && isset($taskInfo['Valore_gg']) && $taskInfo['Valore_gg'] > 0) {
                 $record['valore_calcolato'] = floatval($taskInfo['Valore_gg']) * floatval($record['gg']);
+            }
+
+            // Il regime "a corpo" vale una volta sola per task, non per giornata:
+            // va riconosciuto sulla prima giornata addebitabile, altrimenti la
+            // somma per giornata non torna con l'aggregato per task — ed è quella
+            // divergenza che CalcoloSpese esiste per impedire.
+            // Il costo della lettura si paga solo se un forfait c'è davvero.
+            if ($taskInfo && (CalcoloSpese::regime($taskInfo, 'Viaggi') === 'Corpo'
+                           || CalcoloSpese::regime($taskInfo, 'Vitto_Alloggio') === 'Corpo')) {
+                $prime = $this->primeGiornateDelTask($record['ID_TASK']);
+                $record['prima_addebitabile'] = ($prime['prima_add'] === $record['ID_GIORNATA']);
+                $record['prima_con_viaggio']  = ($prime['prima_via'] === $record['ID_GIORNATA']);
             }
 
             // Ricavo spese della giornata: prezzo addebitato al cliente, diviso

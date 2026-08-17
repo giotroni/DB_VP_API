@@ -1,6 +1,6 @@
 # Spese pattuite a corpo — schema proposto
 
-*17/08/2026 — proposta, non ancora implementata*
+*17/08/2026 — implementato e verificato*
 
 Completa `docs/REGOLE-SPESE.md`, che descrive i regimi in vigore. Qui c'è solo ciò che
 cambierebbe.
@@ -189,7 +189,25 @@ sono: i 370 € di Porcari sono una tariffa **a trasferta** (l'offerta dice «1 
 e i 500 € di EMU si comportano allo stesso modo. Con i flag `Viaggio` corretti tornano già
 senza toccare nulla.
 
-## 8. Rilascio
+## 8. Come è stato verificato
+
+`API/tests/test_calcolo_spese.php` copre i quattro regimi su entrambe le letture, i task senza
+giornate e i record letti da uno schema vecchio: 22 casi.
+
+Sui dati veri, dopo l'implementazione:
+
+| Controllo | Esito |
+|---|---|
+| Ricavo spese totale, aggregato per task | **16.082,04** |
+| Somma per giornata, dalle API | **16.082,04** — l'invariante regge |
+| COM0007 ricavo spese | **1.000,00** |
+| Il forfait sta su una giornata sola | sì, il 14/03/2025 |
+| Un task a corpo senza giornate | **0,00** |
+
+A schermo il dettaglio del task dice «Forfait a corpo di 1.000,00 €, una volta sola sul task»
+e le spese maturate valgono 1.000,00.
+
+## 9. Rilascio
 
 Va **dentro la fase 1** del progetto commesse-ordini, quando la migration di struttura si
 scrive comunque: è una modifica di schema che non cambia comportamento, tranne il singolo task

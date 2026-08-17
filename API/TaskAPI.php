@@ -28,6 +28,10 @@ class TaskAPI extends BaseAPI {
             'Spese_Comprese_Vitto_Alloggio' => ['enum' => ['Si', 'No']],
             'Valore_Spese_std_Viaggi' => ['numeric' => true, 'min' => 0],
             'Valore_Spese_std_Vitto_Alloggio' => ['numeric' => true, 'min' => 0],
+            'Regime_Spese_Viaggi' => ['enum' => ['Compreso', 'Diaria', 'Corpo', 'Reali']],
+            'Regime_Spese_Vitto_Alloggio' => ['enum' => ['Compreso', 'Diaria', 'Corpo', 'Reali']],
+            'Valore_Spese_Viaggi' => ['numeric' => true, 'min' => 0],
+            'Valore_Spese_Vitto_Alloggio' => ['numeric' => true, 'min' => 0],
             'Valore_gg' => ['numeric' => true, 'min' => 0]
         ];
     }
@@ -1250,6 +1254,28 @@ class TaskAPI extends BaseAPI {
         }
         if (($data['Spese_Comprese_Vitto_Alloggio'] ?? null) === 'Si') {
             $data['Valore_Spese_std_Vitto_Alloggio'] = null;
+        }
+
+        // Il regime esplicito e i campi storici devono restare d'accordo finché
+        // i secondi esistono: un lettore non ancora aggiornato deve vedere la
+        // stessa cosa, altrimenti si torna ad avere due verità.
+        foreach ([['Viaggi', 'Spese_Comprese_Viaggi', 'Valore_Spese_std_Viaggi'],
+                  ['Vitto_Alloggio', 'Spese_Comprese_Vitto_Alloggio', 'Valore_Spese_std_Vitto_Alloggio']]
+                 as [$cat, $campoCompreso, $campoDiaria]) {
+            $regime = $data['Regime_Spese_' . $cat] ?? null;
+            if ($regime === null) {
+                continue;
+            }
+            $campoImporto = 'Valore_Spese_' . $cat;
+            // L'importo esiste solo per Diaria e Corpo: negli altri regimi va a
+            // NULL, come già si fa per le diarie.
+            if ($regime === 'Compreso' || $regime === 'Reali') {
+                $data[$campoImporto] = null;
+            }
+            $data[$campoCompreso] = ($regime === 'Compreso') ? 'Si' : 'No';
+            // Il campo storico e' una DIARIA: un forfait a corpo non ci sta
+            // dentro senza cambiare significato, quindi resta vuoto.
+            $data[$campoDiaria] = ($regime === 'Diaria') ? ($data[$campoImporto] ?? null) : null;
         }
 
         return $data;
