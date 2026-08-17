@@ -368,6 +368,38 @@ Gli altri, in ordine di peso:
 
 ## Appendice A — mappa ordine → commessa, da validare
 
+> **Rivista il 17/08/2026** contro le descrizioni dei PDF di fattura, i documenti
+> d'ordine e i prospetti Lactalis. Quattro righe erano sbagliate, e le correzioni
+> sono qui sotto: la tabella che segue è quella originale, da leggere con queste
+> rettifiche in mano. Il file `docs/Fatture/260817_attribuzioni-fatture-commesse.xlsx`
+> (non versionato) ha il dettaglio riga per riga con le evidenze.
+>
+> - **`4512149672` → COM0013, non COM2025018.** L'offerta 260114 dice «impegno
+>   ipotizzato/**realizzato**» ed elenca esattamente le giornate di COM0013 —
+>   24/10 Vaglio-Troni, 31/10, 6/11, 12/11 Bevilacqua e Silvestri, 26/11. I task di
+>   COM2025018 si chiamano «Seconda fase» e corrispondono all'offerta 260430, cioè
+>   all'ordine `4512210994`. Guardando le sole fatture non si distinguevano: dicono
+>   «capiturno Corteolona» entrambe.
+> - **`9000124043` → COM2025006, non COM2025016.** Le sue quattro fatture sommano
+>   **12.400,00 €**, il maturato esatto di COM2025006; le tre di `9000129980`
+>   sommano anch'esse 12.400,00, il maturato esatto di COM2025016. Quindi la 01/26,
+>   benché datata 2026, appartiene alla commessa 2025.
+> - **La 36/25 è già attribuita male a database**: sta su COM0013 ma l'offerta 250923
+>   «Castelli-Corte Audit» copre due ordini per 25.902,50 = 14.416,50 (30/25) +
+>   11.486,00 (36/25), quindi è **COM0012**. Lo conferma un indizio indipendente: è
+>   l'unica fattura, con la 05/24, datata prima della prima giornata della sua commessa.
+> - **`1020213371` non è «da decidere»**: la 35/26 vale 7.000,00 €, il maturato esatto
+>   di **COM2025022** LAVAZZA R&D AUDIT, contro i 1.000 € di COM2025024.
+>
+> **Dieci ordini su quindici quadrano al centesimo** col totale delle loro fatture, il
+> che rende la mappa molto più solida di una deduzione: 6.200,00 · 55.800,00 ·
+> 9.832,50 · 93.082,50 · 51.040,00 · 39.512,50 · 7.340,00 · 11.292,50 · 7.190,00.
+> I cinque con residuo fanno **89.041,83 €** di portafoglio da fatturare.
+>
+> Ne esce anche una regola per la prima decisione aperta: **una fase = una commessa**
+> vale per Corteolona, Certosa e Melzo. L'unica eccezione è Castelli Reggio, dove
+> l'ordine `4512249011` non ha una commessa propria.
+
 Ricavata dai riferimenti d'ordine delle fatture e dai nomi delle commesse. La colonna
 *certezza* dice quanto è sicura l'attribuzione: **alta** = un solo abbinamento possibile,
 **media** = coerente ma con alternative, **da decidere** = serve una scelta.

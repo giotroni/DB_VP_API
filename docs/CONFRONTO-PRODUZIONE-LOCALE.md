@@ -70,6 +70,20 @@ cosa ancora, vedi sotto.
 Il maturato giornate non cambia: le regole nuove non toccano né il valore giornate né il
 monitoraggio, e infatti giornate di campo (383,8) e costo accounting coincidono.
 
+### I numeri si sono mossi dopo il 17/08
+
+La tabella qui sopra è la fotografia del 17/08/2026 **mattina**. Nella stessa
+giornata sono cambiate due cose, entrambe volute:
+
+- la revisione dei regimi su TAS00012 e TAS00013 ha portato il ricavo spese locale
+  da 15.497,04 a **15.082,04**;
+- il forfait a corpo su LAVAZZA SETTIMO (vedi [SCHEMA-SPESE-A-CORPO](SCHEMA-SPESE-A-CORPO.md))
+  lo ha riportato a **16.082,04**, e il margine locale a **61.119,96**.
+
+La lezione, che vale più dei numeri: **questa tabella invecchia a ogni revisione dei
+regimi**. Prima di citarla, rieseguire i tre scenari. Il metodo non invecchia, il
+risultato sì.
+
 ## La trappola: la stessa regola scritta più volte
 
 Ogni scostamento inspiegabile trovato finora nasce dallo stesso motivo — la medesima regola

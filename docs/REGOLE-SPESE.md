@@ -52,20 +52,42 @@ meno giornate: le cifre qui sotto sostituiscono quelle.
 Dal 07/08/2026 il regime è per **categoria**, non più unico: viaggi e vitto/alloggio
 si vendono in modo indipendente perché i contratti li trattano in modo indipendente.
 
+Dal **17/08/2026** il regime è **dichiarato**, non più dedotto.
+
 | Campo | Valori | Significato |
 |---|---|---|
-| `Spese_Comprese_Viaggi` | `Si` / `No` | `Si` = i viaggi sono già dentro il valore giornata. `No` = si addebitano a parte. |
-| `Valore_Spese_std_Viaggi` | numero o vuoto | La **diaria viaggi**: quanto si addebita per ogni giornata di campo in cui il viaggio c'è stato. Vuoto = a consuntivo. |
-| `Spese_Comprese_Vitto_Alloggio` | `Si` / `No` | Stesso significato per vitto, alloggio e altri costi. |
-| `Valore_Spese_std_Vitto_Alloggio` | numero o vuoto | La **diaria vitto/alloggio**, per ogni giornata di campo. Vuoto = a consuntivo. |
+| `Regime_Spese_Viaggi` | `Compreso` · `Diaria` · `Corpo` · `Reali` | Come si addebitano i viaggi |
+| `Valore_Spese_Viaggi` | numero | L'importo, letto secondo il regime. `NULL` dove il regime non ne prevede uno |
+| `Regime_Spese_Vitto_Alloggio` | idem | Stesso significato per vitto, alloggio e altri costi |
+| `Valore_Spese_Vitto_Alloggio` | numero | idem |
 
-Ciascuna diaria è compilabile **solo** se la categoria non è compresa: il form la
-nasconde e `TaskAPI` la azzera a `null` in salvataggio, così non resta un valore
-orfano pronto a riemergere se il regime tornasse a `No`.
+| Regime | Cosa si addebita |
+|---|---|
+| `Compreso` | **niente**: è già dentro il valore giornata |
+| `Diaria` | l'importo **per ogni** giornata di campo — sui viaggi solo dove il flag `Viaggio` è attivo |
+| `Corpo` | l'importo **una volta sola** sul task, riconosciuto sulla prima giornata addebitabile |
+| `Reali` | la **spesa effettiva** delle giornate addebitabili |
 
-I campi storici `Spese_Comprese` e `Valore_Spese_std` restano in tabella come rete
-di sicurezza, ma nessun codice li legge più. Si rimuovono con una migration
-separata a verifica avvenuta in produzione.
+**Perché il regime è diventato esplicito.** Prima si deduceva: compreso, altrimenti
+diaria se c'era un importo, altrimenti costi reali. Quell'implicito ha reso
+indistinguibili per settimane un forfait una tantum da una tariffa a trasferta — i
+370 € di Porcari sembravano un errore di censimento e non lo erano, l'offerta dice
+«1 × 370 €/**viaggio**».
+
+**Attenzione a una differenza nuova.** «Diaria con importo vuoto» e «Costi reali»
+oggi **non** sono più la stessa cosa: la prima non addebita nulla, la seconda
+riaddebita la spesa. Prima erano lo stesso stato. Per questo `TaskAPI` rifiuta di
+salvare `Diaria` o `Corpo` senza un importo maggiore di zero, e il messaggio dice
+quale regime scegliere per ciascuna delle due intenzioni.
+
+L'importo è compilabile **solo** dove il regime lo prevede: il form lo nasconde e
+`TaskAPI` lo azzera a `null` in salvataggio, così non resta un valore orfano pronto
+a riemergere se il regime cambiasse.
+
+I campi precedenti (`Spese_Comprese_X`, `Valore_Spese_std_X`) restano in tabella e
+vengono tenuti allineati in scrittura finché esistono, ma il calcolo legge il
+regime. Si rimuovono, insieme agli storici `Spese_Comprese` e `Valore_Spese_std`,
+con una migration separata a verifica avvenuta in produzione.
 
 ### Sulla giornata (`FACT_GIORNATE`) — il **costo reale**
 

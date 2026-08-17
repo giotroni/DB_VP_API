@@ -32,11 +32,42 @@ Al primo avvio il container `db` esegue in ordine gli script di `docker/initdb`:
 | 06 | `06-allinea-fatture-pdf.sql` | allinea l'archivio alle fatture cartacee: numerazioni, doppioni, importi, due documenti mancanti, riferimenti d'ordine |
 | 07 | `07-allinea-incassi.sql` | i 26 incassi presi dal registro Excel e tre date divergenti |
 | 08 | `08-storno-note-accredito.sql` | colonna `ID_FATTURA_STORNATA` e i sette collegamenti nota → fattura |
+| 09 | `09-attribuzioni-fatture-commesse.sql` | i collegamenti fattura → commessa, che **nessuna migration valorizza** |
+| 10 | `10-spese-quattro-commesse.sql` | le correzioni a mano su regimi e flag `Viaggio` — **file generato**, vedi sotto |
+| 11 | `11-regime-spese.sql` | il regime di spesa esplicito e il forfait a corpo ([SCHEMA-SPESE-A-CORPO](SCHEMA-SPESE-A-CORPO.md)) |
 
-Gli script dal 04 all'08 replicano migration che **in produzione non sono ancora
-state eseguite**: qui servono perché il reset riparte dal dump, che ha ancora lo
-schema e i dati vecchi. Vanno tenuti allineati alle rispettive migration in
-`DB/migrations/` finché il dump non le contiene già.
+Gli script dal 04 all'08 e l'11 replicano migration che **in produzione non sono
+ancora state eseguite**: qui servono perché il reset riparte dal dump, che ha
+ancora lo schema e i dati vecchi. Vanno tenuti allineati alle rispettive
+migration in `DB/migrations/` finché il dump non le contiene già.
+
+Il 09 e il 10 sono un'altra cosa: non replicano nessuna migration, **rimettono
+lavoro fatto a mano dall'interfaccia** che altrimenti il reset perderebbe in
+silenzio. È successo il 17/08/2026: i conteggi delle tabelle tornavano tutti
+giusti, il reset sembrava riuscito, e intanto il fatturato per commessa era
+tornato indietro di otto righe senza che nulla lo segnalasse.
+
+## Se modifichi i dati dall'interfaccia, rigenera lo script 10
+
+Il 10 è una **fotografia**: contiene le righe di task e giornate che si scostano
+da quello che producono dump più migration. Ogni correzione nuova la invecchia.
+
+```bash
+docker compose exec -T web php /var/www/html/docker/genera-10-spese.php
+```
+
+Va lanciato dopo aver cambiato dall'interfaccia un **regime di spesa**, un
+**importo**, un flag **Viaggio** o **Desk**. Richiede il database di confronto
+`prod_260815` — è il termine di paragone che dice quali righe sono state toccate
+a mano. Poi si committa il file rigenerato.
+
+Nel giro di poche ore del 17/08/2026 la fotografia era già invecchiata di due
+task e due giornate: se la si aggiorna a mano, prima o poi non la si aggiorna.
+
+Le attribuzioni fattura → commessa dello script 09 restano invece da aggiornare a
+mano: sono poche e cambiano di rado. Spariranno con la fase 2 di
+[PROGETTO-COMMESSE-ORDINI](PROGETTO-COMMESSE-ORDINI.md), che rende `ID_COMMESSA`
+obbligatorio.
 
 **L'ordine conta.** Il 06 sistema le numerazioni e il 07 cerca le fatture per
 numero: invertirli lascerebbe 26 incassi non registrati, in silenzio. Dopo un
@@ -65,8 +96,13 @@ per l'installazione XAMPP presente sulla macchina.
 3. `.\docker\reset-db.ps1` — cancella il volume e reimporta.
 
 Il volume `db_data` viene ricreato da zero: **le modifiche fatte in locale al
-database si perdono**, i file del progetto no. L'ultimo allineamento è del
-**13/08/2026** (dump `260813`, 96 task e 463 giornate).
+database si perdono**, i file del progetto no — tranne quelle che gli script 09
+e 10 rimettono, che sono il motivo per cui esistono. L'ultimo allineamento è del
+**15/08/2026** (dump `260815`, 118 task e 464 giornate).
+
+Il reset cancella anche il database di confronto `prod_260815`, che sta nello
+stesso volume: si ricrea caricando lo stesso dump in uno schema a parte, vedi
+[CONFRONTO-PRODUZIONE-LOCALE](CONFRONTO-PRODUZIONE-LOCALE.md).
 
 Rispetto al dump precedente (`260804`) la produzione era cambiata in quattro punti:
 il ruolo di CONS011 (User → Manager), il vitto/alloggio di una giornata del 05/08

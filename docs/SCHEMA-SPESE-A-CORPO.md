@@ -135,6 +135,23 @@ naturale, il pro-rata su `gg_previste`, la scarto: `gg_previste` è compilato su
 118, quindi darebbe risultati che dipendono da quanto è curata l'anagrafica invece che dal
 contratto.
 
+## 4bis. Diaria a zero non è più «a consuntivo»
+
+È la conseguenza meno visibile e la più insidiosa. Prima, `Spese_Comprese = No` con
+diaria vuota **significava** costi reali: era il modo normale di dire «a consuntivo».
+Ora sono due dichiarazioni distinte, e su due giornate da 200 e 150 € danno **0,00**
+contro **350,00**.
+
+Perché l'ambiguità non rientri dalla finestra, `TaskAPI` **rifiuta** di salvare
+`Diaria` o `Corpo` senza un importo maggiore di zero, in creazione e in modifica. In
+modifica il controllo si applica alla fusione fra input e record salvato: il form
+manda solo ciò che cambia, quindi un aggiornamento parziale che svuota l'importo
+passerebbe indisturbato se il regime non fosse noto.
+
+Il messaggio d'errore non si limita a rifiutare, dice quale regime scegliere per
+ciascuna delle due intenzioni — «Costi reali» per riaddebitare la spesa, «Compreso
+nel valore giornata» per non addebitare nulla.
+
 ## 5. Il vincolo che decide l'implementazione
 
 `GiornateAPI` calcola il ricavo spese **per singola giornata** (`Valore_spese_viaggi`,
@@ -203,6 +220,8 @@ Sui dati veri, dopo l'implementazione:
 | COM0007 ricavo spese | **1.000,00** |
 | Il forfait sta su una giornata sola | sì, il 14/03/2025 |
 | Un task a corpo senza giornate | **0,00** |
+| Diaria senza importo, dalle API | respinta con 400 |
+| Aggiornamento parziale che svuota l'importo | respinto con 400 |
 
 A schermo il dettaglio del task dice «Forfait a corpo di 1.000,00 €, una volta sola sul task»
 e le spese maturate valgono 1.000,00.
