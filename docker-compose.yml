@@ -43,6 +43,7 @@ services:
       - ./docker/initdb/08-storno-note-accredito.sql:/docker-entrypoint-initdb.d/08-storno-note-accredito.sql:ro
       - ./docker/initdb/09-attribuzioni-fatture-commesse.sql:/docker-entrypoint-initdb.d/09-attribuzioni-fatture-commesse.sql:ro
       - ./docker/initdb/10-spese-quattro-commesse.sql:/docker-entrypoint-initdb.d/10-spese-quattro-commesse.sql:ro
+      - ./docker/initdb/11-regime-spese.sql:/docker-entrypoint-initdb.d/11-regime-spese.sql:ro
     healthcheck:
       test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
       interval: 5s

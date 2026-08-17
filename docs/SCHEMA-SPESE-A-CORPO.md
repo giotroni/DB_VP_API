@@ -100,10 +100,15 @@ UPDATE ANA_TASK
 
 | Regime | Viaggi | Vitto/alloggio |
 |---|---:|---:|
-| `Compreso` | 38 | 82 |
-| `Diaria` | 44 | 0 |
+| `Compreso` | 38 | 84 |
+| `Diaria` | 46 | 0 |
 | `Corpo` | 0 | **1** |
-| `Reali` | 36 | 35 |
+| `Reali` | 34 | 33 |
+
+Sono una fotografia al 17/08/2026 e cambiano appena si modifica il regime di un task
+dall'interfaccia — è già successo mentre si scriveva questo documento. Il controllo che non
+invecchia è un altro: **ogni task deve avere il regime che i campi vecchi implicano**, e
+quello deve dare zero scostamenti.
 
 ## 4. Le regole di calcolo
 
@@ -156,9 +161,12 @@ nell'interfaccia, altrimenti sembra un errore di battitura.
 |---|---:|---:|
 | COM0007 maturato | 11.550,00 | **12.550,00** |
 | COM0007 differenza col fatturato | 1.000,00 | **0,00** |
-| Ricavo spese, totale | 15.497,04 | 16.497,04 |
-| Valore totale | 653.000,79 | 654.000,79 |
-| Margine | 60.534,96 | 61.534,96 |
+| Ricavo spese, totale | 15.082,04 | 16.082,04 |
+| Valore totale | 652.585,79 | 653.585,79 |
+| Margine | 60.119,96 | 61.119,96 |
+
+I totali complessivi sono al 17/08/2026 e si muovono a ogni revisione dei regimi; quello che
+non si muove è l'effetto della modifica, **+1.000,00 e nient'altro**.
 
 Il costo non cambia: su quel task non è registrato nessun esborso. Il margine sale di mille
 euro perché è ricavo che finora non era contabilizzato da nessuna parte, non perché sia stato

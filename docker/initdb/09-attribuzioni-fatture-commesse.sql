@@ -41,50 +41,53 @@
 -- obbligatorio e mandera' in pensione questo file.
 --
 -- Sicuro da rieseguire: gli UPDATE scrivono lo stesso valore.
+-- Data_Modifica viene riassegnata a se stessa per impedire a ON UPDATE di
+-- scattare: senza, ogni reset marcherebbe 55 fatture come modificate adesso e il
+-- registro attivita' di Statistiche si riempirebbe di modifiche fantasma.
 -- NR e' univoco su FACT_FATTURE, quindi ogni riga colpisce una fattura sola.
 -- =====================================================================
 
-UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM0001'
+UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM0001', Data_Modifica = Data_Modifica
  WHERE NR IN ('04/24','03/25','07/25','10/25','14/25','18/25','26/25','29/25','39/25');
 
-UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM0002' WHERE NR IN ('02/24','04/25');
+UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM0002', Data_Modifica = Data_Modifica WHERE NR IN ('02/24','04/25');
 
-UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM0003'
+UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM0003', Data_Modifica = Data_Modifica
  WHERE NR IN ('01/24','01/25','06/25','12/25','16/25','24/25','33/25');
 
-UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM0004'
+UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM0004', Data_Modifica = Data_Modifica
  WHERE NR IN ('03/24','02/25','05/25','11/25','15/25','23/25','27/25');
 
-UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM0005' WHERE NR IN ('05/24','35/25');
-UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM0006' WHERE NR = '17/25';
-UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM0007' WHERE NR = '13/25';
-UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM0008' WHERE NR = '31/25';
-UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM0009' WHERE NR IN ('09/25','19/25','40/25');
-UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM0010' WHERE NR = '08/25';
+UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM0005', Data_Modifica = Data_Modifica WHERE NR IN ('05/24','35/25');
+UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM0006', Data_Modifica = Data_Modifica WHERE NR = '17/25';
+UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM0007', Data_Modifica = Data_Modifica WHERE NR = '13/25';
+UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM0008', Data_Modifica = Data_Modifica WHERE NR = '31/25';
+UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM0009', Data_Modifica = Data_Modifica WHERE NR IN ('09/25','19/25','40/25');
+UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM0010', Data_Modifica = Data_Modifica WHERE NR = '08/25';
 
 -- La terna Ambrosi: fattura, nota che la storna, riemissione.
-UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM0011' WHERE NR IN ('20/25','21/25','22/25');
+UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM0011', Data_Modifica = Data_Modifica WHERE NR IN ('20/25','21/25','22/25');
 
-UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM0012' WHERE NR = '30/25';
+UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM0012', Data_Modifica = Data_Modifica WHERE NR = '30/25';
 
 -- 36/25 e' attribuita qui nel dump, ma il PDF dice "Audit Culturale Reggio
 -- Emilia e Corteolona", cioe' COM0012. E' l'unica fattura, con la 05/24,
 -- datata prima della prima giornata della sua commessa. Lasciata com'e' per
 -- non cambiare i numeri di nascosto: la correzione e' una decisione, ed e'
 -- registrata nell'appendice A di docs/PROGETTO-COMMESSE-ORDINI.md.
-UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM0013' WHERE NR = '36/25';
+UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM0013', Data_Modifica = Data_Modifica WHERE NR = '36/25';
 
-UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM0014' WHERE NR = '25/25';
-UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM0015' WHERE NR = '32/25';
-UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM2025004' WHERE NR IN ('37/25','05/26');
-UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM2025006' WHERE NR IN ('38/25','42/25','44/25');
-UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM2025008' WHERE NR = '28/25';
-UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM2025009' WHERE NR = '34/25';
-UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM2025010' WHERE NR = '41/25';
-UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM2025013' WHERE NR = '36/26';
-UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM2025015' WHERE NR IN ('02/26','13/26','37/26');
-UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM2025019' WHERE NR = '30/26';
-UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM2025023' WHERE NR = '38/26';
+UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM0014', Data_Modifica = Data_Modifica WHERE NR = '25/25';
+UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM0015', Data_Modifica = Data_Modifica WHERE NR = '32/25';
+UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM2025004', Data_Modifica = Data_Modifica WHERE NR IN ('37/25','05/26');
+UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM2025006', Data_Modifica = Data_Modifica WHERE NR IN ('38/25','42/25','44/25');
+UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM2025008', Data_Modifica = Data_Modifica WHERE NR = '28/25';
+UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM2025009', Data_Modifica = Data_Modifica WHERE NR = '34/25';
+UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM2025010', Data_Modifica = Data_Modifica WHERE NR = '41/25';
+UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM2025013', Data_Modifica = Data_Modifica WHERE NR = '36/26';
+UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM2025015', Data_Modifica = Data_Modifica WHERE NR IN ('02/26','13/26','37/26');
+UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM2025019', Data_Modifica = Data_Modifica WHERE NR = '30/26';
+UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM2025023', Data_Modifica = Data_Modifica WHERE NR = '38/26';
 
 -- =====================================================================
 -- Controlli. Devono risultare 55 fatture con commessa su 89, e nessun
