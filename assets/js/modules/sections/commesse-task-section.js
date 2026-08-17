@@ -423,7 +423,18 @@ class CommesseTaskSection extends BaseSection {
         const selectedYears = Array.from(document.querySelectorAll('#filterAnno input:checked')).map(el => parseInt(el.value));
         const selectedMonths = Array.from(document.querySelectorAll('#filterMese input:checked')).map(el => parseInt(el.value));
 
-        this.activeDateFilter = (selectedYears.length > 0 || selectedMonths.length > 0) ? { years: selectedYears, months: selectedMonths } : null;
+        // Spuntare tutti gli anni e tutti i mesi non restringe nulla: e' lo stesso
+        // insieme di dati che si ottiene senza spuntare niente, e i due menu si
+        // leggono entrambi "Tutti". Trattarli come due filtri diversi faceva
+        // divergere i totali, perche' il ramo filtrato ricalcola dalle giornate
+        // mentre l'altro usa i valori del server, e faceva sparire dall'elenco le
+        // commesse ancora senza task.
+        const anniDisponibili = document.querySelectorAll('#filterAnno input[type="checkbox"]').length;
+        const mesiDisponibili = document.querySelectorAll('#filterMese input[type="checkbox"]').length;
+        const anniTutti = selectedYears.length === 0 || (anniDisponibili > 0 && selectedYears.length === anniDisponibili);
+        const mesiTutti = selectedMonths.length === 0 || (mesiDisponibili > 0 && selectedMonths.length === mesiDisponibili);
+
+        this.activeDateFilter = (anniTutti && mesiTutti) ? null : { years: selectedYears, months: selectedMonths };
 
         const allData = this.groupTasksByCommessa();
         let filteredData = allData;

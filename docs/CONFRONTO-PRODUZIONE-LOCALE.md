@@ -90,10 +90,21 @@ testata vale:
 | nessun anno spuntato | 650.778,29 | server, diaria una volta per task |
 
 Sul menu a tendina i due stati si leggono **entrambi "Tutti"**, ma differiscono di 4.475,00 €.
-Il ramo di ricalcolo scatta quando almeno un anno o un mese è spuntato
+Il ramo di ricalcolo scattava quando almeno un anno o un mese era spuntato
 (`filterData()`: `activeDateFilter = (selectedYears.length > 0 || selectedMonths.length > 0)`).
-L'export CSV usa `lastFilteredData`, quindi eredita lo stesso stato: esportando con tutti gli
-anni spuntati si ottiene la versione per giornata.
+L'export CSV usa `lastFilteredData`, quindi ereditava lo stesso stato: esportando con tutti
+gli anni spuntati si otteneva la versione per giornata.
+
+Si vedeva anche **una commessa in meno** con il filtro attivo: il ramo filtrato tiene solo le
+commesse con almeno un task nel periodo, e COM2025005 *Abitiamo Fondazione* non ha nessun
+task. Da qui 44 righe nell'export contro 45 nell'elenco completo.
+
+**Corretto il 17/08/2026**: se gli anni spuntati sono tutti quelli disponibili e i mesi sono
+tutti o nessuno, il filtro non restringe niente e viene trattato come assente. Un solo
+percorso di calcolo, stessi totali, stesso numero di commesse. La divergenza sui valori
+resta comunque in produzione finché non si rilasciano le regole nuove: lì le due formule sono
+diverse davvero, qui in locale danno già lo stesso numero (15.497,04 di ricavo spese sia
+aggregando per task sia sommando per giornata).
 
 **Monitoraggio.** Stessa storia, trovata il 16/08 in due copie e corretta:
 
