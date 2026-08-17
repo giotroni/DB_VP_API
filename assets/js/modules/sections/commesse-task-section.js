@@ -1375,26 +1375,26 @@ class CommesseTaskSection extends BaseSection {
                 </div>
                 <h6 class="text-muted mt-2">Spese addebitate al cliente</h6>
                 <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <div class="border rounded p-2 h-100">
+                    <div class="col-12 mb-3">
+                        <div class="border rounded p-3">
                             <div class="fw-semibold mb-2">Viaggi</div>
-                            <div class="row g-2">
-                                <div class="col-6"><label for="Regime_Spese_Viaggi" class="form-label">Regime</label><select class="form-select" id="Regime_Spese_Viaggi" name="Regime_Spese_Viaggi">${[['Compreso','Compreso nel valore giornata'],['Diaria','Diaria giornaliera'],['Corpo','A corpo (una volta sola)'],['Reali','Costi reali']].map(([v,t]) => `<option value="${v}" ${ (task.Regime_Spese_Viaggi || (task.Spese_Comprese_Viaggi === 'Si' ? 'Compreso' : (parseFloat(task.Valore_Spese_std_Viaggi) > 0 ? 'Diaria' : 'Reali'))) === v ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
-                                <div class="col-6" id="valoreSpeseViaggiContainer" style="display: none;"><label for="Valore_Spese_Viaggi" class="form-label" id="labelSpeseViaggi">Importo (€)</label><input type="number" step="0.01" min="0" class="form-control" id="Valore_Spese_Viaggi" name="Valore_Spese_Viaggi" value="${task.Valore_Spese_Viaggi ?? task.Valore_Spese_std_Viaggi ?? ''}"></div>
+                            <div class="row g-3 align-items-end">
+                                <div class="col-md-7"><label for="Regime_Spese_Viaggi" class="form-label">Regime</label><select class="form-select" id="Regime_Spese_Viaggi" name="Regime_Spese_Viaggi">${[['Compreso','Compreso nel valore giornata'],['Diaria','Diaria giornaliera'],['Corpo','A corpo (una volta sola)'],['Reali','Costi reali']].map(([v,t]) => `<option value="${v}" ${ (task.Regime_Spese_Viaggi || (task.Spese_Comprese_Viaggi === 'Si' ? 'Compreso' : (parseFloat(task.Valore_Spese_std_Viaggi) > 0 ? 'Diaria' : 'Reali'))) === v ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
+                                <div class="col-md-5" id="valoreSpeseViaggiContainer" style="display: none;"><label for="Valore_Spese_Viaggi" class="form-label" id="labelSpeseViaggi">Importo (€)</label><input type="number" step="0.01" min="0" class="form-control" id="Valore_Spese_Viaggi" name="Valore_Spese_Viaggi" value="${task.Valore_Spese_Viaggi ?? task.Valore_Spese_std_Viaggi ?? ''}"></div>
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-6 mb-3">
-                        <div class="border rounded p-2 h-100">
+                    <div class="col-12 mb-3">
+                        <div class="border rounded p-3">
                             <div class="fw-semibold mb-2">Vitto/Alloggio + Altre</div>
-                            <div class="row g-2">
-                                <div class="col-6"><label for="Regime_Spese_Vitto_Alloggio" class="form-label">Regime</label><select class="form-select" id="Regime_Spese_Vitto_Alloggio" name="Regime_Spese_Vitto_Alloggio">${[['Compreso','Compreso nel valore giornata'],['Diaria','Diaria giornaliera'],['Corpo','A corpo (una volta sola)'],['Reali','Costi reali']].map(([v,t]) => `<option value="${v}" ${ (task.Regime_Spese_Vitto_Alloggio || (task.Spese_Comprese_Vitto_Alloggio === 'Si' ? 'Compreso' : (parseFloat(task.Valore_Spese_std_Vitto_Alloggio) > 0 ? 'Diaria' : 'Reali'))) === v ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
-                                <div class="col-6" id="valoreSpeseVittoContainer" style="display: none;"><label for="Valore_Spese_Vitto_Alloggio" class="form-label" id="labelSpeseVitto">Importo (€)</label><input type="number" step="0.01" min="0" class="form-control" id="Valore_Spese_Vitto_Alloggio" name="Valore_Spese_Vitto_Alloggio" value="${task.Valore_Spese_Vitto_Alloggio ?? task.Valore_Spese_std_Vitto_Alloggio ?? ''}"></div>
+                            <div class="row g-3 align-items-end">
+                                <div class="col-md-7"><label for="Regime_Spese_Vitto_Alloggio" class="form-label">Regime</label><select class="form-select" id="Regime_Spese_Vitto_Alloggio" name="Regime_Spese_Vitto_Alloggio">${[['Compreso','Compreso nel valore giornata'],['Diaria','Diaria giornaliera'],['Corpo','A corpo (una volta sola)'],['Reali','Costi reali']].map(([v,t]) => `<option value="${v}" ${ (task.Regime_Spese_Vitto_Alloggio || (task.Spese_Comprese_Vitto_Alloggio === 'Si' ? 'Compreso' : (parseFloat(task.Valore_Spese_std_Vitto_Alloggio) > 0 ? 'Diaria' : 'Reali'))) === v ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
+                                <div class="col-md-5" id="valoreSpeseVittoContainer" style="display: none;"><label for="Valore_Spese_Vitto_Alloggio" class="form-label" id="labelSpeseVitto">Importo (€)</label><input type="number" step="0.01" min="0" class="form-control" id="Valore_Spese_Vitto_Alloggio" name="Valore_Spese_Vitto_Alloggio" value="${task.Valore_Spese_Vitto_Alloggio ?? task.Valore_Spese_std_Vitto_Alloggio ?? ''}"></div>
                             </div>
                         </div>
                     </div>
                 </div>
-                <div class="form-text mb-2">Diaria vuota: si riaddebita la spesa reale. La diaria si addebita intera per ogni giornata di campo, anche sulle mezze giornate; i viaggi solo sulle giornate con il flag Viaggio attivo.</div>
+                <div class="form-text mb-2"><strong>Compreso</strong>: già dentro il valore giornata, non si addebita nulla. <strong>Diaria</strong>: l'importo per ogni giornata di campo, intero anche sulle mezze giornate — per i viaggi solo dove il flag Viaggio è attivo. <strong>A corpo</strong>: l'importo una volta sola sul task, riconosciuto sulla prima giornata. <strong>Costi reali</strong>: si riaddebita la spesa effettiva.</div>
             </form>
         `;
     }
