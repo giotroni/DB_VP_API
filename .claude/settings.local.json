@@ -11,7 +11,17 @@
       "Bash(grep -rniE \"\\(password|passwd|secret|api_key|token\\)\\\\s*=\\\\s*['\\\\\"][^'\\\\\"]{4,}['\\\\\"]\" . --include=\"*.php\")",
       "Bash(grep -viE '\\\\?\\\\?|\\\\$_POST|\\\\$_GET|\\\\$input|required|max_length|->|str_repeat|class=|<div')",
       "Bash(git log *)",
-      "Bash(grep -n 'validationRules\\\\|allowedFields\\\\|fillable\\\\|INSERT INTO {$this->table}\\\\|function create\\\\|function update' API/BaseAPI.php)"
+      "Bash(grep -n 'validationRules\\\\|allowedFields\\\\|fillable\\\\|INSERT INTO {$this->table}\\\\|function create\\\\|function update' API/BaseAPI.php)",
+      "Bash(git push *)",
+      "Bash(cd \"c:/onedrive_vep/OneDrive/Documents/40. KNOWHOW/VP/Gestionale/DB_VP_API\" && sed -n '/private function getTariffaAttiva/,/^    }$/p' API/GiornateAPI.php | head -40)",
+      "Bash(cd \"c:/onedrive_vep/OneDrive/Documents/40. KNOWHOW/VP/Gestionale/DB_VP_API\" && sed -n '/showGiornateModal\\(taskId\\)/,/^    }$/p' assets/js/modules/sections/commesse-task-section.js | head -50)",
+      "Bash(cd \"c:/onedrive_vep/OneDrive/Documents/40. KNOWHOW/VP/Gestionale/DB_VP_API\" && sed -n '/return `<div class=\"table-responsive\">/,/<\\\\/table>/p' assets/js/modules/sections/commesse-task-section.js | head -50)",
+      "Bash(cd \"c:/onedrive_vep/OneDrive/Documents/40. KNOWHOW/VP/Gestionale/DB_VP_API\" && grep -n \"Le quattro anomalie\\\\|### ①\" docs/REGOLE-SPESE.md | head -4 && sed -n '/### ① Il forfait ha tre interpretazioni simultanee/,+12p' docs/REGOLE-SPESE.md)"
+    ],
+    "additionalDirectories": [
+      "c:\\onedrive_vep\\OneDrive\\Documents\\40. KNOWHOW\\VP\\Gestionale\\DB_VP_API\\API",
+      "c:\\onedrive_vep\\OneDrive\\Documents\\40. KNOWHOW\\VP\\Gestionale\\DB_VP_API\\assets\\js\\modules\\sections",
+      "C:\\onedrive_vep\\OneDrive\\Documents\\40. KNOWHOW\\VP\\Gestionale\\DB_VP_API\\docs"
     ]
   }
 }

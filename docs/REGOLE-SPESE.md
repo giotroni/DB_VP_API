@@ -161,6 +161,13 @@ Per task, per giornata, per mese — a seconda di chi legge il dato. Su TAS00083
 | per giornata | **935 €** | costo della card commessa, sezione Clienti |
 | per mese | **385 €** (7 mesi con giornate) | maturato mensile |
 
+Nella stessa pagina Commesse e Task quale delle prime due si vede dipende anche dal **filtro
+Anno**, perché con un periodo attivo il front-end ricalcola dalle giornate invece di usare il
+valore del server. Fino al 17/08/2026 "tutti gli anni spuntati" e "nessuno spuntato" — che
+sul menu si leggono entrambi "Tutti" — davano quindi due totali diversi, 4.475 € di scarto,
+e un elenco con una commessa in meno. In locale è stato corretto (selezione totale = nessun
+filtro); in produzione il doppio comportamento resta fino al rilascio.
+
 Sui 26 task a diaria che hanno giornate consuntivate, lo scarto complessivo tra
 lettura per-task e lettura per-giornata è di **7.460 €**.
 
