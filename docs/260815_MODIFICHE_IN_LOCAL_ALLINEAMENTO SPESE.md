@@ -14,5 +14,5 @@ TOT spese finale 1.155,00 € (invece di 1.210,00 €)
 
 - Commessa LACTALIS PORCARI
 Modificata l'indicazione viaggio si/no e il desk di Silvestri e Vaglio per far tornare i conti con l'offerta e la fattura
-TOT spese finale 560,00 € (invece di 1.110,00 €)
+TOT spese finale 370,00 € (invece di 1.110,00 €)
 
