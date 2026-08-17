@@ -86,6 +86,41 @@ class TaskAPI extends BaseAPI {
     }
 
     /**
+     * I regimi `Diaria` e `Corpo` vivono del loro importo: senza, non
+     * addebitano niente.
+     *
+     * Prima che il regime fosse dichiarato, "diaria vuota" *significava* costi
+     * reali, e salvare una diaria senza importo era il modo normale di dire
+     * "a consuntivo". Ora quelle sono due dichiarazioni diverse — non addebito
+     * nulla, contro addebito la spesa effettiva — e lasciar passare l'importo
+     * vuoto rimetterebbe in circolo esattamente l'ambiguità che rendere
+     * esplicito il regime doveva togliere: il task tacerebbe zero dove ci si
+     * aspetta la spesa vera.
+     *
+     * @return string|null messaggio di errore, oppure null se va bene
+     */
+    private function verificaImportoRegimeSpese($data) {
+        $etichette = ['Viaggi' => 'viaggi', 'Vitto_Alloggio' => 'vitto/alloggio'];
+        foreach ($etichette as $categoria => $nome) {
+            $regime = $data['Regime_Spese_' . $categoria] ?? null;
+            if ($regime !== 'Diaria' && $regime !== 'Corpo') {
+                continue;
+            }
+            $importo = $data['Valore_Spese_' . $categoria] ?? null;
+            if ($importo === null || $importo === '' || floatval($importo) <= 0) {
+                $richiesto = ($regime === 'Diaria')
+                    ? 'la diaria giornaliera è obbligatoria'
+                    : "l'importo a corpo è obbligatorio";
+                return "Le spese {$nome} sono impostate su «{$regime}», quindi {$richiesto} "
+                     . "e deve essere maggiore di zero. "
+                     . "Per riaddebitare la spesa effettiva scegli «Costi reali»; "
+                     . "per non addebitare nulla, «Compreso nel valore giornata».";
+            }
+        }
+        return null;
+    }
+
+    /**
      * Override create per impedire la creazione di un secondo task Monitoraggio attivo
      * sulla stessa commessa.
      */
@@ -98,6 +133,12 @@ class TaskAPI extends BaseAPI {
             $input['Stato_Task']  ?? null,
             $input['Valore_gg']   ?? null
         );
+        if ($errore !== null) {
+            sendErrorResponse($errore, 400);
+            return;
+        }
+
+        $errore = $this->verificaImportoRegimeSpese($input);
         if ($errore !== null) {
             sendErrorResponse($errore, 400);
             return;
@@ -141,7 +182,13 @@ class TaskAPI extends BaseAPI {
         // quindi i campi assenti si leggono dal record attuale.
         try {
             $curStmt = $this->db->prepare(
-                "SELECT Tipo, ID_COMMESSA, Stato_Task, Valore_gg FROM ANA_TASK WHERE ID_TASK = :id"
+                // Servono anche i campi di regime: il form manda solo ciò che
+                // cambia, e un aggiornamento parziale che svuota l'importo
+                // scavalcherebbe il controllo se il regime non fosse noto.
+                "SELECT Tipo, ID_COMMESSA, Stato_Task, Valore_gg,
+                        Regime_Spese_Viaggi, Valore_Spese_Viaggi,
+                        Regime_Spese_Vitto_Alloggio, Valore_Spese_Vitto_Alloggio
+                   FROM ANA_TASK WHERE ID_TASK = :id"
             );
             $curStmt->bindValue(':id', $id);
             $curStmt->execute();
@@ -156,6 +203,15 @@ class TaskAPI extends BaseAPI {
             array_key_exists('Stato_Task', $input)  ? $input['Stato_Task']  : ($attuale['Stato_Task']  ?? null),
             array_key_exists('Valore_gg', $input)   ? $input['Valore_gg']   : ($attuale['Valore_gg']   ?? null)
         );
+        if ($errore !== null) {
+            sendErrorResponse($errore, 400);
+            return;
+        }
+
+        // In modifica il form puo' mandare solo una parte dei campi: il regime
+        // va valutato sulla fusione fra quello che arriva e quello gia' salvato,
+        // altrimenti un aggiornamento parziale scavalca il controllo.
+        $errore = $this->verificaImportoRegimeSpese(array_merge($attuale ?: [], $input));
         if ($errore !== null) {
             sendErrorResponse($errore, 400);
             return;

@@ -944,6 +944,13 @@ class CommesseTaskSection extends BaseSection {
             container.style.display = serve ? 'block' : 'none';
             const label = form.querySelector('#' + labelId);
             if (label) label.textContent = regime === 'Corpo' ? 'Importo a corpo (€)' : 'Diaria (€/gg)';
+            // Un importo mancante non e' "a consuntivo": con questi due regimi
+            // vorrebbe dire non addebitare nulla, che si dichiara altrimenti.
+            const input = container.querySelector('input');
+            if (input) {
+                input.required = serve;
+                input.min = serve ? '0.01' : '0';
+            }
         };
         const toggleSpeseViaggi = () => mostraImporto(speseViaggiSelect, speseViaggiContainer, 'labelSpeseViaggi');
         const toggleSpeseVitto = () => mostraImporto(speseVittoSelect, speseVittoContainer, 'labelSpeseVitto');

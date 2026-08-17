@@ -133,5 +133,22 @@ verifica('vecchio: diaria viaggi 55', 110,
 verifica('vecchio: costi reali', 530,
     CalcoloSpese::ricavoAggregato(['Spese_Comprese_Viaggi'=>'No','Spese_Comprese_Vitto_Alloggio'=>'No'], $agg));
 
+// ------------------------------------------- diaria a zero contro costi reali
+// Prima che il regime fosse dichiarato erano la stessa cosa: "diaria vuota"
+// significava a consuntivo. Ora sono due dichiarazioni diverse, e la differenza
+// va tenuta viva da un test invece che da un ricordo. TaskAPI impedisce di
+// salvare il primo stato, ma il calcolo deve rispondere in modo prevedibile
+// anche sui task che ci fossero finiti prima del controllo.
+echo "\nDiaria a zero e costi reali non sono la stessa cosa\n";
+$soloViaggi = ['Regime_Spese_Vitto_Alloggio' => 'Compreso'];
+verifica('diaria con importo 0: non addebita nulla', 0,
+    CalcoloSpese::ricavoAggregato($soloViaggi + ['Regime_Spese_Viaggi'=>'Diaria','Valore_Spese_Viaggi'=>0], $agg));
+verifica('diaria con importo assente: non addebita nulla', 0,
+    CalcoloSpese::ricavoAggregato($soloViaggi + ['Regime_Spese_Viaggi'=>'Diaria'], $agg));
+verifica('costi reali: addebita la spesa effettiva', 350,
+    CalcoloSpese::ricavoAggregato($soloViaggi + ['Regime_Spese_Viaggi'=>'Reali'], $agg));
+verifica('corpo con importo 0: non addebita nulla', 0,
+    CalcoloSpese::ricavoAggregato($soloViaggi + ['Regime_Spese_Viaggi'=>'Corpo','Valore_Spese_Viaggi'=>0], $agg));
+
 printf("\n%d passati, %d falliti\n", $ok, $ko);
 exit($ko > 0 ? 1 : 0);
