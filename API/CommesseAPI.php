@@ -606,8 +606,11 @@ class CommesseAPI extends BaseAPI {
             $stmt->execute();
             $stats['giornate_lavorate'] = floatval($stmt->fetchColumn()) ?: 0;
             
-            // Fatturato totale
-            $sql = "SELECT SUM(Fatturato_TOT) as total FROM FACT_FATTURE WHERE ID_COMMESSA = :id AND TIPO = 'Fattura'";
+            // Fatturato totale, al netto degli storni.
+            // Le note di accredito hanno gia' l'importo negativo, quindi il netto e'
+            // una somma semplice: escluderle per TIPO lascerebbe contate per intero
+            // le fatture che annullano.
+            $sql = "SELECT SUM(Fatturato_TOT) as total FROM FACT_FATTURE WHERE ID_COMMESSA = :id";
             $stmt = $this->db->prepare($sql);
             $stmt->bindValue(':id', $commessaId);
             $stmt->execute();

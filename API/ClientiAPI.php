@@ -275,8 +275,8 @@ class ClientiAPI extends BaseAPI {
             $stmt->execute();
             $stats['commesse_attive'] = $stmt->fetchColumn();
             
-            // Fatturato totale
-            $sql = "SELECT SUM(Fatturato_TOT) as total FROM FACT_FATTURE WHERE ID_CLIENTE = :id AND TIPO = 'Fattura'";
+            // Fatturato totale, al netto degli storni: vedi la nota in CommesseAPI::getCommessaStats()
+            $sql = "SELECT SUM(Fatturato_TOT) as total FROM FACT_FATTURE WHERE ID_CLIENTE = :id";
             $stmt = $this->db->prepare($sql);
             $stmt->bindValue(':id', $clientId);
             $stmt->execute();

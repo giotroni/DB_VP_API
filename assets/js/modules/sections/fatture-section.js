@@ -389,6 +389,47 @@ class FattureSection extends BaseSection {
         const inputCliente = form.querySelector('#ID_CLIENTE');
         const inputStorno = form.querySelector('#ID_FATTURA_STORNATA');
         const rigaStorno = form.querySelector('#rigaStorno');
+        const inputCommessa = form.querySelector('#ID_COMMESSA');
+        const commessaHint = form.querySelector('#commessaHint');
+
+        // Le commesse selezionabili sono quelle del cliente scelto. Con tutte e 41
+        // in tendina e nessun vincolo il campo restava vuoto sul 92% delle fatture
+        // 2026, ed e' proprio il collegamento su cui si legge l'avanzamento.
+        // La commessa gia' salvata resta pero' sempre in elenco anche quando
+        // appartiene a un altro cliente: quattro fatture sono oggi in questa
+        // condizione — la terna 20-21-22/25 e la 36/26 — e filtrarle via farebbe
+        // perdere il collegamento al primo salvataggio, in silenzio.
+        const aggiornaOpzioniCommessa = () => {
+            if (!inputCommessa) return;
+            const scelta = inputCommessa.value || fattura.ID_COMMESSA || '';
+            const cliente = inputCliente?.value || '';
+
+            const candidate = (this.app.commesse || []).filter(c => {
+                if (scelta && String(c.ID_COMMESSA) === String(scelta)) return true;
+                if (!cliente) return false;
+                return String(c.ID_CLIENTE) === String(cliente);
+            });
+
+            const opzioni = this.app.utils.ordinaPerNome(candidate, 'Commessa')
+                .map(c => {
+                    const altroCliente = cliente && String(c.ID_CLIENTE) !== String(cliente);
+                    const etichetta = altroCliente ? `${c.Commessa} — altro cliente` : c.Commessa;
+                    const sel = String(c.ID_COMMESSA) === String(scelta) ? 'selected' : '';
+                    return `<option value="${c.ID_COMMESSA}" ${sel}>${etichetta}</option>`;
+                }).join('');
+
+            inputCommessa.innerHTML = `<option value="">Nessuna commessa</option>${opzioni}`;
+
+            if (commessaHint) {
+                if (!cliente) {
+                    commessaHint.textContent = 'Seleziona prima il cliente.';
+                } else if (!candidate.length) {
+                    commessaHint.textContent = 'Questo cliente non ha commesse.';
+                } else {
+                    commessaHint.textContent = '';
+                }
+            }
+        };
 
         // Le due regole della nota di accredito, lato form: importi negativi e
         // nessuna scadenza. Il backend le riapplica comunque in salvataggio, qui
@@ -508,10 +549,14 @@ class FattureSection extends BaseSection {
         if (inputData) inputData.addEventListener('change', () => { computeScadenza(); if (isNotaAccredito()) aggiornaOpzioniStorno(); });
         if (inputTempi) inputTempi.addEventListener('input', computeScadenza);
         if (inputTipo) inputTipo.addEventListener('change', aggiornaTipo);
-        // Cambiare cliente cambia le fatture stornabili.
-        if (inputCliente) inputCliente.addEventListener('change', () => { if (isNotaAccredito()) aggiornaOpzioniStorno(); });
+        // Cambiare cliente cambia sia le fatture stornabili sia le commesse.
+        if (inputCliente) inputCliente.addEventListener('change', () => {
+            aggiornaOpzioniCommessa();
+            if (isNotaAccredito()) aggiornaOpzioniStorno();
+        });
 
         // Esegui inizializzazione al caricamento del modal
+        aggiornaOpzioniCommessa();
         aggiornaTipo();
 
         // Inizializza i tooltip Bootstrap presenti nel form
@@ -718,9 +763,6 @@ class FattureSection extends BaseSection {
         const clientiOptions = this.app.utils.ordinaPerNome(this.app.clienti, 'Cliente')
             .map(c => `<option value="${c.ID_CLIENTE}" ${fattura.ID_CLIENTE == c.ID_CLIENTE ? 'selected' : ''}>${c.Cliente}</option>`)
             .join('');
-        const commesseOptions = this.app.utils.ordinaPerNome(this.app.commesse, 'Commessa')
-            .map(c => `<option value="${c.ID_COMMESSA}" ${fattura.ID_COMMESSA == c.ID_COMMESSA ? 'selected' : ''}>${c.Commessa}</option>`)
-            .join('');
         const tipi = ['Fattura', 'Nota_Accredito'];
         const tipiOptions = tipi.map(t => `<option value="${t}" ${(fattura.TIPO || 'Fattura') === t ? 'selected' : ''}>${t}</option>`).join('');
 
@@ -738,7 +780,7 @@ class FattureSection extends BaseSection {
                 </div>
                 <div class="row">
                     <div class="col-md-6 mb-3"><label for="ID_CLIENTE" class="form-label">Cliente</label><select class="form-select" id="ID_CLIENTE" name="ID_CLIENTE" required><option value="">Seleziona cliente...</option>${clientiOptions}</select></div>
-                    <div class="col-md-6 mb-3"><label for="ID_COMMESSA" class="form-label">Commessa (opzionale)</label><select class="form-select" id="ID_COMMESSA" name="ID_COMMESSA"><option value="">Nessuna commessa</option>${commesseOptions}</select></div>
+                    <div class="col-md-6 mb-3"><label for="ID_COMMESSA" class="form-label">Commessa <i class="fas fa-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="Solo le commesse del cliente selezionato. Senza commessa la fattura non entra nell'avanzamento del progetto."></i></label><select class="form-select" id="ID_COMMESSA" name="ID_COMMESSA"><option value="">Nessuna commessa</option></select><div class="form-text" id="commessaHint"></div></div>
                 </div>
                 <div class="row">
                     <div class="col-md-6 mb-3"><label for="TIPO" class="form-label">Tipo</label><select class="form-select" id="TIPO" name="TIPO" required>${tipiOptions}</select></div>
