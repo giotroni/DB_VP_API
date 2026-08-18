@@ -1,6 +1,8 @@
 # Progetto: le fatture sulla commessa, e la commessa sull'ordine
 
 *15/08/2026 — documento di progetto, in attesa di approvazione*
+*Rivisto il 18/08/2026: l'offerta confermata diventa un documento commerciale come l'ordine,
+e ogni fattura ne ha uno. Vedi le decisioni 7 e 8 e il § 4.*
 
 Oggi le fatture vivono attaccate al cliente. L'obiettivo è collegarle alla **commessa**,
 collegare la commessa agli **ordini** che la autorizzano, e da lì leggere l'avanzamento:
@@ -50,10 +52,16 @@ Discusse e approvate il 15/08/2026, la sesta il 16/08/2026.
    una volta sola.
 2. **Il cliente torna a essere il soggetto giuridico.**
 3. **Una fattura non copre più di un ordine.** Assunzione esplicita, da far rispettare.
-4. **Il documento di proposta si allega alla commessa.**
+4. **I documenti commerciali si caricano dalla maschera di commessa**, offerte e ordini
+   insieme, con i loro dati e importi. Rivista il 18/08/2026: prima era «il documento di
+   proposta si allega alla commessa», cioè un campo solo.
 5. **La fattura ha una natura**: acconto, avanzamento o saldo.
 6. **Si prevedono solo le attività, non le spese.** Le spese restano un dato di sola
    consuntivazione. Deciso il 16/08/2026, vedi «Le tre letture dell'avanzamento».
+7. **Ogni fattura sta su un documento commerciale** — un ordine, oppure un'offerta confermata
+   quando l'ordine non c'è — e da quel documento eredita la commessa. Deciso il 18/08/2026.
+8. **Si registrano solo le offerte confermate**, ma **tutte**, anche quando l'ordine c'è. La
+   pipeline delle offerte in corso resta fuori dal gestionale. Deciso il 18/08/2026.
 
 ### Osservazioni che cambiano la portata di queste decisioni
 
@@ -89,11 +97,42 @@ Due conseguenze:
   (P.IVA 04052170364) e Italpizza SpA (03095170365), due società vere. Non ogni separazione
   è un errore.
 
-**Sul punto 4**, il campo `Documento_Offerta` c'è già: si tratta di dargli vita. Ha però il
-limite di essere uno solo, mentre i progetti a fasi hanno più proposte — Melzo ne ha due,
-Lindt quattro. Il taglio adottato: **sulla commessa la proposta commerciale che l'ha aperta,
-sull'ordine l'offerta specifica da cui quell'ordine è nato**. Con questa divisione la tabella
-ordini non ha bisogno di distinguere fra ordine e offerta.
+**Sul punto 4**, il campo `Documento_Offerta` esisteva già e si era pensato di dargli vita.
+Non basta: è uno solo, mentre i progetti a fasi hanno più proposte — Melzo ne ha due, Lindt
+quattro. Con l'offerta promossa a riga della tabella dei documenti il limite sparisce, e da
+`ANA_COMMESSE` si eliminano **entrambi** i campi documento, non solo `Documento_Ordine`.
+
+**Sui punti 7 e 8, l'offerta è un documento commerciale come l'ordine.** Le fatture senza
+ordine non sono un'eccezione da tollerare con un campo nullable: sono fatture su offerta. Lo
+dice l'archivio, dove `Arexons`, `EOC`, `Maxion Wheels`, `Vimar` ed `Emu` contengono solo
+offerte, e ogni cartella d'ordine ha accanto l'offerta da cui l'ordine è nato. Il collegamento
+fattura → commessa smette così di essere un dato da compilare a mano — vuoto oggi sul 92%
+delle fatture 2026 — e diventa **derivato dal documento**.
+
+Registrando solo le offerte confermate (punto 8), non serve alcuno stato per le offerte perse
+o superate: l'offerta `250708` di Castelli-Corte, rifiutata e rifatta a settembre, non si
+carica affatto. Entra solo la `250923`, che ha generato i due ordini.
+
+**L'offerta si carica comunque, anche quando l'ordine c'è**, e per due scopi diversi:
+
+1. **Quando l'ordine manca, l'offerta fa fede per la fatturazione.** È il titolo su cui si
+   emette la fattura, e il documento a cui si torna per sapere quanto resta da fatturare.
+2. **Quando l'ordine c'è, l'offerta spiega il contenuto.** L'ordine del cliente porta un
+   totale netto e delle posizioni contabili; l'offerta porta il dettaglio dell'attività e la
+   suddivisione fra lavori, spese ed eventuali voci a corpo. È l'unico documento che dice
+   *cosa* è stato venduto, e serve per capire una fattura o un residuo a distanza di mesi.
+
+C'è poi la ragione che tiene insieme le due: **l'attività parte alla conferma dell'offerta, e
+l'ordine, se arriva, arriva dopo.** Non è quindi che l'offerta supplisce all'ordine mancante
+in qualche caso raro — è il documento con cui il lavoro comincia, quasi sempre. L'ordine è una
+formalizzazione successiva, e talvolta non arriva affatto.
+
+Da questo secondo scopo **non discende un campo**, almeno per ora. La suddivisione
+attività/spese dell'offerta resta nel PDF e si legge aprendolo: portarla a database
+significherebbe registrare una previsione di spesa, che la decisione 6 ha scartato con dei
+numeri davanti. Se un giorno servisse confrontare le spese offerte con quelle consuntivate,
+si aggiungono allora `Importo_Attività` e `Importo_Spese` sul documento — ma con quel caso
+sul tavolo, non per completezza.
 
 **Sul punto 5**, un acconto è fatturato ma non corrisponde a lavoro svolto. Nella lettura
 economica va contato — è denaro fatturato sull'ordine — ma non va confuso con l'avanzamento
@@ -115,15 +154,27 @@ Quindi **una commessa ha N ordini**, e un ordine appartiene a una commessa sola.
 può essere un campo su `ANA_COMMESSE` — ed è probabilmente il motivo per cui i due campi
 esistenti non sono mai stati compilati: erano sottodimensionati per il problema reale.
 
+C'è un secondo livello di cardinalità, che si vede solo guardando le offerte: **un'offerta può
+generare più ordini**. L'offerta `250923 Reggio Corte Audit` copre `4512064618` (14.416,50) e
+`4512092514` (11.486,00), 25.902,50 in totale. Non è quindi sufficiente una riga sola che si
+trasforma da offerta in ordine quando l'ordine arriva: serve che l'ordine possa puntare
+all'offerta da cui discende.
+
 ### Le modifiche
 
-**Tabella nuova `ANA_ORDINI`**
+**Tabella nuova `ANA_DOCUMENTI_COMMERCIALI`**
+
+Una tabella sola per offerte e ordini, non due: la fattura deve poter puntare all'una o
+all'altro con un campo solo, e le due entità condividono importo, intestatario, documento e
+stato. Le distingue `Tipo`, e le lega `ID_PADRE`.
 
 | Campo | Note |
 |---|---|
-| `ID_ORDINE` | `ORD{yy}###`, sullo schema già usato per le fatture |
-| `ID_COMMESSA` | obbligatorio |
-| `Numero`, `Data` | il riferimento del cliente |
+| `ID_DOCUMENTO` | `DOC{yy}###`, sullo schema già usato per le fatture |
+| `Tipo` | `Offerta` oppure `Ordine` |
+| `ID_PADRE` | sull'ordine, l'offerta da cui nasce. Nullable: non tutti gli ordini hanno un'offerta a monte, e nessuna offerta ha un padre |
+| `ID_COMMESSA` | obbligatorio, anche sulle offerte: si registrano solo quelle confermate |
+| `Numero`, `Data` | il riferimento del cliente per l'ordine, il nostro protocollo per l'offerta |
 | `Tipo_Importo` | `Chiuso` oppure `A_giornate`. Vedi sotto |
 | `Importo` | **il dato che oggi non esiste da nessuna parte**. Nullable |
 | `Giornate_Previste` | solo sugli ordini a giornate che dichiarano un tetto in giornate |
@@ -171,15 +222,20 @@ allineate. Se in futuro servisse verificare che il fee praticato coincide con qu
 concordato, è un controllo da aggiungere, non un campo.
 
 **Su `ANA_COMMESSE`:** `Importo_Previsto DECIMAL(12,2) NULL`, che per le commesse a giornate
-resta vuoto — coerentemente col fatto che per ora non viene usato. `Documento_Offerta` resta e
-viene finalmente usato per la proposta; `Documento_Ordine` **si elimina**, sostituito dalla
-tabella ordini.
+resta vuoto — coerentemente col fatto che per ora non viene usato. `Documento_Offerta` e
+`Documento_Ordine` **si eliminano entrambi**, sostituiti dalla tabella dei documenti.
 
-**Su `FACT_FATTURE`:** `ID_ORDINE` nullable, `Natura ENUM('Acconto','Avanzamento','Saldo')`.
-`ID_COMMESSA` diventa obbligatorio, ma **solo al termine della fase 2**.
+**Su `FACT_FATTURE`:** `ID_DOCUMENTO`, `Natura ENUM('Acconto','Avanzamento','Saldo')`.
+`ID_DOCUMENTO` e `ID_COMMESSA` diventano obbligatori, ma **solo al termine della fase 2**,
+quando il backfill è completo.
 
-L'ordine resta nullable perché esistono fatture legittime senza: la 38/26 Emu è su vostra
-offerta, la 40/26 Lucchini non cita alcun riferimento.
+`ID_COMMESSA` sulla fattura diventa a quel punto un dato **derivato** dal documento. Resta
+però una colonna vera, compilata automaticamente e non modificabile a mano: toglierla
+vorrebbe dire riscrivere ogni query che oggi la usa, e il rischio di divergenza si copre con
+un controllo di coerenza invece che con una join in più ovunque.
+
+Le note di credito ereditano il documento della fattura che stornano, coerentemente con la
+regola già scritta in [REGOLE-FATTURAZIONE.md](REGOLE-FATTURAZIONE.md).
 
 **Su `ANA_TASK`:** nulla. `gg_previste` c'è già ed è l'unica previsione che serve — vedi
 «Le tre letture dell'avanzamento».
@@ -270,12 +326,75 @@ eterogeneità.
 Se un domani arrivasse una commessa con trasferte pesanti — estero, lunghe permanenze — il
 campo si aggiunge allora, con un caso vero davanti invece che per completezza.
 
-### Commesse senza ordine
+### Solo le commesse Cliente hanno documenti
 
-Non richiede nulla di nuovo: basta che `ANA_ORDINI` possa essere vuota per quella commessa.
-Serve renderlo visibile — uno stato derivato "in attesa d'ordine" e un avviso quando si
-fattura su una commessa che non ne ha. Casi già presenti in archivio: Arexons, EOC, Maxion
-Wheels, Vimar e Sammontana hanno solo offerte.
+`ANA_COMMESSE.Tipo_Commessa` è già `enum('Cliente','Interna')`, e
+[CommesseAPI.php](../API/CommesseAPI.php) impone già che una commessa interna non abbia un
+cliente. Offerte e ordini seguono la stessa regola: **si caricano solo sulle commesse
+Cliente**. Una commessa interna non ha una controparte che ordina, quindi non ha un titolo da
+cui fatturare né un contenuto venduto da documentare.
+
+Le commesse interne oggi sono due — `COM0016` *Attività di Promozione VP* e `COM2025001`
+*Sviluppo* — con 6 task e **zero fatture**. Il vincolo è quindi già rispettato dai dati: si
+scrive senza bonifiche, e `ID_DOCUMENTO` obbligatorio sulla fattura non entra in conflitto.
+
+Conseguenze concrete:
+
+- la scheda documenti **non compare** sulla maschera di una commessa interna, come già non vi
+  compare il cliente;
+- creare un documento su una commessa interna è un errore di validazione, sul modello di
+  quello che già esiste per il cliente;
+- l'avanzamento di una commessa interna ha **solo la lettura operativa** (giornate
+  consuntivate su `gg_previste`) e quella delle spese. L'economica non si mostra affatto:
+  senza ordinato e senza fatturato non è vuota, è priva di senso.
+
+### Quando l'ordine arriva dopo
+
+Se il lavoro parte sull'offerta e l'ordine arriva mesi più tardi, quando arriva possono essere
+già state emesse delle fatture, agganciate all'offerta perché all'epoca era l'unico titolo.
+Va deciso cosa succede a quelle fatture.
+
+**La scelta adottata: l'arrivo dell'ordine è un'azione esplicita**, non la semplice creazione
+di una riga nuova. Si apre l'ordine dall'offerta, e le fatture già emesse su quell'offerta si
+spostano sull'ordine insieme a lei.
+
+L'alternativa era lasciare le fatture dove sono e leggere fatturato e residuo sulla
+*famiglia* offerta + ordini. Conserva meglio la storia, ma costringe ogni lettura a
+ricomporre la famiglia, e soprattutto rende impossibile rispondere a «quanto resta su
+`4512155215`» guardando l'ordine: il residuo di un ordine deve essere leggibile sull'ordine.
+
+Con lo spostamento, invece, la regola dell'ordinato qui sotto resta vera senza eccezioni, e
+l'assunzione una-fattura-un-documento non si complica.
+
+**Serve anche sapere se l'ordine è atteso o non arriverà mai.** Sono due situazioni diverse:
+un'offerta confermata in attesa d'ordine è un sollecito da fare, un'offerta su cui il cliente
+non emette ordini è la normalità (Emu, Sammontana, EOC). Un flag `Ordine_Atteso` sull'offerta
+distingue i due casi e alimenta l'elenco delle offerte da sollecitare. Senza, l'unico modo di
+saperlo è ricordarselo.
+
+### Ordinato e confermato: la regola contro il doppio conteggio
+
+Se offerte e ordini stanno nella stessa tabella, sommarli tutti conta due volte lo stesso
+impegno: l'offerta `260113 Certosa` e l'ordine `4512155215` che ne discende sono lo stesso
+lavoro. La regola è quindi esplicita:
+
+> **ordinato = ordini + offerte che non hanno generato ordini.**
+
+Un'offerta con `ID_PADRE` che punta a lei da almeno un ordine esce dal totale, sostituita dai
+suoi ordini. È anche la ragione per cui l'importo dell'offerta va conservato: quando i due
+non coincidono — e su Castelli-Corte coincidono al centesimo, 25.902,50 — lo scostamento è
+un'informazione, non un errore da correggere.
+
+Il portafoglio si legge su **due numeri distinti**, entrambi confermati:
+
+| | Cosa contiene |
+|---|---|
+| **Ordinato** | ordine formale del cliente ricevuto |
+| **Confermato senza ordine** | offerta accettata su cui l'ordine non è previsto o non è ancora arrivato |
+
+Le commesse che stanno solo nella seconda colonna esistono già in archivio: Arexons, EOC,
+Maxion Wheels, Vimar, Sammontana ed Emu hanno la sola offerta. Non sono un caso degenere da
+segnalare come mancanza — sono clienti che lavorano così.
 
 ## 5. Le fasi
 
@@ -313,14 +432,19 @@ Rimappatura secondo l'**appendice B**, compilazione di partita IVA e codice fisc
 clienti attivi, eliminazione di CLI0010 e CLI0012. Va **dopo** la fase 2, quando la
 granularità per stabilimento è già salva sul nome della commessa e non si perde nulla.
 
-### Fase 4 — gli ordini · *due o tre giorni*
+### Fase 4 — i documenti commerciali · *tre o quattro giorni*
 
-`OrdiniAPI`, upload dei documenti in `DB/uploads/ordini` sul modello già collaudato per le
-foto delle consuntivazioni, scheda ordini dentro la commessa, caricamento dei 21 ordini che
-hanno il documento più i 4 non ancora fatturati.
+`DocumentiCommercialiAPI`, upload in `DB/uploads/documenti` sul modello già collaudato per le
+foto delle consuntivazioni, e la **scheda documenti dentro la maschera di commessa**: è da lì
+che si caricano offerte e ordini con i loro dati e importi, con l'ordine agganciato alla sua
+offerta.
 
-Attenzione: **14 documenti sono scansioni senza testo estraibile**, quindi numero, data e
-importo vanno inseriti a mano.
+Il caricamento cresce rispetto alla stima iniziale: ai 21 ordini con documento e ai 4 non
+ancora fatturati si aggiungono le **offerte confermate**, circa una ventina, comprese quelle
+delle commesse che un ordine non ce l'hanno.
+
+Attenzione: **14 documenti d'ordine sono scansioni senza testo estraibile**, quindi numero,
+data e importo vanno inseriti a mano.
 
 ### Fase 5 — avanzamento, incassato e coerenza degli stati · *tre giorni*
 
@@ -342,7 +466,7 @@ Gli altri, in ordine di peso:
 - **`COM2025018` ha data di apertura 01/11/2026**, nel futuro, e le fatture che le
   apparterrebbero sono di aprile e maggio 2026. Un controllo di coerenza fra data ordine,
   apertura commessa e data fattura ne farà emergere altri.
-- L'assunzione una-fattura-un-ordine regge su tutti gli 89 documenti, **ma nulla la impone**:
+- L'assunzione una-fattura-un-documento regge su tutti gli 89 documenti, **ma nulla la impone**:
   senza un controllo si perde in silenzio e si scopre due anni dopo. Il caso più vicino al
   limite è la 32/26, «Castenedolo / Collecchio», che sta ancora dentro una commessa sola.
 - La fase 4 tocca `commesse-task-section.js`, che con 1.428 righe è il file più grande
@@ -359,7 +483,11 @@ Gli altri, in ordine di peso:
    progetto solo.
 3. Se le commesse chiuse vanno bonificate come le altre o lasciate com'erano.
 4. Se i clienti eliminati (CLI0010, CLI0012) vanno cancellati o conservati come storico.
-5. Quali ordini sono **a giornate** e quali **chiusi**. Per i 21 documenti in archivio si
+5. Per la **40/26 Lucchini** e la **32/25 Sammontana** va individuata l'offerta di
+   riferimento: sono le due righe dell'appendice A senza alcun riferimento documentale, e
+   finché restano scoperte `ID_DOCUMENTO` non può diventare obbligatorio. Per la 38/26 Emu
+   l'offerta c'è (`Offerta 260724 EMU Quadro.pdf`).
+6. Quali ordini sono **a giornate** e quali **chiusi**. Per i 21 documenti in archivio si
    legge dal PDF; per gli 8 di cui manca il documento — Calvi, i quattro Lavazza, i due
    Lindt del 2025 e IWT — serve una risposta. Calvi `7130017952`, con nove fatture a
    giornate su due anni, è quasi certamente aperto.
