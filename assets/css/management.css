@@ -388,3 +388,15 @@ body {
     visibility: visible;
   }
 }
+/* Il badge del fatturato apre l'elenco delle fatture: senza un segnale
+   visivo resterebbe indistinguibile dagli altri badge, che non sono
+   cliccabili. */
+.commessa-badge-cliccabile {
+    cursor: pointer;
+    transition: filter 0.15s ease-in-out;
+}
+
+.commessa-badge-cliccabile:hover {
+    filter: brightness(1.25);
+    text-decoration: underline;
+}

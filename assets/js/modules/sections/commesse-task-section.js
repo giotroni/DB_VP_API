@@ -96,6 +96,7 @@ class CommesseTaskSection extends BaseSection {
             case 'view-task': this.showTaskDetailsModal(id); break;
             case 'toggle-commessa': this.toggleCommessa(id); break;
             case 'view-giornate': this.showGiornateModal(id); break;
+            case 'view-fatture-commessa': this.showFattureCommessaModal(id); break;
             case 'filter': this.filterData(); break;
             case 'toggle-all-commesse': this.toggleAllCommesse(); break;
             case 'toggle-all-filter':
@@ -208,20 +209,7 @@ class CommesseTaskSection extends BaseSection {
         
         const isUser = this.app.currentUser?.ruolo === 'User';
 
-        // Fatturato della commessa. Somma semplice: le note di accredito sono
-        // gia' negative, quindi il totale e' gia' al netto degli storni.
-        // Si calcola qui e non si prende da statistics.fatturato_totale perche'
-        // quello e' il totale di sempre, mentre gli altri badge seguono il
-        // filtro anno/mese: affiancarli metterebbe in fila due grandezze diverse.
-        const fattureCommessa = (this.app.fatture || []).filter(f => {
-            if (f.ID_COMMESSA !== commessa.ID_COMMESSA) return false;
-            if (!this.activeDateFilter) return true;
-            const d = new Date(f.Data);
-            const { years, months } = this.activeDateFilter;
-            const yearMatch = !years?.length || years.includes(d.getFullYear());
-            const monthMatch = !months?.length || months.includes(d.getMonth() + 1);
-            return yearMatch && monthMatch;
-        });
+        const fattureCommessa = this.getFattureCommessa(commessa.ID_COMMESSA);
         const fatturato = fattureCommessa.reduce((sum, f) => sum + (parseFloat(f.Fatturato_TOT) || 0), 0);
         const nStorni = fattureCommessa.filter(f => f.TIPO === 'Nota_Accredito').length;
         const nFatture = fattureCommessa.length - nStorni;
@@ -232,7 +220,8 @@ class CommesseTaskSection extends BaseSection {
         const titoloFatturato = [
             'Fatturato' + (this.activeDateFilter ? ' nel periodo filtrato' : ''),
             `${nFatture} ${nFatture === 1 ? 'fattura' : 'fatture'}`,
-            nStorni ? `${nStorni} ${nStorni === 1 ? 'nota di accredito' : 'note di accredito'} gia' scalate` : null,
+            nStorni ? `${nStorni} ${nStorni === 1 ? 'nota di accredito già scalata' : 'note di accredito già scalate'}` : null,
+            fattureCommessa.length ? "Clicca per l'elenco" : null,
         ].filter(Boolean).join(' · ');
 
         return `
@@ -243,7 +232,7 @@ class CommesseTaskSection extends BaseSection {
                         <div class="d-flex align-items-center gap-2">
                             ${!isUser ? `
                             <span class="badge bg-dark" title="Valore TOTALE">${this.app.utils.formatCurrency(valoreTotale)}</span>
-                            ${mostraFatturato ? `<span class="badge bg-primary" title="${titoloFatturato}"><i class="fas fa-file-invoice me-1"></i>${this.app.utils.formatCurrency(fatturato)}</span>` : ''}
+                            ${mostraFatturato ? `<span class="badge bg-primary${fattureCommessa.length ? ' commessa-badge-cliccabile' : ''}" title="${titoloFatturato}" ${fattureCommessa.length ? `data-action="view-fatture-commessa" data-id="${commessa.ID_COMMESSA}"` : ''}><i class="fas fa-file-invoice me-1"></i>${this.app.utils.formatCurrency(fatturato)}</span>` : ''}
                             <span class="badge bg-warning text-dark" title="Valore Lavori">${this.app.utils.formatCurrency(valoreComplessivoLavori)}</span>
                             <span class="badge bg-danger" title="Valore Spese">${this.app.utils.formatCurrency(valoreComplessivoSpese)}</span>
                             <span class="badge bg-secondary text-dark" title="Costo totale attività">${this.app.utils.formatCurrency(costo_totale_attivita)}</span>
@@ -755,6 +744,98 @@ class CommesseTaskSection extends BaseSection {
             const finalHtml = `<div class="container-fluid">${modalBody}</div>`;
             const modalActions = [{ html: '<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Chiudi</button>' }];
             this.ui.createModal(`taskDetailsModal_${taskId}`, modalTitle, finalHtml, modalActions, { size: 'modal-lg' });
+    }
+
+    // Le fatture di una commessa, nel periodo eventualmente filtrato. Sta qui e
+    // non nei due punti che la usano — il badge e la modale — perche' un badge
+    // e un elenco che non contengono le stesse fatture sono peggio di nessuno
+    // dei due.
+    getFattureCommessa(commessaId) {
+        return (this.app.fatture || []).filter(f => {
+            if (f.ID_COMMESSA !== commessaId) return false;
+            if (!this.activeDateFilter) return true;
+            const d = new Date(f.Data);
+            const { years, months } = this.activeDateFilter;
+            const yearMatch = !years?.length || years.includes(d.getFullYear());
+            const monthMatch = !months?.length || months.includes(d.getMonth() + 1);
+            return yearMatch && monthMatch;
+        });
+    }
+
+    showFattureCommessaModal(commessaId) {
+        const commessa = this.commesseConTask.find(c => c.ID_COMMESSA === commessaId);
+        const fatture = this.getFattureCommessa(commessaId)
+            // Dalla piu' recente, come nell'elenco delle giornate.
+            .slice()
+            .sort((a, b) => (new Date(b.Data).getTime() || 0) - (new Date(a.Data).getTime() || 0));
+
+        // Stato e colore li decide la sezione Fatture: e' l'unico posto dove le
+        // regole di aging e di storno sono scritte, e riscriverle qui vorrebbe
+        // dire vederle divergere alla prima modifica.
+        const sezioneFatture = this.app.sections?.fatture;
+        const statoTesto = (f) => sezioneFatture?.getStatoText
+            ? sezioneFatture.getStatoText(f.stato_pagamento, f.giorni_scadenza)
+            : (f.Data_Pagamento ? 'Pagata' : 'Non Pagata');
+        const statoClasse = (f) => sezioneFatture?.getStatoClass
+            ? sezioneFatture.getStatoClass(f.stato_pagamento)
+            : 'bg-secondary';
+
+        const totale = fatture.reduce((sum, f) => sum + (parseFloat(f.Fatturato_TOT) || 0), 0);
+        const incassato = fatture.reduce((sum, f) => sum + (parseFloat(f.Valore_Pagato) || 0), 0);
+
+        const modalTitle = `<i class="fas fa-file-invoice me-2"></i>Fatture - ${commessa?.Commessa || commessaId}`;
+
+        const periodo = this.activeDateFilter
+            ? '<p class="text-muted small mb-3"><i class="fas fa-filter me-1"></i>Solo le fatture del periodo selezionato in alto.</p>'
+            : '';
+
+        const modalBody = fatture.length === 0
+            ? '<p class="text-muted">Nessuna fattura collegata a questa commessa nel periodo selezionato.</p>'
+            : `${periodo}
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover align-middle">
+                        <thead>
+                            <tr>
+                                <th>Numero</th>
+                                <th>Data</th>
+                                <th>Rif. ordine</th>
+                                <th>Scadenza</th>
+                                <th>Stato</th>
+                                <th class="text-end">Importo</th>
+                                <th class="text-end">Incassato</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${fatture.map(f => {
+                                const importo = parseFloat(f.Fatturato_TOT) || 0;
+                                const isNota = f.TIPO === 'Nota_Accredito';
+                                return `
+                                <tr>
+                                    <td>
+                                        <strong>${this.app.utils.escapeHtml(f.NR || '')}</strong>
+                                        ${isNota ? ' <span class="badge bg-dark text-light">nota di accredito</span>' : ''}
+                                    </td>
+                                    <td>${this.app.utils.formatDate(f.Data)}</td>
+                                    <td>${f.Riferimento_Ordine ? this.app.utils.escapeHtml(f.Riferimento_Ordine) : '<span class="text-muted">—</span>'}</td>
+                                    <td>${f.Scadenza_Pagamento ? this.app.utils.formatDate(f.Scadenza_Pagamento) : '<span class="text-muted">—</span>'}</td>
+                                    <td><span class="badge ${statoClasse(f)}">${statoTesto(f)}</span></td>
+                                    <td class="text-end ${importo < 0 ? 'text-danger' : ''}">${this.app.utils.formatCurrency(importo)}</td>
+                                    <td class="text-end">${this.app.utils.formatCurrency(parseFloat(f.Valore_Pagato) || 0)}</td>
+                                </tr>`;
+                            }).join('')}
+                        </tbody>
+                        <tfoot>
+                            <tr class="table-active">
+                                <td colspan="5"><strong>Totale, al netto degli storni</strong></td>
+                                <td class="text-end"><strong>${this.app.utils.formatCurrency(totale)}</strong></td>
+                                <td class="text-end"><strong>${this.app.utils.formatCurrency(incassato)}</strong></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>`;
+
+        const modalActions = [{ html: '<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Chiudi</button>' }];
+        this.ui.createModal(`fattureCommessaModal_${commessaId}`, modalTitle, modalBody, modalActions, { size: 'modal-xl' });
     }
 
     showGiornateModal(taskId) {
