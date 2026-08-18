@@ -243,9 +243,9 @@ class CommesseTaskSection extends BaseSection {
                         <div class="d-flex align-items-center gap-2">
                             ${!isUser ? `
                             <span class="badge bg-dark" title="Valore TOTALE">${this.app.utils.formatCurrency(valoreTotale)}</span>
+                            ${mostraFatturato ? `<span class="badge bg-primary" title="${titoloFatturato}"><i class="fas fa-file-invoice me-1"></i>${this.app.utils.formatCurrency(fatturato)}</span>` : ''}
                             <span class="badge bg-warning text-dark" title="Valore Lavori">${this.app.utils.formatCurrency(valoreComplessivoLavori)}</span>
                             <span class="badge bg-danger" title="Valore Spese">${this.app.utils.formatCurrency(valoreComplessivoSpese)}</span>
-                            ${mostraFatturato ? `<span class="badge bg-primary" title="${titoloFatturato}"><i class="fas fa-file-invoice me-1"></i>${this.app.utils.formatCurrency(fatturato)}</span>` : ''}
                             <span class="badge bg-secondary text-dark" title="Costo totale attività">${this.app.utils.formatCurrency(costo_totale_attivita)}</span>
                             <span class="badge ${marginalitaPercentuale >= 0 ? 'bg-info text-dark' : 'bg-danger text-white'}" title="Marginalità Commessa: ${this.app.utils.formatCurrency(margineAssoluto)}">${marginalitaPercentuale.toFixed(1)}%</span>
                             ` : ''}
