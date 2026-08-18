@@ -375,6 +375,10 @@ class FattureSection extends BaseSection {
         const form = document.getElementById(formId);
         if (!form) return;
         const fatturaId = form.id.includes('editFatturaModal') ? form.id.split('_')[1] : null;
+        // Il record in modifica: serve a chi qui sotto deve ripescare un valore
+        // gia' salvato (commessa, fattura stornata). Su una fattura nuova non
+        // esiste, e l'oggetto vuoto evita di doverlo controllare ogni volta.
+        const fattura = (this.app.fatture || []).find(f => f.ID_FATTURA === fatturaId) || {};
         form.addEventListener('submit', (e) => this.handleFatturaFormSubmit(e, fatturaId));
 
         // Aggiungi listener per ricalcolare Totale e Scadenza quando si modificano
