@@ -208,6 +208,33 @@ class CommesseTaskSection extends BaseSection {
         
         const isUser = this.app.currentUser?.ruolo === 'User';
 
+        // Fatturato della commessa. Somma semplice: le note di accredito sono
+        // gia' negative, quindi il totale e' gia' al netto degli storni.
+        // Si calcola qui e non si prende da statistics.fatturato_totale perche'
+        // quello e' il totale di sempre, mentre gli altri badge seguono il
+        // filtro anno/mese: affiancarli metterebbe in fila due grandezze diverse.
+        const fattureCommessa = (this.app.fatture || []).filter(f => {
+            if (f.ID_COMMESSA !== commessa.ID_COMMESSA) return false;
+            if (!this.activeDateFilter) return true;
+            const d = new Date(f.Data);
+            const { years, months } = this.activeDateFilter;
+            const yearMatch = !years?.length || years.includes(d.getFullYear());
+            const monthMatch = !months?.length || months.includes(d.getMonth() + 1);
+            return yearMatch && monthMatch;
+        });
+        const fatturato = fattureCommessa.reduce((sum, f) => sum + (parseFloat(f.Fatturato_TOT) || 0), 0);
+        const nStorni = fattureCommessa.filter(f => f.TIPO === 'Nota_Accredito').length;
+        const nFatture = fattureCommessa.length - nStorni;
+
+        // Il fatturato ha senso solo dove si fattura: su una commessa interna
+        // non c'e' un cliente che ordina, e un badge a zero sarebbe rumore.
+        const mostraFatturato = commessa.Tipo_Commessa !== 'Interna';
+        const titoloFatturato = [
+            'Fatturato' + (this.activeDateFilter ? ' nel periodo filtrato' : ''),
+            `${nFatture} ${nFatture === 1 ? 'fattura' : 'fatture'}`,
+            nStorni ? `${nStorni} ${nStorni === 1 ? 'nota di accredito' : 'note di accredito'} gia' scalate` : null,
+        ].filter(Boolean).join(' · ');
+
         return `
             <div class="management-card mb-4">
                 <div class="management-card-header" data-action="toggle-commessa" data-id="${commessa.ID_COMMESSA}">
@@ -218,6 +245,7 @@ class CommesseTaskSection extends BaseSection {
                             <span class="badge bg-dark" title="Valore TOTALE">${this.app.utils.formatCurrency(valoreTotale)}</span>
                             <span class="badge bg-warning text-dark" title="Valore Lavori">${this.app.utils.formatCurrency(valoreComplessivoLavori)}</span>
                             <span class="badge bg-danger" title="Valore Spese">${this.app.utils.formatCurrency(valoreComplessivoSpese)}</span>
+                            ${mostraFatturato ? `<span class="badge bg-primary" title="${titoloFatturato}"><i class="fas fa-file-invoice me-1"></i>${this.app.utils.formatCurrency(fatturato)}</span>` : ''}
                             <span class="badge bg-secondary text-dark" title="Costo totale attività">${this.app.utils.formatCurrency(costo_totale_attivita)}</span>
                             <span class="badge ${marginalitaPercentuale >= 0 ? 'bg-info text-dark' : 'bg-danger text-white'}" title="Marginalità Commessa: ${this.app.utils.formatCurrency(margineAssoluto)}">${marginalitaPercentuale.toFixed(1)}%</span>
                             ` : ''}
