@@ -10,7 +10,18 @@ identica sequenza**, così quello che approvano è quello che va in produzione.
 | File | Cosa fa |
 |---|---|
 | `01-catena.sql` | le undici modifiche, in ordine, in un file solo |
-| `02-verifica.sql` | solo interrogazioni: stampa i numeri da confrontare qui sotto |
+| `02-verifica.sql` | i controlli sui **dati** |
+| `03-verifica-struttura.sql` | i controlli sulla **struttura** |
+
+I due file di verifica sono separati per una ragione precisa, non per ordine:
+phpMyAdmin, quando incontra una query su `INFORMATION_SCHEMA`, **sposta il
+database corrente** a `information_schema` per tutte le istruzioni successive.
+Mescolarli fa fallire le query che vengono dopo, e — molto peggio — fa
+rispondere «tutto a posto» a quelle che usano `DATABASE()`, perché la valutano
+sul database sbagliato.
+
+Per lo stesso motivo `03` non usa `DATABASE()`: il nome del database si scrive
+a mano nella prima riga.
 
 Il dump **non** sta qui: è `DB/Backup/260815_vaglioty_DB_VP.sql`, ed è
 l'esportazione della produzione fatta il 15/08.
@@ -41,10 +52,23 @@ Non deve comparire nessun errore. Se ne compare uno, **fermati e mandamelo**:
 la catena è stata provata e un errore qui significa che la produzione è diversa
 da come la conosciamo.
 
-### 4. Esegui `02-verifica.sql` e confronta
+### 4. Esegui le due verifiche e confronta
 
-Da `SQL`, non da `Importa`, così vedi i risultati. Confronta con la tabella
-[Numeri attesi](#numeri-attesi) qui sotto. Devono tornare **tutti**.
+Da `SQL`, non da `Importa`, così vedi i risultati.
+
+Prima `02-verifica.sql`, che non va toccato. Poi `03-verifica-struttura.sql`,
+**dopo aver scritto il nome del database nella prima riga**:
+
+```sql
+SET @schema := 'vaglioty_DB_VP_TEST';
+```
+
+Nel `03` guarda per prima cosa la riga `tabelle`. Se dice **0**, il nome è
+scritto male e tutti i controlli sotto rispondono sul vuoto — cioè rispondono
+bene per il motivo sbagliato. Deve dire **11**.
+
+Confronta il resto con [Numeri attesi](#numeri-attesi) qui sotto. Devono
+tornare **tutti**.
 
 ### 5. Punta il sito di collaudo al database di collaudo
 
@@ -92,7 +116,8 @@ Quando l'amministrazione dà l'ok:
    stata toccata a mano dal 15/08, il valore nuovo tornerebbe indietro in
    silenzio.
 4. **Esegui `01-catena.sql`** su `vaglioty_DB_VP`.
-5. **Esegui `02-verifica.sql`** e confronta con gli stessi numeri attesi.
+5. **Esegui le due verifiche** e confronta con gli stessi numeri attesi. Nel
+   `03` ricordati di cambiare il nome del database in `'vaglioty_DB_VP'`.
 6. **Aggiorna il software** in `gestione_VP` dal branch `main`.
 7. **Riapri gli inserimenti.**
 
@@ -154,17 +179,27 @@ doppione `03/26` datato 31/12/2025.
 | Diaria | 50 | | A corpo | 1 |
 | Reali | 30 | | Reali | 30 |
 
-### Struttura
+### Utenti di prova — `02-verifica.sql`
 
 | Controllo | Atteso |
 |---|---|
-| Colonne nuove trovate | **14** |
-| `Documento_Offerta` e `Documento_Ordine` su ANA_COMMESSE | eliminati → `si` |
 | Utenti di prova | **0** |
 
-L'ultima riga è un controllo di sicurezza: l'ambiente locale ha un utente
-`testadmin` con ruolo Admin e password nota. Se comparisse su un server,
-qualcosa è stato copiato che non doveva.
+È un controllo di sicurezza: l'ambiente locale ha un utente `testadmin` con
+ruolo Admin e password nota. Se comparisse su un server, qualcosa è stato
+copiato che non doveva.
+
+### Struttura — `03-verifica-struttura.sql`
+
+| Controllo | Atteso |
+|---|---|
+| Tabelle | **11** — se è 0, il nome del database è sbagliato |
+| Colonne nuove trovate | **14** |
+| Campi documento rimasti su ANA_COMMESSE | **0** |
+| Vincoli su ANA_DOCUMENTI_COMMERCIALI | **4**: tre chiavi esterne e un `CHECK` |
+
+Le 11 tabelle sono le 9 del dump più `FACT_FATTURE_COLLABORATORI` e
+`ANA_DOCUMENTI_COMMERCIALI`.
 
 ---
 

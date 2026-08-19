@@ -1,8 +1,16 @@
--- Verifica del rilascio. Da eseguire DOPO 01-catena.sql, sullo stesso database.
+-- Verifica del rilascio, parte 1: i DATI.
+-- Da eseguire DOPO 01-catena.sql, sullo stesso database, dalla scheda SQL.
 --
 -- Non modifica nulla: sono solo interrogazioni. Ogni risultato va confrontato
--- con la colonna "atteso" di DB/rilascio/README.md. Se un numero non torna,
+-- con i numeri attesi di DB/rilascio/README.md. Se un numero non torna,
 -- fermarsi: e' piu' facile capirlo adesso che fra sei mesi.
+--
+-- I controlli sulla STRUTTURA stanno in 03-verifica-struttura.sql, in un file
+-- separato e non per pignoleria: phpMyAdmin, quando incontra una query su
+-- INFORMATION_SCHEMA, sposta il database corrente a 'information_schema' per
+-- tutte le istruzioni successive. Mescolare le due cose fa fallire le query
+-- che vengono dopo, e - molto peggio - fa rispondere 'tutto a posto' a quelle
+-- che usano DATABASE(), perche' lo valutano sul database sbagliato.
 
 -- =====================================================================
 -- 1. Le righe, tabella per tabella.
@@ -82,38 +90,7 @@ SELECT Regime_Spese_Vitto_Alloggio  AS regime_vitto_alloggio,
   FROM ANA_TASK GROUP BY regime_vitto_alloggio ORDER BY regime_vitto_alloggio;
 
 -- =====================================================================
--- 7. La struttura: le colonne nuove ci sono tutte?
---
---    Devono uscire 14 righe. Una che manca significa che una ALTER non e'
---    passata, e il codice nuovo si aspetta di trovarla.
--- =====================================================================
-
-SELECT TABLE_NAME AS tabella, COLUMN_NAME AS colonna
-  FROM INFORMATION_SCHEMA.COLUMNS
- WHERE TABLE_SCHEMA = DATABASE()
-   AND (   (TABLE_NAME = 'FACT_FATTURE'  AND COLUMN_NAME IN ('ID_FATTURA_STORNATA','ID_DOCUMENTO','Natura'))
-        OR (TABLE_NAME = 'ANA_COMMESSE'  AND COLUMN_NAME IN ('Importo_Previsto'))
-        OR (TABLE_NAME = 'ANA_CLIENTI'   AND COLUMN_NAME IN ('Codice_Fiscale'))
-        OR (TABLE_NAME = 'FACT_GIORNATE' AND COLUMN_NAME IN ('Viaggio'))
-        OR (TABLE_NAME = 'ANA_TASK'      AND COLUMN_NAME IN (
-              'Spese_Comprese_Viaggi','Spese_Comprese_Vitto_Alloggio',
-              'Valore_Spese_std_Viaggi','Valore_Spese_std_Vitto_Alloggio',
-              'Regime_Spese_Viaggi','Valore_Spese_Viaggi',
-              'Regime_Spese_Vitto_Alloggio','Valore_Spese_Vitto_Alloggio')))
- ORDER BY tabella, colonna;
-
--- =====================================================================
--- 8. I due campi documento devono essere spariti da ANA_COMMESSE.
---    Deve uscire una riga sola, con eliminati = 'si'.
--- =====================================================================
-
-SELECT IF(COUNT(*) = 0, 'si', CONCAT('NO, ne restano ', COUNT(*))) AS eliminati
-  FROM INFORMATION_SCHEMA.COLUMNS
- WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'ANA_COMMESSE'
-   AND COLUMN_NAME IN ('Documento_Offerta', 'Documento_Ordine');
-
--- =====================================================================
--- 9. Nessun utente di prova.
+-- 7. Nessun utente di prova.
 --    L'ambiente locale ha un utente testadmin con password nota. Non deve
 --    essere finito qui: deve uscire zero.
 -- =====================================================================
