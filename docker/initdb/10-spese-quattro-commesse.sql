@@ -18,7 +18,7 @@
 -- il registro attivita' di Statistiche si riempie di modifiche fantasma.
 
 -- --------------------------------------------------------------------
--- Task: 3 con un regime di spesa diverso dal default
+-- Task: 6 con un regime di spesa diverso dal default
 -- --------------------------------------------------------------------
 
 -- TAS00012  CASTELLI 1. AUDIT
@@ -39,6 +39,24 @@ UPDATE ANA_TASK
        Data_Modifica = Data_Modifica
  WHERE ID_TASK = 'TAS00013';
 
+-- TAS00014  CASTELLI Aula CT
+UPDATE ANA_TASK
+   SET Spese_Comprese_Viaggi         = 'No',
+       Valore_Spese_std_Viaggi       = 170.00,
+       Spese_Comprese_Vitto_Alloggio = 'Si',
+       Valore_Spese_std_Vitto_Alloggio = NULL,
+       Data_Modifica = Data_Modifica
+ WHERE ID_TASK = 'TAS00014';
+
+-- TAS00034  CASTELLI SFC CT
+UPDATE ANA_TASK
+   SET Spese_Comprese_Viaggi         = 'No',
+       Valore_Spese_std_Viaggi       = 170.00,
+       Spese_Comprese_Vitto_Alloggio = 'Si',
+       Valore_Spese_std_Vitto_Alloggio = NULL,
+       Data_Modifica = Data_Modifica
+ WHERE ID_TASK = 'TAS00034';
+
 -- TAS00041  Corteolona Shop Floor Coaching
 UPDATE ANA_TASK
    SET Spese_Comprese_Viaggi         = 'No',
@@ -48,8 +66,17 @@ UPDATE ANA_TASK
        Data_Modifica = Data_Modifica
  WHERE ID_TASK = 'TAS00041';
 
+-- TAS00043  Castelli Consulenza Organizzativa
+UPDATE ANA_TASK
+   SET Spese_Comprese_Viaggi         = 'No',
+       Valore_Spese_std_Viaggi       = 170.00,
+       Spese_Comprese_Vitto_Alloggio = 'Si',
+       Valore_Spese_std_Vitto_Alloggio = NULL,
+       Data_Modifica = Data_Modifica
+ WHERE ID_TASK = 'TAS00043';
+
 -- --------------------------------------------------------------------
--- Giornate: 21 con viaggio tolto o desk corretto
+-- Giornate: 23 con viaggio tolto o desk corretto
 -- Agganciate per ID_GIORNATA, che e' la chiave primaria e arriva dal dump.
 -- --------------------------------------------------------------------
 
@@ -86,6 +113,14 @@ UPDATE FACT_GIORNATE SET Viaggio = 'No', Data_Modifica = Data_Modifica WHERE ID_
     'GIO20260313092537372'    -- 12/03/2026  Francesco Silvestri TAS00083
 );
 
+-- COM2025020
+UPDATE FACT_GIORNATE SET Viaggio = 'No', Data_Modifica = Data_Modifica WHERE ID_GIORNATA IN (
+    'GIO20260427111025123'    -- 05/05/2026  Giorgio Troni      TAS00130
+);
+UPDATE FACT_GIORNATE SET Desk = 'No', Viaggio = 'No', Data_Modifica = Data_Modifica WHERE ID_GIORNATA IN (
+    'GIO20260502114524329'    -- 05/05/2026  Alessandro Vaglio  TAS00130
+);
+
 -- COM2025026
 UPDATE FACT_GIORNATE SET Viaggio = 'No', Data_Modifica = Data_Modifica WHERE ID_GIORNATA IN (
     'GIO20260629183921941',   -- 18/06/2026  Francesco Silvestri TAS00104
@@ -97,6 +132,6 @@ UPDATE FACT_GIORNATE SET Desk = 'No', Viaggio = 'No', Data_Modifica = Data_Modif
 );
 
 -- --------------------------------------------------------------------
--- Controlli: 21 giornate senza viaggio, 3 task con regime proprio.
+-- Controlli: 23 giornate senza viaggio, 6 task con regime proprio.
 -- --------------------------------------------------------------------
 -- SELECT COUNT(*) FROM FACT_GIORNATE WHERE Viaggio = 'No';

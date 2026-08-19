@@ -1,101 +1,157 @@
--- Ambiente locale: rimette i collegamenti fattura -> commessa (ID_COMMESSA).
+-- Ambiente locale: rimette il lavoro fatto a mano su fatture e commesse.
+--
+-- GENERATO da docker/genera-09-attribuzioni.php: non modificare a mano,
+-- rigeneralo. Ogni attribuzione nuova fatta dall'interfaccia invecchia questa
+-- fotografia, e un reset la perderebbe in silenzio.
 --
 -- Serve perche' reset-db.ps1 ricrea il volume da zero e riesegue solo questi
--- script. Come gli altri, gira sul database indicato da MARIADB_DATABASE:
--- nessun USE, cosi' resta valido se si cambia DB_NAME.
+-- script, e nessuna migration valorizza ID_COMMESSA. E' successo il 17/08/2026:
+-- i conteggi delle tabelle tornavano tutti giusti e il reset sembrava riuscito,
+-- ma il fatturato per commessa era tornato indietro di otto righe senza che
+-- nulla lo segnalasse.
 --
--- Va per ultimo, dopo 05-08: aggancia le righe per NR, e le numerazioni sono
--- sistemate da 05-note-accredito e 06-allinea-fatture-pdf (nel dump la 01/26 e'
--- scritta "1/26").
+-- Nessun USE: gira sul database indicato da MARIADB_DATABASE. Va per ultimo
+-- fra 05 e 08, perche' aggancia le fatture per NR e le numerazioni sono
+-- sistemate da 05-note-accredito e 06-allinea-fatture-pdf.
 --
--- =====================================================================
--- Perche' questo script esiste
--- =====================================================================
---
--- Nessuna delle migration valorizza ID_COMMESSA: 06-allinea-fatture-pdf lo
--- nomina solo in un commento. Le attribuzioni che divergono dal dump di
--- produzione erano quindi lavoro fatto a mano dall'interfaccia, e un reset le
--- perdeva **in silenzio**: i conteggi delle tabelle tornavano tutti giusti e il
--- reset sembrava riuscito, ma il fatturato per commessa tornava indietro di otto
--- righe senza che nulla lo segnalasse. E' successo il 17/08/2026, ed e' stato
--- recuperato solo perche' esisteva una fotografia presa poco prima per un altro
--- motivo.
---
--- Le otto righe che il dump NON ha sono tutte disambiguazioni Lindt piu' IWT,
--- cioe' il lavoro di separare le quattro commesse Lindt che nel dump di
--- produzione sono appiattite su COM0014:
---
---     28/25  COM0014      -> COM2025008   LINDT WORKSHOP RUOLO CR
---     34/25  COM0014      -> COM2025009   LINDT SVILUPPO CR 2025
---     41/25  COM0014      -> COM2025010   LINDT SVILUPPO CAPITURNO 2025
---     37/26  COM2025009   -> COM2025015   LINDT SVILUPPO CapiTurno 2026
---     02/26  (nessuna)    -> COM2025015
---     13/26  (nessuna)    -> COM2025015
---     05/26  (nessuna)    -> COM2025004   IWT Coaching
---     30/26  (nessuna)    -> COM2025019   LINDT COACHING MIDDLE MANAGEMENT 2026
---
--- Le altre 47 coincidono gia' col dump e sono ripetute qui apposta: cosi' lo
--- script descrive lo stato completo e non dipende da cosa contiene il dump del
--- giorno. Le 34 fatture senza commessa restano senza: sono il lavoro della
--- fase 2 di docs/PROGETTO-COMMESSE-ORDINI.md, che rendera' ID_COMMESSA
--- obbligatorio e mandera' in pensione questo file.
---
--- Sicuro da rieseguire: gli UPDATE scrivono lo stesso valore.
--- Data_Modifica viene riassegnata a se stessa per impedire a ON UPDATE di
--- scattare: senza, ogni reset marcherebbe 55 fatture come modificate adesso e il
--- registro attivita' di Statistiche si riempirebbe di modifiche fantasma.
--- NR e' univoco su FACT_FATTURE, quindi ogni riga colpisce una fattura sola.
--- =====================================================================
-
-UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM0001', Data_Modifica = Data_Modifica
- WHERE NR IN ('04/24','03/25','07/25','10/25','14/25','18/25','26/25','29/25','39/25');
-
-UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM0002', Data_Modifica = Data_Modifica WHERE NR IN ('02/24','04/25');
-
-UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM0003', Data_Modifica = Data_Modifica
- WHERE NR IN ('01/24','01/25','06/25','12/25','16/25','24/25','33/25');
-
-UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM0004', Data_Modifica = Data_Modifica
- WHERE NR IN ('03/24','02/25','05/25','11/25','15/25','23/25','27/25');
-
-UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM0005', Data_Modifica = Data_Modifica WHERE NR IN ('05/24','35/25');
-UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM0006', Data_Modifica = Data_Modifica WHERE NR = '17/25';
-UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM0007', Data_Modifica = Data_Modifica WHERE NR = '13/25';
-UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM0008', Data_Modifica = Data_Modifica WHERE NR = '31/25';
-UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM0009', Data_Modifica = Data_Modifica WHERE NR IN ('09/25','19/25','40/25');
-UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM0010', Data_Modifica = Data_Modifica WHERE NR = '08/25';
-
--- La terna Ambrosi: fattura, nota che la storna, riemissione.
-UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM0011', Data_Modifica = Data_Modifica WHERE NR IN ('20/25','21/25','22/25');
-
-UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM0012', Data_Modifica = Data_Modifica WHERE NR = '30/25';
-
--- 36/25 e' attribuita qui nel dump, ma il PDF dice "Audit Culturale Reggio
--- Emilia e Corteolona", cioe' COM0012. E' l'unica fattura, con la 05/24,
--- datata prima della prima giornata della sua commessa. Lasciata com'e' per
--- non cambiare i numeri di nascosto: la correzione e' una decisione, ed e'
--- registrata nell'appendice A di docs/PROGETTO-COMMESSE-ORDINI.md.
-UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM0013', Data_Modifica = Data_Modifica WHERE NR = '36/25';
-
-UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM0014', Data_Modifica = Data_Modifica WHERE NR = '25/25';
-UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM0015', Data_Modifica = Data_Modifica WHERE NR = '32/25';
-UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM2025004', Data_Modifica = Data_Modifica WHERE NR IN ('37/25','05/26');
-UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM2025006', Data_Modifica = Data_Modifica WHERE NR IN ('38/25','42/25','44/25');
-UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM2025008', Data_Modifica = Data_Modifica WHERE NR = '28/25';
-UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM2025009', Data_Modifica = Data_Modifica WHERE NR = '34/25';
-UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM2025010', Data_Modifica = Data_Modifica WHERE NR = '41/25';
-UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM2025013', Data_Modifica = Data_Modifica WHERE NR = '36/26';
-UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM2025015', Data_Modifica = Data_Modifica WHERE NR IN ('02/26','13/26','37/26');
-UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM2025019', Data_Modifica = Data_Modifica WHERE NR = '30/26';
-UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM2025023', Data_Modifica = Data_Modifica WHERE NR = '38/26';
+-- Sicuro da rieseguire: gli UPDATE scrivono lo stesso valore, e
+-- Data_Modifica = Data_Modifica impedisce che il timestamp si sposti.
 
 -- =====================================================================
--- Controlli. Devono risultare 55 fatture con commessa su 89, e nessun
--- ID_COMMESSA che punta a una commessa inesistente.
+-- Fatture -> commesse (41 righe)
 -- =====================================================================
 
--- SELECT COUNT(*) AS con_commessa FROM FACT_FATTURE
---  WHERE ID_COMMESSA IS NOT NULL AND ID_COMMESSA <> '';
--- SELECT f.NR, f.ID_COMMESSA FROM FACT_FATTURE f
---   LEFT JOIN ANA_COMMESSE c ON c.ID_COMMESSA = f.ID_COMMESSA
---  WHERE f.ID_COMMESSA IS NOT NULL AND f.ID_COMMESSA <> '' AND c.ID_COMMESSA IS NULL;
+-- COM0012  LACTALIS STAB AUDIT CORTE - CASTELLI
+UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM0012', Data_Modifica = Data_Modifica
+ WHERE NR IN ('36/25');
+
+-- COM0013  LACTALIS STAB CORTEOLONA SVILUPPO 2025
+UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM0013', Data_Modifica = Data_Modifica
+ WHERE NR IN ('04/26','09/26','16/26','17/26','22/26','23/26');
+
+-- COM2025004  IWT Coaching
+UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM2025004', Data_Modifica = Data_Modifica
+ WHERE NR IN ('05/26');
+
+-- COM2025006  PERFETTI FORMAZIONE CAPITURNO 2025
+UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM2025006', Data_Modifica = Data_Modifica
+ WHERE NR IN ('01/26');
+
+-- COM2025008  LINDT WORKSHOP RUOLO CR
+UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM2025008', Data_Modifica = Data_Modifica
+ WHERE NR IN ('28/25');
+
+-- COM2025009  LINDT SVILUPPO CR 2025
+UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM2025009', Data_Modifica = Data_Modifica
+ WHERE NR IN ('34/25');
+
+-- COM2025010  LINDT SVILUPPO CAPITURNO 2025
+UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM2025010', Data_Modifica = Data_Modifica
+ WHERE NR IN ('41/25');
+
+-- COM2025011  LACTALIS STAB CERTOSA
+UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM2025011', Data_Modifica = Data_Modifica
+ WHERE NR IN ('06/26','10/26','18/26','19/26','24/26','25/26','27/26');
+
+-- COM2025012  LAVAZZA DIREZIONE OPERATIONS
+UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM2025012', Data_Modifica = Data_Modifica
+ WHERE NR IN ('43/25');
+
+-- COM2025013  LACTALIS STAB CASALE CREMASCO
+UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM2025013', Data_Modifica = Data_Modifica
+ WHERE NR IN ('03/26','12/26','14/26','15/26','20/26','21/26','26/26');
+
+-- COM2025014  LACTALIS LTF 2026
+UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM2025014', Data_Modifica = Data_Modifica
+ WHERE NR IN ('07/26','31/26');
+
+-- COM2025015  LINDT SVILUPPO CapiTurno 2026
+UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM2025015', Data_Modifica = Data_Modifica
+ WHERE NR IN ('02/26','13/26','37/26');
+
+-- COM2025016  PERFETTI FORMAZIONE CAPITURNO 2026
+UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM2025016', Data_Modifica = Data_Modifica
+ WHERE NR IN ('08/26','11/26','29/26');
+
+-- COM2025017  LUCCHINI COACHING
+UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM2025017', Data_Modifica = Data_Modifica
+ WHERE NR IN ('28/26');
+
+-- COM2025018  LACTALIS STAB CORTEOLONA SVILUPPO 2026
+UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM2025018', Data_Modifica = Data_Modifica
+ WHERE NR IN ('34/26');
+
+-- COM2025019  LINDT COACHING MIDDLE MANAGEMENT 2026
+UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM2025019', Data_Modifica = Data_Modifica
+ WHERE NR IN ('30/26');
+
+-- COM2025020  LACTALIS STAB AMBROSI PRIMA FASE
+UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM2025020', Data_Modifica = Data_Modifica
+ WHERE NR IN ('32/26');
+
+-- COM2025021  LACTALIS STAB MELZO
+UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM2025021', Data_Modifica = Data_Modifica
+ WHERE NR IN ('33/26');
+
+-- COM2025022  LAVAZZA R&D AUDIT
+UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM2025022', Data_Modifica = Data_Modifica
+ WHERE NR IN ('35/26');
+
+-- =====================================================================
+-- Intestatari corretti a mano (15 fatture)
+--
+-- Non e' un errore che fattura e commessa stiano su clienti diversi: lo
+-- decide l'ordine. Le fatture emesse al cliente sbagliato e poi stornate
+-- restano com'erano, perche' il cliente sbagliato e' il motivo per cui
+-- esiste la nota di accredito che le annulla.
+-- =====================================================================
+
+-- CLI0009  LACTALIS
+UPDATE FACT_FATTURE SET ID_CLIENTE = 'CLI0009', Data_Modifica = Data_Modifica
+ WHERE NR IN ('04/26','09/26','16/26','22/26');
+
+-- CLI0011  LACTALIS GALBANI
+UPDATE FACT_FATTURE SET ID_CLIENTE = 'CLI0011', Data_Modifica = Data_Modifica
+ WHERE NR IN ('17/26','23/26','19/26','25/26','27/26','15/26','21/26','26/26','36/26','34/26','33/26');
+
+-- =====================================================================
+-- Commesse: intestatario, nome, stato e data di apertura (8 righe)
+-- =====================================================================
+
+-- LACTALIS STAB AUDIT CORTE - CASTELLI  (LACTALIS)
+UPDATE ANA_COMMESSE SET ID_CLIENTE = 'CLI0009', Data_Modifica = Data_Modifica
+ WHERE ID_COMMESSA = 'COM0012';
+
+-- LACTALIS STAB CORTEOLONA SVILUPPO 2025  (LACTALIS GALBANI)
+UPDATE ANA_COMMESSE SET ID_CLIENTE = 'CLI0011', Data_Modifica = Data_Modifica
+ WHERE ID_COMMESSA = 'COM0013';
+
+-- LACTALIS STAB CERTOSA  (LACTALIS GALBANI)
+UPDATE ANA_COMMESSE SET ID_CLIENTE = 'CLI0011', Data_Modifica = Data_Modifica
+ WHERE ID_COMMESSA = 'COM2025011';
+
+-- LACTALIS STAB CASALE CREMASCO  (LACTALIS GALBANI)
+UPDATE ANA_COMMESSE SET ID_CLIENTE = 'CLI0011', Data_Modifica = Data_Modifica
+ WHERE ID_COMMESSA = 'COM2025013';
+
+-- LACTALIS STAB CORTEOLONA SVILUPPO 2026  (LACTALIS GALBANI - apertura era 2026-11-01)
+UPDATE ANA_COMMESSE SET ID_CLIENTE = 'CLI0011', Data_Apertura_Commessa = '2026-04-01', Data_Modifica = Data_Modifica
+ WHERE ID_COMMESSA = 'COM2025018';
+
+-- LACTALIS STAB AMBROSI PRIMA FASE  (LACTALIS - si chiamava LACTALIS STAB AMBROSI)
+UPDATE ANA_COMMESSE SET ID_CLIENTE = 'CLI0009', Commessa = 'LACTALIS STAB AMBROSI PRIMA FASE', Data_Modifica = Data_Modifica
+ WHERE ID_COMMESSA = 'COM2025020';
+
+-- LACTALIS CERTOSA SECONDA FASE  (LACTALIS GALBANI)
+UPDATE ANA_COMMESSE SET ID_CLIENTE = 'CLI0011', Data_Modifica = Data_Modifica
+ WHERE ID_COMMESSA = 'COM2025028';
+
+-- LACTALIS AMBROSI CI Castendendolo e Collecchio  (LACTALIS - si chiamava LACTALIS CI Castendendolo e Collecchio)
+UPDATE ANA_COMMESSE SET ID_CLIENTE = 'CLI0009', Commessa = 'LACTALIS AMBROSI CI Castendendolo e Collecchio', Data_Modifica = Data_Modifica
+ WHERE ID_COMMESSA = 'COM2025030';
+
+-- --------------------------------------------------------------------
+-- Controlli dopo un reset: devono tornare questi numeri.
+-- --------------------------------------------------------------------
+-- SELECT COUNT(*) FROM FACT_FATTURE WHERE ID_COMMESSA IS NOT NULL;      -- 89
+-- SELECT SUM(Fatturato_TOT) FROM FACT_FATTURE WHERE ID_COMMESSA IS NOT NULL;  -- 727556.50
