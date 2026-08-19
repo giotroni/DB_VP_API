@@ -1,10 +1,3 @@
-> **Nota del 17/08/2026.** Queste correzioni non vivono più solo qui: sono
-> versionate in `docker/initdb/10-spese-quattro-commesse.sql`, che il reset
-> riapplica da solo. Quel file è **generato** da `docker/genera-10-spese.php`:
-> dopo aver modificato regimi o flag dall'interfaccia, rilanciarlo e committare.
-> I totali qui sotto restano il riscontro per verificare che il lavoro sia tornato
-> giusto.
-
 - LACTALIS STAB CORTEOLONA SVILUPPO 2025
 modificate spese Silvestri in SFC e Aula CT: 55 € a viaggio e eliminato viaggio quando sono gg consecutivi e è imputato l'albergo
 Tolte spese viaggio Troni sulla Prima Linea, nei giorni in cui è andato con Vaglio
@@ -23,3 +16,5 @@ TOT spese finale 1.155,00 € (invece di 1.210,00 €)
 Modificata l'indicazione viaggio si/no e il desk di Silvestri e Vaglio per far tornare i conti con l'offerta e la fattura
 TOT spese finale 370,00 € (invece di 1.110,00 €)
 
+- LACTALIS STAB AUDIT CORTE - CASTELLI
+Sistemati viaggi in coerenza con la proposta su Castelli: 5 viaggi tot x 170 €/viaggio
