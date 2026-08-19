@@ -36,9 +36,10 @@ Al primo avvio il container `db` esegue in ordine gli script di `docker/initdb`:
 | 10 | `10-spese-quattro-commesse.sql` | le correzioni a mano su regimi e flag `Viaggio` — **file generato** |
 | 11 | `11-regime-spese.sql` | il regime di spesa esplicito e il forfait a corpo ([SCHEMA-SPESE-A-CORPO](SCHEMA-SPESE-A-CORPO.md)) |
 | 12 | `12-task-creati-in-locale.sql` | i task **nati in locale** e le giornate spostate — **file generato**. Va dopo l'11 perché il suo `INSERT` elenca anche le colonne di regime |
+| 13 | `13-documenti-commerciali.sql` | crea `ANA_DOCUMENTI_COMMERCIALI`, aggiunge `ID_DOCUMENTO` e `Natura` sulla fattura, `Importo_Previsto` sulla commessa, `Codice_Fiscale` sul cliente, ed elimina i due campi documento da `ANA_COMMESSE` ([PROGETTO-COMMESSE-ORDINI](PROGETTO-COMMESSE-ORDINI.md)) |
 
-Gli script dal 04 all'08 e l'11 replicano migration che **in produzione non sono
-ancora state eseguite**: qui servono perché il reset riparte dal dump, che ha
+Gli script dal 04 all'08, l'11 e il 13 replicano migration che **in produzione
+non sono ancora state eseguite**: qui servono perché il reset riparte dal dump, che ha
 ancora lo schema e i dati vecchi. Vanno tenuti allineati alle rispettive
 migration in `DB/migrations/` finché il dump non le contiene già.
 

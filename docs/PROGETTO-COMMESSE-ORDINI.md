@@ -439,10 +439,32 @@ Due difetti che esistono oggi e non dipendono da questo progetto:
   Con 41 voci in tendina e nessun vincolo, il campo vuoto sul 92% delle fatture 2026 non
   sorprende.
 
-### Fase 1 — struttura, in una migration sola · *un giorno*
+### Fase 1 — struttura, in una migration sola · **fatta il 19/08/2026**
 
-Tutte le modifiche di schema descritte al § 4. Nessun comportamento cambia, nessuna schermata
-se ne accorge. Rilasciabile in produzione insieme alle quattro migration già in attesa.
+Tutte le modifiche di schema descritte al § 4, in
+[`add_documenti_commerciali.sql`](../DB/migrations/add_documenti_commerciali.sql) col suo
+runner. Nessun comportamento cambia, nessuna schermata se ne accorge. Rilasciabile in
+produzione insieme alle quattro migration già in attesa; in locale è anche lo script
+`docker/initdb/13-documenti-commerciali.sql`, così il reset la riapplica.
+
+Due cose sono state decise scrivendola, e non stavano nel § 4:
+
+- **`ID_PADRE` è `ON DELETE RESTRICT`, non `SET NULL`.** Cancellare un'offerta che ha
+  generato ordini non deve slegarli in silenzio: il legame offerta-ordine è l'unico posto in
+  cui è scritto che i 25.902,50 di Reggio Corte sono una fornitura sola. Coincide con un
+  vincolo tecnico: MariaDB rifiuta (errore 1901) un `CHECK` che riferisce una colonna
+  soggetta a `ON DELETE SET NULL`, e senza `RESTRICT` il vincolo «solo un ordine può avere un
+  padre» non sarebbe creabile.
+- **`ID_DOCUMENTO` sulla fattura resta nullable**, come previsto, ma vale la pena dirlo:
+  renderlo obbligatorio oggi bloccherebbe l'inserimento di qualunque fattura nuova, ed è
+  esattamente il tipo di rilascio che questa fase evita. Diventa `NOT NULL` a backfill
+  completo, quando la 40/26 Lucchini e la 32/25 Sammontana avranno un documento.
+
+Verificata in locale: migration eseguita e rieseguita (idempotente), i quattro casi che
+devono essere respinti lo sono — offerta con un padre, documento senza commessa, commessa
+inesistente, cancellazione di un'offerta con ordini figli — e cancellando un documento la
+fattura resta con il legame azzerato. 45 commesse e 89 fatture invariate, API commesse,
+fatture e clienti interrogate e `Importo_Previsto` salvato e riletto dal form commessa.
 
 ### Fase 2 — collegare le fatture alle commesse · *un giorno, più la validazione*
 

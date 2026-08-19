@@ -22,8 +22,10 @@ class CommesseAPI extends BaseAPI {
             'ID_COLLABORATORE' => ['max_length' => 50],
             'Data_Apertura_Commessa' => ['date' => true],
             'Stato_Commessa' => ['enum' => ['In corso', 'Sospesa', 'Chiusa', 'Archiviata']],
-            'Documento_Offerta' => ['max_length' => 500],
-            'Documento_Ordine' => ['max_length' => 500]
+            // Documento_Offerta e Documento_Ordine sono stati eliminati: offerte e
+            // ordini stanno su ANA_DOCUMENTI_COMMERCIALI, perche' una commessa ne ha
+            // N e due campi non bastavano. Erano vuoti su tutte le 45 commesse.
+            'Importo_Previsto' => ['numeric' => true, 'min' => 0]
         ];
     }
     
