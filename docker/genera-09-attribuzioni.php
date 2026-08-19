@@ -25,6 +25,13 @@
  *
  * Richiede il database di confronto prod_260815, il dump di produzione caricato
  * a parte: e' il termine di paragone che dice quali righe sono state toccate.
+ *
+ * Il confronto e' una LEFT JOIN e non una INNER, per una ragione trovata sul
+ * campo il 19/08/2026: le fatture 39/26 e 40/26 non esistono nel dump - le crea
+ * la migration 06 - e con la INNER sparivano dal diff, cosi' le loro
+ * attribuzioni non finivano nella fotografia e il reset le perdeva. Una riga
+ * assente dal riferimento e' divergente per definizione, se in locale ha un
+ * valore.
  */
 
 if (php_sapi_name() !== 'cli') {
@@ -46,13 +53,15 @@ $db = new PDO("mysql:host=$host;dbname=$name;charset=utf8mb4", $user, $pass,
 // e' ancora scritta "1/26". Per questo lo script va per ultimo.
 $fatture = $db->query("
     SELECT l.NR, l.ID_COMMESSA, l.ID_CLIENTE, c.Commessa, cl.Cliente,
-           NOT (l.ID_COMMESSA <=> p.ID_COMMESSA) AS commessa_cambiata,
-           NOT (l.ID_CLIENTE  <=> p.ID_CLIENTE)  AS cliente_cambiato
+           (p.ID_FATTURA IS NULL OR NOT (l.ID_COMMESSA <=> p.ID_COMMESSA))
+               AND l.ID_COMMESSA IS NOT NULL AS commessa_cambiata,
+           p.ID_FATTURA IS NOT NULL AND NOT (l.ID_CLIENTE <=> p.ID_CLIENTE) AS cliente_cambiato
       FROM FACT_FATTURE l
-      JOIN {$rif}.FACT_FATTURE p ON p.ID_FATTURA = l.ID_FATTURA
+      LEFT JOIN {$rif}.FACT_FATTURE p ON p.ID_FATTURA = l.ID_FATTURA
       LEFT JOIN ANA_COMMESSE c   ON c.ID_COMMESSA = l.ID_COMMESSA
       LEFT JOIN ANA_CLIENTI cl   ON cl.ID_CLIENTE = l.ID_CLIENTE
-     WHERE NOT (l.ID_COMMESSA <=> p.ID_COMMESSA) OR NOT (l.ID_CLIENTE <=> p.ID_CLIENTE)
+     WHERE (p.ID_FATTURA IS NULL AND l.ID_COMMESSA IS NOT NULL)
+        OR NOT (l.ID_COMMESSA <=> p.ID_COMMESSA) OR NOT (l.ID_CLIENTE <=> p.ID_CLIENTE)
      ORDER BY l.ID_COMMESSA, l.Data, l.NR")->fetchAll(PDO::FETCH_ASSOC);
 
 $commesse = $db->query("

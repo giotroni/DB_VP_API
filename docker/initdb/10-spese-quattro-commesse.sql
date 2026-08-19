@@ -117,7 +117,7 @@ UPDATE FACT_GIORNATE SET Viaggio = 'No', Data_Modifica = Data_Modifica WHERE ID_
 UPDATE FACT_GIORNATE SET Viaggio = 'No', Data_Modifica = Data_Modifica WHERE ID_GIORNATA IN (
     'GIO20260427111025123'    -- 05/05/2026  Giorgio Troni      TAS00130
 );
-UPDATE FACT_GIORNATE SET Desk = 'No', Viaggio = 'No', Data_Modifica = Data_Modifica WHERE ID_GIORNATA IN (
+UPDATE FACT_GIORNATE SET Desk = 'No', Data_Modifica = Data_Modifica WHERE ID_GIORNATA IN (
     'GIO20260502114524329'    -- 05/05/2026  Alessandro Vaglio  TAS00130
 );
 

@@ -61,6 +61,57 @@ $gio = $db->query("
         OR COALESCE(l.Desk,'No') <> COALESCE(p.Desk,'No')
      ORDER BY t.ID_COMMESSA, l.Data, c.Collaboratore")->fetchAll(PDO::FETCH_ASSOC);
 
+// I task creati dall'interfaccia non stanno nel dump, quindi nessuno script li
+// ricreerebbe: vanno inseriti, non aggiornati. Trovato il 19/08/2026, quando un
+// reset ha fatto sparire TAS00130 "AUDIT Collecchio" e la giornata collegata e'
+// rimasta appesa al task del dump.
+$nuovi = $db->query("
+    SELECT l.*
+      FROM ANA_TASK l
+      LEFT JOIN {$rif}.ANA_TASK p ON p.ID_TASK = l.ID_TASK
+     WHERE p.ID_TASK IS NULL
+     ORDER BY l.ID_TASK")->fetchAll(PDO::FETCH_ASSOC);
+
+// I task modificati dall'interfaccia su colonne che nessuno script rimette:
+// stato, giornate previste, prezzo, e il regime di spesa quando e' stato
+// cambiato a mano. Il regime si confronta con quello che 11-regime-spese
+// deriverebbe dalle colonne vecchie: se l'utente lo cambia dall'interfaccia,
+// la derivazione lo riporterebbe indietro.
+$modificati = $db->query("
+    SELECT l.ID_TASK, l.Task, l.ID_COMMESSA, l.Tipo, l.Stato_Task, l.gg_previste,
+           l.Valore_gg, l.Data_Apertura_Task, l.Data_Fine, l.ID_COLLABORATORE,
+           l.Regime_Spese_Viaggi, l.Valore_Spese_Viaggi,
+           l.Regime_Spese_Vitto_Alloggio, l.Valore_Spese_Vitto_Alloggio
+      FROM ANA_TASK l
+      JOIN {$rif}.ANA_TASK p ON p.ID_TASK = l.ID_TASK
+     WHERE NOT (l.Task <=> p.Task)
+        OR NOT (l.ID_COMMESSA <=> p.ID_COMMESSA)
+        OR NOT (l.Tipo <=> p.Tipo)
+        OR NOT (l.Stato_Task <=> p.Stato_Task)
+        OR NOT (l.gg_previste <=> p.gg_previste)
+        OR NOT (l.Valore_gg <=> p.Valore_gg)
+        OR NOT (l.Data_Apertura_Task <=> p.Data_Apertura_Task)
+        OR NOT (l.Data_Fine <=> p.Data_Fine)
+        OR NOT (l.ID_COLLABORATORE <=> p.ID_COLLABORATORE)
+        OR NOT (l.Regime_Spese_Viaggi <=> CASE
+                    WHEN l.Spese_Comprese_Viaggi = 'Si' THEN 'Compreso'
+                    WHEN COALESCE(l.Valore_Spese_std_Viaggi, 0) > 0 THEN 'Diaria'
+                    ELSE 'Reali' END)
+        OR NOT (l.Regime_Spese_Vitto_Alloggio <=> CASE
+                    WHEN l.ID_TASK = 'TAS00022' THEN 'Corpo'
+                    WHEN l.Spese_Comprese_Vitto_Alloggio = 'Si' THEN 'Compreso'
+                    WHEN COALESCE(l.Valore_Spese_std_Vitto_Alloggio, 0) > 0 THEN 'Diaria'
+                    ELSE 'Reali' END)
+     ORDER BY l.ID_TASK")->fetchAll(PDO::FETCH_ASSOC);
+
+// Le giornate spostate su un task diverso da quello del dump.
+$spostate = $db->query("
+    SELECT l.ID_GIORNATA, l.ID_TASK, p.ID_TASK AS task_dump, l.Data
+      FROM FACT_GIORNATE l
+      JOIN {$rif}.FACT_GIORNATE p ON p.ID_GIORNATA = l.ID_GIORNATA
+     WHERE NOT (l.ID_TASK <=> p.ID_TASK)
+     ORDER BY l.ID_TASK, l.Data")->fetchAll(PDO::FETCH_ASSOC);
+
 $out = [];
 $out[] = "-- Ambiente locale: rimette le correzioni fatte a mano su task e giornate.";
 $out[] = "--";
@@ -111,9 +162,16 @@ $out[] = "-- -------------------------------------------------------------------
 foreach ($perCommessa as $commessa => $righe) {
     $out[] = "";
     $out[] = "-- " . $commessa;
-    $soloViaggio = array_filter($righe, fn($g) => $g['desk'] === $g['desk_dump']);
-    $ancheDesk   = array_filter($righe, fn($g) => $g['desk'] !== $g['desk_dump']);
-    foreach ([['Viaggio = \'No\'', $soloViaggio], ['Desk = \'No\', Viaggio = \'No\'', $ancheDesk]] as [$set, $gruppo]) {
+    // Le tre combinazioni vanno tenute separate. Fino al 19/08/2026 le righe
+    // scelte per il solo cambio di Desk si prendevano anche Viaggio = 'No', e
+    // un reset toglieva il viaggio a una giornata che l'aveva. Il difetto e'
+    // emerso alla prima prova di reset vera.
+    $soloViaggio = array_filter($righe, fn($g) => $g['desk'] === $g['desk_dump'] && $g['viaggio'] === 'No');
+    $soloDesk    = array_filter($righe, fn($g) => $g['desk'] !== $g['desk_dump'] && $g['viaggio'] !== 'No');
+    $ancheDesk   = array_filter($righe, fn($g) => $g['desk'] !== $g['desk_dump'] && $g['viaggio'] === 'No');
+    foreach ([['Viaggio = \'No\'', $soloViaggio],
+              ['Desk = \'No\'', $soloDesk],
+              ['Desk = \'No\', Viaggio = \'No\'', $ancheDesk]] as [$set, $gruppo]) {
         if (!$gruppo) continue;
         $out[] = "UPDATE FACT_GIORNATE SET {$set}, Data_Modifica = Data_Modifica WHERE ID_GIORNATA IN (";
         $n = count($gruppo); $i = 0;
@@ -135,7 +193,95 @@ $out[] = "-- SELECT COUNT(*) FROM FACT_GIORNATE WHERE Viaggio = 'No';";
 $out[] = "";
 
 $dest = __DIR__ . '/initdb/10-spese-quattro-commesse.sql';
-file_put_contents($dest, implode("\n", $out));
-echo "scritto $dest\n";
-echo "  task:    " . count($task) . "\n";
-echo "  giornate: " . count($gio) . "\n";
+file_put_contents($dest, implode(PHP_EOL, $out));
+echo "scritto $dest" . PHP_EOL;
+echo "  task con regime proprio: " . count($task) . PHP_EOL;
+echo "  giornate corrette:       " . count($gio) . PHP_EOL;
+
+// =====================================================================
+// Script 12: le righe nate in locale, che nessun altro script ricrea.
+//
+// Sta in un file separato ed e' eseguito DOPO 11-regime-spese, perche'
+// l'INSERT elenca tutte le colonne di ANA_TASK e alcune le aggiunge proprio
+// lo script 11: dentro il 10 fallirebbe con "unknown column".
+// =====================================================================
+$out = [];
+$out[] = "-- Ambiente locale: i task creati dall'interfaccia e le giornate spostate.";
+$out[] = "--";
+$out[] = "-- GENERATO da docker/genera-10-spese.php: non modificare a mano, rigeneralo.";
+$out[] = "--";
+$out[] = "-- Gli altri script correggono righe che il dump gia' contiene. Queste no:";
+$out[] = "-- sono righe nate in locale. Trovate il 19/08/2026 alla prima prova di reset";
+$out[] = "-- vera, quando TAS00130 'AUDIT Collecchio' e' sparito e le sue due giornate";
+$out[] = "-- sono tornate sul task del dump, senza che nulla lo segnalasse.";
+$out[] = "--";
+$out[] = "-- Va per ultimo, dopo 11-regime-spese: l'INSERT elenca anche le colonne";
+$out[] = "-- di regime che quello script aggiunge.";
+$out[] = "--";
+$out[] = "-- Sicuro da rieseguire: INSERT IGNORE non duplica, gli UPDATE riscrivono lo";
+$out[] = "-- stesso valore. Data_Modifica e' riassegnata a se stessa per non far";
+$out[] = "-- scattare ON UPDATE.";
+$out[] = "";
+
+if ($nuovi) {
+    $out[] = "-- =====================================================================";
+    $out[] = "-- Task creati in locale (" . count($nuovi) . ")";
+    $out[] = "-- =====================================================================";
+    foreach ($nuovi as $t) {
+        $col = array_keys($t);
+        $val = array_map(fn($c) => $t[$c] === null ? 'NULL' : $db->quote($t[$c]), $col);
+        $out[] = "";
+        $out[] = "-- " . $t['Task'] . "  (" . $t['ID_COMMESSA'] . ")";
+        $out[] = "INSERT IGNORE INTO ANA_TASK (" . implode(', ', $col) . ")";
+        $out[] = "VALUES (" . implode(', ', $val) . ");";
+    }
+}
+
+if ($modificati) {
+    $out[] = "";
+    $out[] = "-- =====================================================================";
+    $out[] = "-- Task modificati dall'interfaccia (" . count($modificati) . ")";
+    $out[] = "-- Stato, giornate previste, prezzo e regime di spesa: colonne che gli";
+    $out[] = "-- altri script non rimettono, o che 11-regime-spese riporterebbe al";
+    $out[] = "-- valore derivato dalle colonne vecchie.";
+    $out[] = "-- =====================================================================";
+    foreach ($modificati as $t) {
+        $set = [];
+        foreach (['Task','ID_COMMESSA','Tipo','Stato_Task','gg_previste','Valore_gg',
+                  'Data_Apertura_Task','Data_Fine','ID_COLLABORATORE',
+                  'Regime_Spese_Viaggi','Valore_Spese_Viaggi',
+                  'Regime_Spese_Vitto_Alloggio','Valore_Spese_Vitto_Alloggio'] as $c) {
+            $set[] = "       {$c} = " . ($t[$c] === null ? 'NULL' : $db->quote($t[$c]));
+        }
+        $out[] = "";
+        $out[] = "-- " . $t['ID_TASK'] . "  " . $t['Task'];
+        $out[] = "UPDATE ANA_TASK";
+        $out[] = "   SET " . ltrim(implode("," . PHP_EOL, $set));
+        $out[] = "     , Data_Modifica = Data_Modifica";
+        $out[] = " WHERE ID_TASK = '" . $t['ID_TASK'] . "';";
+    }
+}
+
+if ($spostate) {
+    $out[] = "";
+    $out[] = "-- =====================================================================";
+    $out[] = "-- Giornate spostate su un altro task (" . count($spostate) . ")";
+    $out[] = "-- Dopo gli INSERT qui sopra: il task di destinazione deve esistere.";
+    $out[] = "-- =====================================================================";
+    $perTaskSpostate = [];
+    foreach ($spostate as $g) { $perTaskSpostate[$g['ID_TASK']][] = $g; }
+    foreach ($perTaskSpostate as $idTask => $righe) {
+        $ids = array_map(fn($g) => "'" . $g['ID_GIORNATA'] . "'", $righe);
+        $out[] = "";
+        $out[] = "-- verso " . $idTask . " (erano su " . ($righe[0]['task_dump'] ?? 'NULL') . ")";
+        $out[] = "UPDATE FACT_GIORNATE SET ID_TASK = '{$idTask}', Data_Modifica = Data_Modifica";
+        $out[] = " WHERE ID_GIORNATA IN (" . implode(',', $ids) . ");";
+    }
+}
+
+$dest = __DIR__ . '/initdb/12-task-creati-in-locale.sql';
+file_put_contents($dest, implode(PHP_EOL, $out));
+echo "scritto $dest" . PHP_EOL;
+echo "  task creati in locale:   " . count($nuovi) . PHP_EOL;
+echo "  task modificati:         " . count($modificati) . PHP_EOL;
+echo "  giornate spostate:       " . count($spostate) . PHP_EOL;

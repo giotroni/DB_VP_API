@@ -18,7 +18,7 @@
 -- Data_Modifica = Data_Modifica impedisce che il timestamp si sposti.
 
 -- =====================================================================
--- Fatture -> commesse (41 righe)
+-- Fatture -> commesse (43 righe)
 -- =====================================================================
 
 -- COM0012  LACTALIS STAB AUDIT CORTE - CASTELLI
@@ -96,6 +96,14 @@ UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM2025021', Data_Modifica = Data_Modific
 -- COM2025022  LAVAZZA R&D AUDIT
 UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM2025022', Data_Modifica = Data_Modifica
  WHERE NR IN ('35/26');
+
+-- COM2025025  LUCCHINI FORMAZIONE
+UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM2025025', Data_Modifica = Data_Modifica
+ WHERE NR IN ('40/26');
+
+-- COM2025026  LACTALIS PORCARI
+UPDATE FACT_FATTURE SET ID_COMMESSA = 'COM2025026', Data_Modifica = Data_Modifica
+ WHERE NR IN ('39/26');
 
 -- =====================================================================
 -- Intestatari corretti a mano (15 fatture)
