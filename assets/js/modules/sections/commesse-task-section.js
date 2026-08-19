@@ -121,97 +121,87 @@ class CommesseTaskSection extends BaseSection {
         return commesse.map(c => this.createCommessaCard(c)).join('');
     }
 
-    createCommessaCard(commessa) {
-        //console.log('Creazione card per commessa:', commessa);
-        const totalTasks = commessa.tasks.length;
-        const activeTasks = commessa.tasks.filter(t => t.Stato_Task === 'In corso').length;
+    // I numeri della commessa: quelli dei badge e quelli dell'export, calcolati
+    // una volta sola. Erano due copie quasi identiche, e "quasi" e' il problema:
+    // l'export dava un totale giornate a zero senza filtri, e non aveva ne' il
+    // fatturato ne' la percentuale di margine che si vedono a schermo.
+    calcolaValoriCommessa(commessa) {
+        const tasks = commessa.tasks || [];
+        const totalTasks = tasks.length;
+        const activeTasks = tasks.filter(t => t.Stato_Task === 'In corso').length;
 
-        const totalGiornate = commessa.tasks.reduce((sum, task) => {
-            // CORREZIONE: Considera solo i task di tipo 'Campo' per il calcolo delle giornate
-            if (task.Tipo !== 'Campo') {
-                return sum;
-            }
-            
-            // Se il task ha la proprietà gg_effettuate (impostata dal filterData), usala
-            if (task.hasOwnProperty('gg_effettuate')) {
-                return sum + (parseFloat(task.gg_effettuate) || 0);
-            }
-            
-            // Altrimenti calcola dalle giornate complete (quando non ci sono filtri attivi)
-            const giornateCampo = (task.giornate || [])
-                .filter(g => g.Tipo === 'Campo')
-                .reduce((gSum, g) => {
-                    return gSum + (parseFloat(g.gg?.toString().replace(',', '.')) || 0);
-                }, 0);
-            
-            return sum + giornateCampo;
-        }, 0);
-
-        // Calcolo Valore Totale, Lavori, Spese e Costo Accounting
-        const sommaValoreCampo = commessa.tasks.reduce((sum, task) => (task.Tipo === 'Campo' ? sum + (parseFloat(task.valore_gg_maturato) || 0) : sum), 0);
-        const sommaValoreMonitoraggio = commessa.tasks.reduce((sum, task) => (task.Tipo === 'Monitoraggio' ? sum + (parseFloat(task.valore_gg_maturato) || 0) : sum), 0);
-        const valoreComplessivoLavori = sommaValoreCampo + sommaValoreMonitoraggio;
-        const valoreComplessivoSpese = commessa.tasks.reduce((sum, task) => sum + (parseFloat(task.valore_spese_maturato) || 0), 0);
-        const valoreTotale = valoreComplessivoLavori + valoreComplessivoSpese;
-        // Costo Accounting: somma dei Valore_gg dei task di tipo 'Campo' moltiplicata per la Commissione della commessa
-        const commissioneCommessa = parseFloat(commessa.Commissione) || 0;
-        const costoAccounting = sommaValoreCampo * commissioneCommessa;
-
-        // ======= Calcolo di "costo_totale_attività" =======
-        // 1) Per i task di tipo 'Campo' sommiamo per ogni giornata: Costo_gg + esborso spese.
-        //    L'esborso è spese_totali (viaggi + vitto/alloggio + altri costi), non
-        //    Valore_spese che è il prezzo di vendita: usare quello rendeva il margine
-        //    delle spese nullo per costruzione. Vedi docs/REGOLE-SPESE.md.
-        const costoCampoDalleGiornate = commessa.tasks
-            .filter(t => t.Tipo === 'Campo')
-            .reduce((accTask, task) => {
-                const giornate = task.giornate || [];
-                const costoPerTask = giornate.reduce((accGg, g) => {
-                    const costoGg = parseFloat(g.Costo_gg ?? g.costo_gg ?? 0) || 0;
-                    const costoSpese = parseFloat(g.spese_totali ?? g.Spese_Totali ?? 0) || 0;
-                    return accGg + costoGg + costoSpese;
-                }, 0);
-                return accTask + costoPerTask;
-            }, 0);
-
-        // 2) Per i task di tipo 'Monitoraggio' aggiungiamo il valore maturato:
-        //    sommaValoreCampo (calcolato dalle proprietà task.valore_gg_maturato o dalle giornate) * Valore_gg (percentuale)
-        const sommaValoreCampoMaturato = commessa.tasks.reduce((sum, task) => {
+        // Giornate Campo: con un filtro attivo i task portano gia' gg_effettuate
+        // calcolato sul periodo, altrimenti si somma dalle giornate.
+        const giornateCampo = tasks.reduce((sum, task) => {
             if (task.Tipo !== 'Campo') return sum;
-            // preferiamo usare task.valore_gg_maturato se presente, altrimenti ricaviamo dalle giornate
-            if (typeof task.valore_gg_maturato !== 'undefined' && task.valore_gg_maturato !== null) {
-                return sum + (parseFloat(task.valore_gg_maturato) || 0);
-            }
-            const fromGiornate = (task.giornate || []).reduce((s, g) => s + (parseFloat(g.valore_calcolato ?? g.valore_calcolato ?? g.Valore_calcolato ?? 0) || 0), 0);
-            return sum + fromGiornate;
+            if (task.hasOwnProperty('gg_effettuate')) return sum + (parseFloat(task.gg_effettuate) || 0);
+            return sum + (task.giornate || [])
+                .filter(g => g.Tipo === 'Campo')
+                .reduce((gSum, g) => gSum + (parseFloat(g.gg?.toString().replace(',', '.')) || 0), 0);
         }, 0);
 
-        const costoMonitoraggio = commessa.tasks.reduce((acc, task) => {
-            if (task.Tipo === 'Monitoraggio') {
-                return acc + (parseFloat(task.valore_gg_maturato) || 0);
-            }
-            return acc;
-        }, 0);
+        // Tutte le giornate, di ogni tipo: e' un dato solo dell'export.
+        const giornateTutte = tasks.reduce((sum, task) => sum + (task.giornate || [])
+            .reduce((gSum, g) => gSum + (parseFloat(g.gg?.toString().replace(',', '.')) || 0), 0), 0);
 
-        const costo_totale_attivita = costoCampoDalleGiornate + costoMonitoraggio;
-        
-        // Calcolo marginalità come percentuale
-        const margineAssoluto = (valoreTotale || 0) - (costo_totale_attivita || 0) - (costoAccounting || 0);
-        const marginalitaPercentuale = valoreTotale > 0 ? ((margineAssoluto / valoreTotale) * 100) : 0;
-        
-        // Calcolo giorni previsti totali per i task di tipo 'Campo'
-        const totalGgPreviste = commessa.tasks.reduce((sum, task) => {
-            if (task.Tipo === 'Campo') {
-                return sum + (parseFloat(task.gg_previste) || 0);
-            }
-            return sum;
-        }, 0);
-        
+        const giornatePreviste = tasks.reduce((sum, task) => (task.Tipo === 'Campo' ? sum + (parseFloat(task.gg_previste) || 0) : sum), 0);
+
+        const valoreCampo = tasks.reduce((sum, task) => (task.Tipo === 'Campo' ? sum + (parseFloat(task.valore_gg_maturato) || 0) : sum), 0);
+        const valoreMonitoraggio = tasks.reduce((sum, task) => (task.Tipo === 'Monitoraggio' ? sum + (parseFloat(task.valore_gg_maturato) || 0) : sum), 0);
+        const valoreLavori = valoreCampo + valoreMonitoraggio;
+        const valoreSpese = tasks.reduce((sum, task) => sum + (parseFloat(task.valore_spese_maturato) || 0), 0);
+        const valoreTotale = valoreLavori + valoreSpese;
+
+        const costoAccounting = valoreCampo * (parseFloat(commessa.Commissione) || 0);
+
+        // Costo delle attivita': per i task Campo, per ogni giornata Costo_gg piu'
+        // l'esborso reale delle spese — spese_totali, non Valore_spese che e' il
+        // prezzo di vendita e renderebbe nullo per costruzione il margine spese.
+        // Vedi docs/REGOLE-SPESE.md.
+        const costoCampo = tasks
+            .filter(t => t.Tipo === 'Campo')
+            .reduce((acc, task) => acc + (task.giornate || []).reduce((accGg, g) => {
+                const costoGg = parseFloat(g.Costo_gg ?? g.costo_gg ?? 0) || 0;
+                const costoSpese = parseFloat(g.spese_totali ?? g.Spese_Totali ?? 0) || 0;
+                return accGg + costoGg + costoSpese;
+            }, 0), 0);
+        const costoAttivita = costoCampo + valoreMonitoraggio;
+
+        const margine = valoreTotale - costoAttivita - costoAccounting;
+        const marginePercentuale = valoreTotale > 0 ? (margine / valoreTotale) * 100 : 0;
+
+        const fatture = this.getFattureCommessa(commessa.ID_COMMESSA);
+        const fatturato = fatture.reduce((sum, f) => sum + (parseFloat(f.Fatturato_TOT) || 0), 0);
+        const noteAccredito = fatture.filter(f => f.TIPO === 'Nota_Accredito').length;
+
+        return {
+            totalTasks, activeTasks,
+            giornateCampo, giornateTutte, giornatePreviste,
+            valoreCampo, valoreMonitoraggio, valoreLavori, valoreSpese, valoreTotale,
+            costoAccounting, costoAttivita, margine, marginePercentuale,
+            fatture, fatturato, noteAccredito,
+        };
+    }
+
+    createCommessaCard(commessa) {
+        const v = this.calcolaValoriCommessa(commessa);
+        const totalTasks = v.totalTasks;
+        const activeTasks = v.activeTasks;
+        const totalGiornate = v.giornateCampo;
+        const totalGgPreviste = v.giornatePreviste;
+        const valoreComplessivoLavori = v.valoreLavori;
+        const valoreComplessivoSpese = v.valoreSpese;
+        const valoreTotale = v.valoreTotale;
+        const costoAccounting = v.costoAccounting;
+        const costo_totale_attivita = v.costoAttivita;
+        const margineAssoluto = v.margine;
+        const marginalitaPercentuale = v.marginePercentuale;
+
         const isUser = this.app.currentUser?.ruolo === 'User';
 
-        const fattureCommessa = this.getFattureCommessa(commessa.ID_COMMESSA);
-        const fatturato = fattureCommessa.reduce((sum, f) => sum + (parseFloat(f.Fatturato_TOT) || 0), 0);
-        const nStorni = fattureCommessa.filter(f => f.TIPO === 'Nota_Accredito').length;
+        const fattureCommessa = v.fatture;
+        const fatturato = v.fatturato;
+        const nStorni = v.noteAccredito;
         const nFatture = fattureCommessa.length - nStorni;
 
         // Il fatturato ha senso solo dove si fattura: su una commessa interna
@@ -1562,47 +1552,45 @@ class CommesseTaskSection extends BaseSection {
         const data = this.lastFilteredData || this.groupTasksByCommessa();
         if (!data || data.length === 0) { this.ui.showToast('Nessuna commessa da esportare.', 'warning'); return; }
 
+        // Le colonne seguono i badge dell'intestazione di commessa, nello stesso
+        // ordine e con gli stessi numeri: chi esporta si aspetta di ritrovare a
+        // foglio quello che ha appena letto a schermo.
         const headers = [
-            'ID_COMMESSA','Commessa','Tipo_Commessa','Cliente','Responsabile','Stato_Commessa','Valore_TOTALE','Valore_Lavori','Valore_Spese','Costo_Totale_Attivita','Costo_Accounting','Margine_Commessa','Giornate_Campo','Totale_Giornate','Num_Tasks'
+            'ID_COMMESSA','Commessa','Tipo_Commessa','Cliente','Responsabile','Stato_Commessa',
+            'Valore_TOTALE','Fatturato','Num_Fatture','Num_Note_Accredito',
+            'Valore_Lavori','Valore_Spese','Costo_Totale_Attivita','Costo_Accounting',
+            'Margine_Commessa','Marginalita_Perc',
+            'Giornate_Campo','Giornate_Previste','Totale_Giornate','Task_Attivi','Num_Tasks'
         ];
 
         const rows = data.map(commessa => {
-            const sommaValoreCampo = commessa.tasks.reduce((sum, task) => (task.Tipo === 'Campo' ? sum + (parseFloat(task.valore_gg_maturato) || 0) : sum), 0);
-            const valoreSpese = commessa.tasks.reduce((sum, task) => sum + (parseFloat(task.valore_spese_maturato) || 0), 0);
-            const valoreLavori = sommaValoreCampo + commessa.tasks.reduce((sum, task) => (task.Tipo === 'Monitoraggio' ? sum + (parseFloat(task.valore_gg_maturato) || 0) : sum), 0);
-            // calcola costo totale attività per la commessa (Campo + Monitoraggio)
-            const costoCampoAttivita = commessa.tasks.reduce((accTask, task) => {
-                if (task.Tipo !== 'Campo') return accTask;
-                const giornate = task.giornate || [];
-                return accTask + giornate.reduce((accGg, g) => {
-                    const costoGg = parseFloat(g.Costo_gg ?? g.costo_gg ?? 0) || 0;
-                    const costoSp = parseFloat(g.spese_totali ?? g.Spese_Totali ?? 0) || 0;
-                    return accGg + costoGg + costoSp;
-                }, 0);
-            }, 0);
-            // contributo dei task di Monitoraggio: usa il valore già calcolato dall'API
-            const costoMonitoraggio = commessa.tasks.reduce((acc, task) => {
-                if (task.Tipo === 'Monitoraggio') {
-                    return acc + (parseFloat(task.valore_gg_maturato) || 0);
-                }
-                return acc;
-            }, 0);
-            const costoAttivita = costoCampoAttivita + costoMonitoraggio;
-            const costoAccounting = sommaValoreCampo * (parseFloat(commessa.Commissione) || 0);
-            const margine = (valoreLavori + valoreSpese) - costoAttivita - costoAccounting;
-            const totaleGiornate = commessa.tasks.reduce((sum, task) => sum + (parseFloat(task.gg_effettuate) || 0), 0);
-            const giornateCampo = commessa.tasks.reduce((sumTask, task) => {
-                const gg = (task.giornate || []).filter(g => g.Tipo === 'Campo').reduce((s, g) => s + (parseFloat(g.gg) || 0), 0);
-                return sumTask + gg;
-            }, 0);
-            const numTasks = commessa.tasks.length;
-            return [commessa.ID_COMMESSA, commessa.Commessa, commessa.Tipo_Commessa, commessa.cliente_nome, commessa.responsabile_nome, commessa.Stato_Commessa, valoreLavori + valoreSpese, valoreLavori, valoreSpese, costoAttivita, costoAccounting, margine, giornateCampo, totaleGiornate, numTasks];
+            const v = this.calcolaValoriCommessa(commessa);
+            // Sulle commesse interne il fatturato non si mostra a schermo, e a
+            // foglio resta vuoto invece di diventare uno zero che sembra un dato.
+            const interna = commessa.Tipo_Commessa === 'Interna';
+            return [
+                commessa.ID_COMMESSA, commessa.Commessa, commessa.Tipo_Commessa,
+                commessa.cliente_nome, commessa.responsabile_nome, commessa.Stato_Commessa,
+                v.valoreTotale,
+                interna ? '' : v.fatturato,
+                interna ? '' : v.fatture.length - v.noteAccredito,
+                interna ? '' : v.noteAccredito,
+                v.valoreLavori, v.valoreSpese, v.costoAttivita, v.costoAccounting,
+                v.margine, v.marginePercentuale,
+                v.giornateCampo, v.giornatePreviste, v.giornateTutte,
+                v.activeTasks, v.totalTasks,
+            ];
         });
 
         // costruisci CSV
         const csvLines = [headers.join(';')];
         rows.forEach(r => {
-            csvLines.push(r.map(v => typeof v === 'number' ? v.toString().replace('.', ',') : `"${(v||'').toString().replace(/"/g,'""')}"`).join(';'));
+            csvLines.push(r.map(v => {
+                // Due decimali: la virgola mobile lasciava passare importi come
+                // 15221,250000000002, che a foglio sembrano un errore di calcolo.
+                if (typeof v === 'number') return (Math.round(v * 100) / 100).toString().replace('.', ',');
+                return `"${(v ?? '').toString().replace(/"/g, '""')}"`;
+            }).join(';'));
         });
 
         const blob = new Blob([csvLines.join('\n')], { type: 'text/csv;charset=utf-8;' });
