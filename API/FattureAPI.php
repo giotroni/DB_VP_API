@@ -377,6 +377,10 @@ class FattureAPI extends BaseAPI {
      * Pre-processing dei dati prima dell'inserimento/aggiornamento
      */
     protected function preprocessData($data) {
+        // In aggiornamento la chiave primaria e' gia' dentro $data: la mette
+        // update() prima di chiamarci.
+        $isUpdate = isset($data[$this->primaryKey]) && !empty($data[$this->primaryKey]);
+
         // Valida e formatta le date
         $dateFields = ['Data', 'Data_Ordine', 'Scadenza_Pagamento', 'Data_Pagamento'];
         foreach ($dateFields as $field) {
@@ -392,11 +396,16 @@ class FattureAPI extends BaseAPI {
             $data['TIPO'] = $this->resolveTipo($data);
         }
 
-        // Imposta importi a 0 se non specificati
-        $importiFields = ['Fatturato_gg', 'Fatturato_Spese', 'Fatturato_TOT', 'Valore_Pagato'];
-        foreach ($importiFields as $field) {
-            if (!isset($data[$field]) || $data[$field] === '') {
-                $data[$field] = 0;
+        // Imposta importi a 0 se non specificati, ma SOLO in creazione. E' lo
+        // stesso motivo per cui poco sopra TIPO non viene piu' forzato: in
+        // aggiornamento un campo assente vuol dire "non lo sto cambiando", e
+        // azzerarlo qui svuotava l'importo di una fattura gia' emessa.
+        if (!$isUpdate) {
+            $importiFields = ['Fatturato_gg', 'Fatturato_Spese', 'Fatturato_TOT', 'Valore_Pagato'];
+            foreach ($importiFields as $field) {
+                if (!isset($data[$field]) || $data[$field] === '') {
+                    $data[$field] = 0;
+                }
             }
         }
         

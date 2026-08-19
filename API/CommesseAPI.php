@@ -186,6 +186,11 @@ class CommesseAPI extends BaseAPI {
      * Pre-processing dei dati prima dell'inserimento/aggiornamento
      */
     protected function preprocessData($data) {
+        // In aggiornamento la chiave primaria e' gia' dentro $data: la mette
+        // update() prima di chiamarci. E' il modo in cui GiornateAPI distingue
+        // i due casi, e vale anche qui.
+        $isUpdate = isset($data[$this->primaryKey]) && !empty($data[$this->primaryKey]);
+
         // Normalizza i dati
         if (isset($data['Commessa'])) {
             $data['Commessa'] = trim($data['Commessa']);
@@ -195,14 +200,20 @@ class CommesseAPI extends BaseAPI {
             $data['Desc_Commessa'] = trim($data['Desc_Commessa']);
         }
         
-        // Imposta stato predefinito se non specificato
-        if (!isset($data['Stato_Commessa']) || empty($data['Stato_Commessa'])) {
-            $data['Stato_Commessa'] = 'In corso';
-        }
-        
-        // Imposta commissione a 0 se non specificata
-        if (!isset($data['Commissione']) || empty($data['Commissione'])) {
-            $data['Commissione'] = 0;
+        // I valori predefiniti valgono SOLO in creazione. In aggiornamento un
+        // campo assente significa "non lo sto cambiando", non "riportalo al
+        // default": applicandoli qui, un salvataggio parziale riscriveva lo
+        // stato con 'In corso' e la commissione con 0. Su una commessa chiusa
+        // la riapriva, e propagaChiusuraAiTask riceveva lo stato inventato
+        // invece di quello vero.
+        if (!$isUpdate) {
+            if (!isset($data['Stato_Commessa']) || empty($data['Stato_Commessa'])) {
+                $data['Stato_Commessa'] = 'In corso';
+            }
+
+            if (!isset($data['Commissione']) || empty($data['Commissione'])) {
+                $data['Commissione'] = 0;
+            }
         }
         
         // Se tipo è "Interna", rimuovi ID_CLIENTE
@@ -217,7 +228,8 @@ class CommesseAPI extends BaseAPI {
 
         // Una commessa che si chiude si porta dietro i suoi task: non deve restare
         // lavoro aperto sotto una commessa finita.
-        $this->propagaChiusuraAiTask($data['ID_COMMESSA'] ?? null, $data['Stato_Commessa']);
+        // Senza stato non c'e' chiusura da propagare: il metodo esce da solo.
+        $this->propagaChiusuraAiTask($data['ID_COMMESSA'] ?? null, $data['Stato_Commessa'] ?? null);
 
         return $data;
     }

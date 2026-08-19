@@ -186,8 +186,11 @@ class FattureCollaboratoriAPI extends BaseAPI {
             $data['Importo_Totale'] = floatval($data['Importo_netto']) + floatval($data['Importo_IVA'] ?? 0);
         }
 
-        // Imposta stato di default
-        if (!isset($data['Stato']) || $data['Stato'] === '') {
+        // Stato di default solo in creazione: in aggiornamento un campo assente
+        // vuol dire "non lo sto cambiando", e riportava a 'Ricevuta' una
+        // fattura gia' pagata.
+        $isUpdate = isset($data[$this->primaryKey]) && !empty($data[$this->primaryKey]);
+        if (!$isUpdate && (!isset($data['Stato']) || $data['Stato'] === '')) {
             $data['Stato'] = 'Ricevuta';
         }
 
