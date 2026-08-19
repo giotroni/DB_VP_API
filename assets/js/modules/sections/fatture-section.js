@@ -395,6 +395,7 @@ class FattureSection extends BaseSection {
         const rigaStorno = form.querySelector('#rigaStorno');
         const inputCommessa = form.querySelector('#ID_COMMESSA');
         const commessaHint = form.querySelector('#commessaHint');
+        const chkTutteCommesse = form.querySelector('#mostraTutteCommesse');
 
         // Le commesse selezionabili sono quelle del cliente scelto. Con tutte e 41
         // in tendina e nessun vincolo il campo restava vuoto sul 92% delle fatture
@@ -403,13 +404,20 @@ class FattureSection extends BaseSection {
         // appartiene a un altro cliente: quattro fatture sono oggi in questa
         // condizione — la terna 20-21-22/25 e la 36/26 — e filtrarle via farebbe
         // perdere il collegamento al primo salvataggio, in silenzio.
-        const aggiornaOpzioniCommessa = () => {
+        const aggiornaOpzioniCommessa = (forzata) => {
             if (!inputCommessa) return;
-            const scelta = inputCommessa.value || fattura.ID_COMMESSA || '';
+            const scelta = forzata || inputCommessa.value || fattura.ID_COMMESSA || '';
             const cliente = inputCliente?.value || '';
+            // L'intestatario della fattura non coincide sempre col cliente della
+            // commessa: lo decide l'ordine, e per le fatture emesse al cliente
+            // sbagliato e poi stornate non coincide per definizione. La casella
+            // allarga l'elenco a tutti i clienti quando serve.
+            const tutte = !!chkTutteCommesse?.checked;
 
             const candidate = (this.app.commesse || []).filter(c => {
                 if (scelta && String(c.ID_COMMESSA) === String(scelta)) return true;
+                if (c.Tipo_Commessa === 'Interna') return false;
+                if (tutte) return true;
                 if (!cliente) return false;
                 return String(c.ID_CLIENTE) === String(cliente);
             });
@@ -425,10 +433,12 @@ class FattureSection extends BaseSection {
             inputCommessa.innerHTML = `<option value="">Nessuna commessa</option>${opzioni}`;
 
             if (commessaHint) {
-                if (!cliente) {
-                    commessaHint.textContent = 'Seleziona prima il cliente.';
+                if (tutte) {
+                    commessaHint.textContent = 'Elenco allargato a tutti i clienti.';
+                } else if (!cliente) {
+                    commessaHint.textContent = "Seleziona prima il cliente, oppure allarga l'elenco qui sopra.";
                 } else if (!candidate.length) {
-                    commessaHint.textContent = 'Questo cliente non ha commesse.';
+                    commessaHint.textContent = "Questo cliente non ha commesse: allarga l'elenco qui sopra.";
                 } else {
                     commessaHint.textContent = '';
                 }
@@ -557,6 +567,17 @@ class FattureSection extends BaseSection {
         if (inputCliente) inputCliente.addEventListener('change', () => {
             aggiornaOpzioniCommessa();
             if (isNotaAccredito()) aggiornaOpzioniStorno();
+        });
+        if (chkTutteCommesse) chkTutteCommesse.addEventListener('change', () => aggiornaOpzioniCommessa());
+
+        // Una nota di accredito sta sulla stessa commessa della fattura che
+        // storna: e' l'unica risposta possibile, quindi si compila da se'.
+        if (inputStorno) inputStorno.addEventListener('change', () => {
+            if (inputCommessa?.value) return;
+            const stornata = (this.app.fatture || []).find(f => f.ID_FATTURA === inputStorno.value);
+            if (!stornata?.ID_COMMESSA) return;
+            aggiornaOpzioniCommessa(stornata.ID_COMMESSA);
+            if (commessaHint) commessaHint.textContent = `Ereditata dalla ${stornata.NR}, che questa nota storna.`;
         });
 
         // Esegui inizializzazione al caricamento del modal
@@ -784,7 +805,7 @@ class FattureSection extends BaseSection {
                 </div>
                 <div class="row">
                     <div class="col-md-6 mb-3"><label for="ID_CLIENTE" class="form-label">Cliente</label><select class="form-select" id="ID_CLIENTE" name="ID_CLIENTE" required><option value="">Seleziona cliente...</option>${clientiOptions}</select></div>
-                    <div class="col-md-6 mb-3"><label for="ID_COMMESSA" class="form-label">Commessa <i class="fas fa-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="Solo le commesse del cliente selezionato. Senza commessa la fattura non entra nell'avanzamento del progetto."></i></label><select class="form-select" id="ID_COMMESSA" name="ID_COMMESSA"><option value="">Nessuna commessa</option></select><div class="form-text" id="commessaHint"></div></div>
+                    <div class="col-md-6 mb-3"><label for="ID_COMMESSA" class="form-label">Commessa <i class="fas fa-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="Solo le commesse del cliente selezionato. Senza commessa la fattura non entra nell'avanzamento del progetto."></i></label><select class="form-select" id="ID_COMMESSA" name="ID_COMMESSA"><option value="">Nessuna commessa</option></select><div class="form-check form-check-inline mt-1"><input class="form-check-input" type="checkbox" id="mostraTutteCommesse"><label class="form-check-label small text-muted" for="mostraTutteCommesse">Mostra le commesse di tutti i clienti</label></div><div class="form-text" id="commessaHint"></div></div>
                 </div>
                 <div class="row">
                     <div class="col-md-6 mb-3"><label for="TIPO" class="form-label">Tipo</label><select class="form-select" id="TIPO" name="TIPO" required>${tipiOptions}</select></div>
