@@ -16,12 +16,14 @@
       "Bash(cd \"c:/onedrive_vep/OneDrive/Documents/40. KNOWHOW/VP/Gestionale/DB_VP_API\" && sed -n '/private function getTariffaAttiva/,/^    }$/p' API/GiornateAPI.php | head -40)",
       "Bash(cd \"c:/onedrive_vep/OneDrive/Documents/40. KNOWHOW/VP/Gestionale/DB_VP_API\" && sed -n '/showGiornateModal\\(taskId\\)/,/^    }$/p' assets/js/modules/sections/commesse-task-section.js | head -50)",
       "Bash(cd \"c:/onedrive_vep/OneDrive/Documents/40. KNOWHOW/VP/Gestionale/DB_VP_API\" && sed -n '/return `<div class=\"table-responsive\">/,/<\\\\/table>/p' assets/js/modules/sections/commesse-task-section.js | head -50)",
-      "Bash(cd \"c:/onedrive_vep/OneDrive/Documents/40. KNOWHOW/VP/Gestionale/DB_VP_API\" && grep -n \"Le quattro anomalie\\\\|### ①\" docs/REGOLE-SPESE.md | head -4 && sed -n '/### ① Il forfait ha tre interpretazioni simultanee/,+12p' docs/REGOLE-SPESE.md)"
+      "Bash(cd \"c:/onedrive_vep/OneDrive/Documents/40. KNOWHOW/VP/Gestionale/DB_VP_API\" && grep -n \"Le quattro anomalie\\\\|### ①\" docs/REGOLE-SPESE.md | head -4 && sed -n '/### ① Il forfait ha tre interpretazioni simultanee/,+12p' docs/REGOLE-SPESE.md)",
+      "Bash(cd \"c:/onedrive_vep/OneDrive/Documents/40. KNOWHOW/VP/Gestionale/DB_VP_API\" && grep -n \"curStmt\\\\|SELECT.*FROM ANA_TASK WHERE ID_TASK\" API/TaskAPI.php | head -5 && echo \"=== la query di \\\\$attuale ===\" && sed -n '/\\\\$curStmt = \\\\$this->db->prepare/,/\\\\$attuale = /p' API/TaskAPI.php | head -12 && echo \"=== sendErrorResponse ===\" && grep -rn \"function sendErrorResponse\" -A 12 API/*.php DB/critical/*.php 2>/dev/null | head -18)"
     ],
     "additionalDirectories": [
       "c:\\onedrive_vep\\OneDrive\\Documents\\40. KNOWHOW\\VP\\Gestionale\\DB_VP_API\\API",
       "c:\\onedrive_vep\\OneDrive\\Documents\\40. KNOWHOW\\VP\\Gestionale\\DB_VP_API\\assets\\js\\modules\\sections",
-      "C:\\onedrive_vep\\OneDrive\\Documents\\40. KNOWHOW\\VP\\Gestionale\\DB_VP_API\\docs"
+      "C:\\onedrive_vep\\OneDrive\\Documents\\40. KNOWHOW\\VP\\Gestionale\\DB_VP_API\\docs",
+      "C:\\onedrive_vep\\OneDrive\\Documents\\40. KNOWHOW\\VP\\Gestionale\\DB_VP_API\\API"
     ]
   }
 }

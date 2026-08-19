@@ -32,47 +32,99 @@ Al primo avvio il container `db` esegue in ordine gli script di `docker/initdb`:
 | 06 | `06-allinea-fatture-pdf.sql` | allinea l'archivio alle fatture cartacee: numerazioni, doppioni, importi, due documenti mancanti, riferimenti d'ordine |
 | 07 | `07-allinea-incassi.sql` | i 26 incassi presi dal registro Excel e tre date divergenti |
 | 08 | `08-storno-note-accredito.sql` | colonna `ID_FATTURA_STORNATA` e i sette collegamenti nota → fattura |
-| 09 | `09-attribuzioni-fatture-commesse.sql` | i collegamenti fattura → commessa, che **nessuna migration valorizza** |
-| 10 | `10-spese-quattro-commesse.sql` | le correzioni a mano su regimi e flag `Viaggio` — **file generato**, vedi sotto |
+| 09 | `09-attribuzioni-fatture-commesse.sql` | fatture e commesse toccate a mano: collegamento alla commessa, intestatario, nome, stato, data di apertura — **file generato**, vedi sotto |
+| 10 | `10-spese-quattro-commesse.sql` | le correzioni a mano su regimi e flag `Viaggio` — **file generato** |
 | 11 | `11-regime-spese.sql` | il regime di spesa esplicito e il forfait a corpo ([SCHEMA-SPESE-A-CORPO](SCHEMA-SPESE-A-CORPO.md)) |
+| 12 | `12-task-creati-in-locale.sql` | i task **nati in locale** e le giornate spostate — **file generato**. Va dopo l'11 perché il suo `INSERT` elenca anche le colonne di regime |
 
 Gli script dal 04 all'08 e l'11 replicano migration che **in produzione non sono
 ancora state eseguite**: qui servono perché il reset riparte dal dump, che ha
 ancora lo schema e i dati vecchi. Vanno tenuti allineati alle rispettive
 migration in `DB/migrations/` finché il dump non le contiene già.
 
-Il 09 e il 10 sono un'altra cosa: non replicano nessuna migration, **rimettono
-lavoro fatto a mano dall'interfaccia** che altrimenti il reset perderebbe in
-silenzio. È successo il 17/08/2026: i conteggi delle tabelle tornavano tutti
-giusti, il reset sembrava riuscito, e intanto il fatturato per commessa era
-tornato indietro di otto righe senza che nulla lo segnalasse.
+Il 09, il 10 e il 12 sono un'altra cosa: non replicano nessuna migration,
+**rimettono lavoro fatto a mano dall'interfaccia** che altrimenti il reset
+perderebbe in silenzio. È successo il 17/08/2026: i conteggi delle tabelle
+tornavano tutti giusti, il reset sembrava riuscito, e intanto il fatturato per
+commessa era tornato indietro di otto righe senza che nulla lo segnalasse.
 
-## Se modifichi i dati dall'interfaccia, rigenera lo script 10
+## Se modifichi i dati dall'interfaccia, rigenera le fotografie
 
-Il 10 è una **fotografia**: contiene le righe di task e giornate che si scostano
-da quello che producono dump più migration. Ogni correzione nuova la invecchia.
+I tre file sono **generati**, non si scrivono a mano. Dopo ogni giro di
+correzioni fatte dall'interfaccia:
 
 ```bash
+docker compose exec -T web php /var/www/html/docker/genera-09-attribuzioni.php
 docker compose exec -T web php /var/www/html/docker/genera-10-spese.php
 ```
 
-Va lanciato dopo aver cambiato dall'interfaccia un **regime di spesa**, un
-**importo**, un flag **Viaggio** o **Desk**. Richiede il database di confronto
-`prod_260815` — è il termine di paragone che dice quali righe sono state toccate
-a mano. Poi si committa il file rigenerato.
+Il primo scrive lo script **09**, il secondo ne scrive **due**, il 10 e il 12.
+Poi si committano i file rigenerati.
 
-Nel giro di poche ore del 17/08/2026 la fotografia era già invecchiata di due
-task e due giornate: se la si aggiorna a mano, prima o poi non la si aggiorna.
+Cosa coprono, tabella per tabella:
 
-Le attribuzioni fattura → commessa dello script 09 restano invece da aggiornare a
-mano: sono poche e cambiano di rado. Spariranno con la fase 2 di
-[PROGETTO-COMMESSE-ORDINI](PROGETTO-COMMESSE-ORDINI.md), che rende `ID_COMMESSA`
-obbligatorio.
+| Generatore | File | Cosa fotografa |
+|---|---|---|
+| `genera-09-attribuzioni.php` | 09 | `FACT_FATTURE.ID_COMMESSA` e `.ID_CLIENTE`; `ANA_COMMESSE.ID_CLIENTE`, `.Commessa`, `.Stato_Commessa`, `.Data_Apertura_Commessa` |
+| `genera-10-spese.php` | 10 | i regimi di spesa sui task, i flag `Viaggio` e `Desk` sulle giornate |
+| `genera-10-spese.php` | 12 | i task **creati in locale**, i task modificati (stato, giornate previste, prezzo, regime) e le giornate **spostate** su un altro task |
+
+Entrambi confrontano con il database `prod_260815`, il dump di produzione
+caricato a parte: è il termine di paragone che dice quali righe sono state
+toccate a mano.
+
+### Le tre trappole
+
+**`docker compose down -v` distrugge anche `prod_260815`.** Nessuno script di
+initdb lo ricrea, quindi dopo ogni reset va ricaricato a mano e va rifatto il
+permesso di lettura:
+
+```bash
+docker exec -i vp_db mariadb -uroot -p<pwd> < DB/Backup/<data>_prod_260815.sql
+docker exec vp_db mariadb -uroot -p<pwd> -e "GRANT SELECT ON prod_260815.* TO 'vaglioty_DB_VP'@'%'"
+```
+
+**Rigenera solo quando il database è nello stato buono.** Rigenerare subito dopo
+un reset che ha perso qualcosa fotografa la perdita, e la rende definitiva.
+
+**Il confronto è una `LEFT JOIN`, non una `INNER`.** Le fatture 39/26 e 40/26 non
+stanno nel dump — le crea la migration 06 — e con la `INNER` sparivano dal diff,
+così le loro commesse non finivano nella fotografia. Una riga assente dal
+riferimento è divergente per definizione.
 
 **L'ordine conta.** Il 06 sistema le numerazioni e il 07 cerca le fatture per
 numero: invertirli lascerebbe 26 incassi non registrati, in silenzio. Dopo un
 reset i tre totali di controllo sono **13.705,50** (2024), **312.163,50** (2025)
 e **401.687,50** (2026).
+
+## Come si verifica che un reset sia riuscito
+
+I conteggi delle tabelle **tornano giusti anche quando il reset ha perso righe**:
+è esattamente così che la perdita è passata inosservata il 17/08/2026. L'unico
+controllo che vale è il confronto riga per riga con un backup fatto prima.
+
+```bash
+# 1. backup, prima di toccare qualsiasi cosa
+docker exec vp_db mariadb-dump -uroot -p<pwd> --single-transaction     --databases vaglioty_DB_VP > DB/Backup/<data>_PRIMA_DEL_RESET_vaglioty_DB_VP.sql
+docker exec vp_db mariadb-dump -uroot -p<pwd> --single-transaction     --databases prod_260815 > DB/Backup/<data>_PRIMA_DEL_RESET_prod_260815.sql
+
+# 2. reset
+docker compose down -v && docker compose up -d
+
+# 3. ricarica il backup in un database separato e confronta riga per riga
+#    (SET time_zone='+00:00', altrimenti i timestamp slittano di 1-2 ore)
+```
+
+Il confronto va fatto su `FACT_FATTURE`, `ANA_COMMESSE`, `ANA_TASK`,
+`FACT_GIORNATE` e `ANA_CLIENTI`, e deve dare **zero differenze** — sia sulle
+colonne sia sul numero di righe, perché una riga in meno è il caso più insidioso.
+
+Provato il 19/08/2026 con quattro reset veri. I primi tre hanno trovato sei tipi
+di perdita che il confronto a tavolino non vedeva; il quarto ha ricostruito lo
+stato al centesimo.
+
+**`reset-db.ps1` chiede conferma con `Read-Host`**: da uno script non interattivo
+va eseguito nei suoi due passi, `docker compose down -v` e `docker compose up -d`.
 
 Quando `docker compose ps` mostra `vp_db` come `healthy`, l'ambiente e' pronto.
 
@@ -96,8 +148,8 @@ per l'installazione XAMPP presente sulla macchina.
 3. `.\docker\reset-db.ps1` — cancella il volume e reimporta.
 
 Il volume `db_data` viene ricreato da zero: **le modifiche fatte in locale al
-database si perdono**, i file del progetto no — tranne quelle che gli script 09
-e 10 rimettono, che sono il motivo per cui esistono. L'ultimo allineamento è del
+database si perdono**, i file del progetto no — tranne quelle che gli script 09,
+10 e 12 rimettono, che sono il motivo per cui esistono. L'ultimo allineamento è del
 **15/08/2026** (dump `260815`, 118 task e 464 giornate).
 
 Il reset cancella anche il database di confronto `prod_260815`, che sta nello
@@ -121,6 +173,39 @@ ruolo:    Admin
 
 E' una **riga nuova**: nessun utente reale viene modificato, e l'utente esiste solo
 in locale.
+
+## Pilotare l'app dal browser
+
+Sulla macchina i browser di Playwright ci sono già, scaricati da
+`chrome-devtools-mcp`, in `%LOCALAPPDATA%\ms-playwright\chromium-1234`. Manca solo
+la libreria che li pilota, ed è piccola: **non scarica alcun browser**.
+
+```bash
+npm i playwright-core        # nella cartella di lavoro, non nel repo
+```
+
+```js
+const { chromium } = require('playwright-core');
+const EXE = 'C:/Users/<utente>/AppData/Local/ms-playwright/chromium-1234/chrome-win64/chrome.exe';
+const b = await chromium.launch({ executablePath: EXE, headless: true });
+```
+
+Il percorso per arrivare a una schermata non è ovvio e vale la pena averlo scritto:
+
+1. l'app di gestione è **`management.html`**, non `index.html`;
+2. login con `#username` / `#password` e `button[type=submit]`, poi ~4 secondi di attesa;
+3. la navigazione sta **dietro l'hamburger**: prima `.fa-bars`, poi `text=Fatture`;
+4. i dati dell'app sono raggiungibili da `window.app` — `app.fatture`, `app.commesse`,
+   `app.tasks`, e le sezioni da `app.sections['commesse-task']`.
+
+Serve per due cose, entrambe fatte il 19/08/2026:
+
+- **verificare davvero una modifica**. Un test in Node che carica una funzione con
+  dati finti può passare su codice che a schermo non funziona: è successo con un
+  `ReferenceError` che il browser ha trovato subito e il test no.
+- **leggere i numeri dall'app invece di ricalcolarli**. I badge dell'intestazione di
+  commessa contengono già maturato, spese e fatturato con le formule vere: rileggerli
+  dal DOM evita di scrivere l'ennesima copia delle stesse formule in uno script.
 
 ## Comandi utili
 
