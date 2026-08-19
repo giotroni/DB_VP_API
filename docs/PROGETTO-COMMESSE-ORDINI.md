@@ -142,6 +142,33 @@ ancora iniziato.
 
 ## 4. Il modello dati
 
+### Quale commessa: la decide il lavoro che il documento paga
+
+*Deciso il 19/08/2026, chiudendo la prima decisione aperta.*
+
+Le aperture del 13/08/2026 sembravano incoerenti: per Corteolona, Certosa e Melzo la fase
+successiva è diventata una commessa nuova, mentre per Castelli Reggio l'ordine `4512249011`
+è finito su `COM2025007 LACTALIS STAB CASTELLI RE SVILUPPO 2025`, cioè la commessa del 2025,
+dove il 13/08 è comparso un task.
+
+Non è un'incoerenza. **L'offerta 260723 e il suo ordine comprendono anche attività già
+iniziate nel 2025**, quelle registrate su COM2025007. Il documento paga quel lavoro, e quel
+lavoro sta lì.
+
+Ne esce la regola, che non è cronologica né per fase:
+
+> **Un documento commerciale si attacca alla commessa che contiene il lavoro che autorizza.**
+> Se apre lavoro nuovo e separato, la commessa è nuova — Corteolona, Certosa, Melzo. Se paga
+> anche lavoro già in corso su una commessa aperta, va su quella — Castelli Reggio.
+
+Il criterio operativo è semplice da applicare: *l'ordine copre giornate già consuntivate su
+una commessa aperta?* Se sì, è la sua. È anche l'unica lettura compatibile con la cardinalità
+del paragrafo seguente: aprendo una commessa nuova per Castelli, l'ordine `4512249011` si
+sarebbe dovuto spezzare fra due commesse, che il modello non ammette.
+
+Va accettata una conseguenza estetica: `COM2025007` si chiama «SVILUPPO 2025» e ospita lavoro
+del 2026. Il nome non è un dato, e rinominarla è una scelta libera.
+
 ### La cardinalità, letta sui documenti veri
 
 I documenti in `docs/Ordini` rispondono senza ambiguità:
@@ -474,20 +501,15 @@ Gli altri, in ordine di peso:
 
 ## 7. Cosa resta da decidere
 
-1. Se le due fasi di uno stesso stabilimento sono **una commessa con due ordini** o due
-   commesse. Le aperture del 13/08/2026 non sono uniformi: per Certosa e Melzo la fase
-   successiva è diventata una commessa nuova, mentre per Castelli Reggio l'ordine
-   `4512249011` non ha una commessa propria e su COM2025007 è comparso un task. Serve una
-   regola, altrimenti l'avanzamento per commessa misura cose diverse da progetto a progetto.
-2. Come trattare l'ordine `4512249003`, che è di sole **spese** e non appartiene a un
+1. Come trattare l'ordine `4512249003`, che è di sole **spese** e non appartiene a un
    progetto solo.
-3. Se le commesse chiuse vanno bonificate come le altre o lasciate com'erano.
-4. Se i clienti eliminati (CLI0010, CLI0012) vanno cancellati o conservati come storico.
-5. Per la **40/26 Lucchini** e la **32/25 Sammontana** va individuata l'offerta di
+2. Se le commesse chiuse vanno bonificate come le altre o lasciate com'erano.
+3. Se i clienti eliminati (CLI0010, CLI0012) vanno cancellati o conservati come storico.
+4. Per la **40/26 Lucchini** e la **32/25 Sammontana** va individuata l'offerta di
    riferimento: sono le due righe dell'appendice A senza alcun riferimento documentale, e
    finché restano scoperte `ID_DOCUMENTO` non può diventare obbligatorio. Per la 38/26 Emu
    l'offerta c'è (`Offerta 260724 EMU Quadro.pdf`).
-6. Quali ordini sono **a giornate** e quali **chiusi**. Per i 21 documenti in archivio si
+5. Quali ordini sono **a giornate** e quali **chiusi**. Per i 21 documenti in archivio si
    legge dal PDF; per gli 8 di cui manca il documento — Calvi, i quattro Lavazza, i due
    Lindt del 2025 e IWT — serve una risposta. Calvi `7130017952`, con nove fatture a
    giornate su due anni, è quasi certamente aperto.
