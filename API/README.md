@@ -11,6 +11,7 @@
   - [Collaboratori](#collaboratori)
   - [Commesse](#commesse)
   - [Task](#task)
+  - [Documenti Commerciali](#documenti-commerciali)
   - [Tariffe](#tariffe)
   - [Giornate](#giornate)
   - [Fatture](#fatture)
@@ -409,6 +410,87 @@ Aggiorna una tariffa esistente.
 Elimina una tariffa (solo se non ha giornate associate).
 
 ---
+
+
+---
+
+## Documenti Commerciali
+
+Offerte e ordini, in una tabella sola. Li distingue `Tipo`, li lega `ID_PADRE`: un'offerta
+può generare più ordini, e la fattura punta all'una o all'altro con un campo solo.
+
+**Il ruolo `User` non vede nulla di questa risorsa.** In lettura riceve un elenco vuoto e non
+un errore — Management carica la risorsa all'avvio per tutti i ruoli — mentre in scrittura
+riceve 403.
+
+### GET /../API/index.php?resource=documenti
+Elenco dei documenti commerciali.
+
+**Filtri disponibili:**
+- `commessa`: la commessa a cui il documento è agganciato
+- `tipo`: `Offerta` oppure `Ordine`
+- `stato`: `Atteso`, `Ricevuto`, `Chiuso`
+- `tipo_importo`: `Chiuso` oppure `A_giornate`
+- `padre`: gli ordini nati da una data offerta
+- `cliente`: l'intestatario della fattura
+- `senza_ordine=si`: le offerte che non hanno ancora generato ordini
+- `search`: ricerca parziale su numero e note
+
+**Ogni record porta anche:**
+- `Commessa`, `Stato_Commessa`, `cliente_commessa`, `cliente_intestatario`, `numero_offerta`
+- `fatturato`, `n_fatture` — al netto degli storni: le note di accredito sono negative
+- `n_ordini_figli`, `coperta_da_ordini`
+- `residuo`, `percentuale_fatturata` — **solo sugli ordini chiusi**. Su un ordine a giornate
+  l'importo totale non esiste, e su un'offerta che ha generato ordini le cifre stanno sugli
+  ordini: in entrambi i casi i due campi sono `null`, perché una percentuale su un
+  denominatore inventato è peggio di nessuna percentuale
+- `documento_url` — indirizzo **relativo** dell'allegato, `null` se non c'è
+
+### GET /../API/index.php?resource=documenti&id={id}
+Un singolo documento.
+
+### POST /../API/index.php?resource=documenti
+Crea un documento. L'ID è generato: `DOC{yy}###`, dove l'anno è quello del **documento**, non
+quello corrente.
+
+**Campi richiesti:**
+- `Tipo`: `Offerta` o `Ordine`
+- `ID_COMMESSA`: obbligatorio anche sulle offerte, e la commessa dev'essere di tipo `Cliente`
+
+**Campi opzionali:**
+- `ID_PADRE`: solo sugli ordini, e deve puntare a un'**offerta**
+- `Numero`, `Data`, `Note`
+- `Tipo_Importo`: `Chiuso` (predefinito) o `A_giornate`
+- `Importo`, `Giornate_Previste` (solo sugli ordini a giornate)
+- `ID_CLIENTE_INTESTATARIO`: se non indicato, prende il cliente della commessa
+- `Stato`: predefinito `Ricevuto`
+- `Ordine_Atteso`: `Si`/`No`, distingue «offerta da sollecitare» da «ordine che non arriverà»
+- `Residuo_Alla_Chiusura`, `Note_Chiusura`: solo con `Stato = Chiuso`
+
+### PUT /../API/index.php?resource=documenti&id={id}
+Aggiorna. I campi non inviati **non vengono toccati**.
+
+### DELETE /../API/index.php?resource=documenti&id={id}
+Elimina. Rifiutato con 409 se sul documento ci sono fatture, o se dall'offerta discendono
+ordini: quel legame è l'unico posto in cui è scritto che sono la stessa fornitura.
+
+### L'allegato
+
+Stesso indirizzo della risorsa, con `&action=file`. Un documento, un file.
+
+| Metodo | Cosa fa |
+|---|---|
+| `POST` | carica il file, campo multipart `documento`. Sostituisce il precedente |
+| `GET` | restituisce il file |
+| `DELETE` | stacca l'allegato e lo cancella dal disco |
+
+Ammessi PDF, JPG, PNG, DOC, DOCX, fino a 20 MB. Il tipo si legge dal **contenuto**, non
+dall'estensione, e il nome sul disco lo decide il server.
+
+**Il file lo serve PHP, non Apache.** Le cartelle `DB/uploads/*` sono chiuse al web da un
+`.htaccess`: senza, il controllo di ruolo si aggirerebbe indovinando il nome del file. Il
+divieto vale sulle richieste HTTP e non sul filesystem, quindi `readfile()` continua a
+leggerle.
 
 ## Giornate
 

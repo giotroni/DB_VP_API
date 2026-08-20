@@ -481,16 +481,40 @@ Rimappatura secondo l'**appendice B**, compilazione di partita IVA e codice fisc
 clienti attivi, eliminazione di CLI0010 e CLI0012. Va **dopo** la fase 2, quando la
 granularità per stabilimento è già salva sul nome della commessa e non si perde nulla.
 
-### Fase 4 — i documenti commerciali · *tre o quattro giorni*
+### Fase 4 — i documenti commerciali · *iniziata il 20/08/2026, backend fatto*
 
-`DocumentiCommercialiAPI`, upload in `DB/uploads/documenti` sul modello già collaudato per le
-foto delle consuntivazioni, e la **scheda documenti dentro la maschera di commessa**: è da lì
-che si caricano offerte e ordini con i loro dati e importi, con l'ordine agganciato alla sua
-offerta.
+**Fatto**, in `main`:
+
+- [`DocumentiCommercialiAPI`](../API/DocumentiCommercialiAPI.php) — CRUD sulla tabella,
+  risorsa `documenti` nel router. Il ruolo `User` non vede nulla: elenco vuoto in lettura,
+  403 in scrittura, come per le fatture.
+- **L'allegato**, con `?action=file` sullo stesso indirizzo della risorsa: `POST` carica,
+  `GET` restituisce, `DELETE` stacca. Il file lo serve PHP leggendolo da disco, e le
+  cartelle `DB/uploads/*` sono chiuse al web da un `.htaccess`.
+
+**Da fare**: la **scheda documenti dentro la maschera di commessa**, in un file suo e non
+dentro `commesse-task-section.js`. È da lì che si caricano offerte e ordini con i loro dati
+e importi, con l'ordine agganciato alla sua offerta.
+
+Tre cose decise costruendo il backend, che il § 4 non diceva:
+
+- **L'ID è `DOC{yy}###` con l'anno del documento**, non quello corrente. Caricando a gennaio
+  un ordine di dicembre, l'anno corrente lo archivierebbe sotto l'anno sbagliato: è il
+  difetto che hanno gli ID delle fatture e non andava ripetuto.
+- **Due regole vivono solo nell'API**, perché il database non può conoscerle: che il padre
+  sia un'*offerta* (la chiave esterna punta alla stessa tabella e non guarda il `Tipo`) e
+  che la commessa sia di tipo `Cliente`. Tutte le altre traducono in italiano un vincolo che
+  sta già sulla tabella, e la tabella resta l'ultima parola.
+- **Un'offerta con ordini figli non espone cifre proprie.** Letta da sola direbbe «0%
+  fatturato, residuo pieno» mentre la fornitura è saldata sugli ordini. È la stessa regola
+  che evita il doppio conteggio dell'ordinato.
 
 Il caricamento cresce rispetto alla stima iniziale: ai 21 ordini con documento e ai 4 non
 ancora fatturati si aggiungono le **offerte confermate**, circa una ventina, comprese quelle
 delle commesse che un ordine non ce l'hanno.
+
+Un documento si può registrare **senza allegato**: dieci ordini il PDF non ce l'hanno
+affatto, e obbligarlo bloccherebbe proprio i casi da tracciare.
 
 Attenzione: **14 documenti d'ordine sono scansioni senza testo estraibile**, quindi numero,
 data e importo vanno inseriti a mano.
