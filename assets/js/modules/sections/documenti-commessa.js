@@ -86,26 +86,52 @@ class DocumentiCommessa {
     vistaElenco() {
         const t = this.totali();
 
+        // I documenti a corpo hanno tre numeri confrontabili fra loro; quelli a
+        // giornate ne hanno altri, e stanno in un riquadro separato invece che
+        // sommati a forza dentro i primi.
+        const riquadro = (etichetta, valore, nota, classe = '') => `
+            <div class="col-md-3"><div class="border rounded p-2 h-100">
+                <div class="text-muted small">${etichetta}</div>
+                <div class="fs-5 fw-semibold ${classe}">${valore}</div>
+                ${nota ? `<div class="text-muted small">${nota}</div>` : ''}
+            </div></div>`;
+
+        const riquadri = [];
+
+        if (t.nQuantificati || !t.aGiornate) {
+            riquadri.push(riquadro('Ordinato a corpo',
+                this.app.utils.formatCurrency(t.ordinato),
+                t.nQuantificati ? `${t.nQuantificati} ${t.nQuantificati === 1 ? 'documento' : 'documenti'}` : 'nessun documento a corpo'));
+            riquadri.push(riquadro('Fatturato su questi', this.app.utils.formatCurrency(t.fatturato)));
+            riquadri.push(riquadro('Residuo',
+                this.app.utils.formatCurrency(t.residuo), '',
+                t.residuo < -0.01 ? 'text-danger' : ''));
+        }
+
+        if (t.aGiornate) {
+            // Niente residuo in euro: il valore della giornata sta sul task e
+            // l'ordine non lo duplica. Qui la previsione e' in giornate.
+            riquadri.push(riquadro('A giornate',
+                `${t.giornatePreviste ? this.numero(t.giornatePreviste) + ' gg previste' : '—'}`,
+                `${t.aGiornate} ${t.aGiornate === 1 ? 'documento' : 'documenti'} · fatturato ${this.app.utils.formatCurrency(t.fatturatoGiornate)}`));
+        }
+
         const intestazione = `
             <div class="row g-2 mb-3">
-                <div class="col-md-3"><div class="border rounded p-2 h-100">
-                    <div class="text-muted small">Ordinato</div>
-                    <div class="fs-5 fw-semibold">${this.app.utils.formatCurrency(t.ordinato)}</div>
-                    ${t.aGiornate ? `<div class="text-muted small">più ${t.aGiornate} a giornate</div>` : ''}
-                </div></div>
-                <div class="col-md-3"><div class="border rounded p-2 h-100">
-                    <div class="text-muted small">Fatturato sugli ordini</div>
-                    <div class="fs-5 fw-semibold">${this.app.utils.formatCurrency(t.fatturato)}</div>
-                </div></div>
-                <div class="col-md-3"><div class="border rounded p-2 h-100">
-                    <div class="text-muted small">Residuo</div>
-                    <div class="fs-5 fw-semibold ${t.residuo < 0 ? 'text-danger' : ''}">${this.app.utils.formatCurrency(t.residuo)}</div>
-                </div></div>
+                ${riquadri.join('')}
                 <div class="col-md-3 d-flex align-items-center justify-content-md-end gap-2">
                     <button class="btn btn-outline-primary btn-sm" data-doc-azione="nuova-offerta"><i class="fas fa-plus me-1"></i>Offerta</button>
                     <button class="btn btn-vp-primary btn-sm" data-doc-azione="nuovo-ordine"><i class="fas fa-plus me-1"></i>Ordine</button>
                 </div>
-            </div>`;
+            </div>
+            ${t.senzaImporto ? `<div class="alert alert-warning py-2 small">
+                <i class="fas fa-exclamation-triangle me-1"></i>
+                ${t.senzaImporto === 1
+                    ? "Un documento a corpo non ha l'importo"
+                    : `${t.senzaImporto} documenti a corpo non hanno l'importo`}, per
+                ${this.app.utils.formatCurrency(t.fatturatoSenzaImporto)} già fatturati: i totali qui sopra
+                non li comprendono. Su un documento a corpo l'importo mancante è un dato da recuperare.
+            </div>` : ''}`;
 
         if (this.documenti.length === 0) {
             return `${intestazione}
@@ -139,6 +165,8 @@ class DocumentiCommessa {
                 <i class="fas fa-info-circle me-1"></i>
                 L'ordinato somma gli ordini e le offerte che non hanno ancora generato ordini: contare entrambi
                 significherebbe contare due volte la stessa fornitura.
+                ${t.aGiornate ? `Sui documenti a giornate non c'è un ordinato in euro: il valore della giornata sta
+                sul task, dove convive con il costo del collaboratore, e l'ordine non lo duplica.` : ''}
             </p>`;
     }
 
@@ -172,7 +200,7 @@ class DocumentiCommessa {
         const icona = doc.Tipo === 'Offerta' ? 'fa-file-alt' : 'fa-file-contract';
 
         const importo = doc.Tipo_Importo === 'A_giornate'
-            ? `<span class="text-muted">a giornate${doc.Giornate_Previste ? ` · ${parseFloat(doc.Giornate_Previste)} gg` : ''}</span>`
+            ? `<span class="text-muted">a giornate${doc.Giornate_Previste ? ` · ${this.numero(doc.Giornate_Previste)} gg` : ''}</span>`
             : (doc.Importo !== null && doc.Importo !== undefined ? this.app.utils.formatCurrency(doc.Importo) : '<span class="text-muted">—</span>');
 
         // residuo e percentuale arrivano gia' a null dove non hanno risposta:
@@ -223,6 +251,11 @@ class DocumentiCommessa {
             </tr>`;
     }
 
+    /** Le giornate come si scrivono in italiano: 8, non 8.00; 8,5 e non 8.5. */
+    numero(valore) {
+        return new Intl.NumberFormat('it-IT', { maximumFractionDigits: 2 }).format(parseFloat(valore) || 0);
+    }
+
     badgeStato(doc) {
         if (doc.Stato === 'Chiuso') {
             const residuo = doc.Residuo_Alla_Chiusura;
@@ -269,28 +302,54 @@ class DocumentiCommessa {
     }
 
     /**
-     * Ordinato, fatturato e residuo della commessa.
+     * Ordinato, fatturato e residuo della commessa, divisi in tre gruppi.
      *
      * L'ordinato somma gli ordini e le offerte SENZA ordini figli: sommarli
      * tutti conterebbe due volte la stessa fornitura, prima come promessa e
-     * poi come impegno. Gli ordini a giornate restano fuori dal totale - non
-     * hanno un importo - e si contano a parte, altrimenti sparirebbero.
+     * poi come impegno.
+     *
+     * I tre gruppi non si mescolano, ed e' il punto:
+     *
+     *   a corpo            hanno un importo: ordinato, fatturato e residuo
+     *                      sono confrontabili fra loro
+     *   a giornate         l'importo totale non esiste - il fee sta sul task,
+     *                      non sull'ordine - e la previsione e' in GIORNATE
+     *   senza importo      ordini a corpo con l'importo ancora da recuperare
+     *
+     * Sommare il fatturato di tutti e tre e sottrarlo da un ordinato che
+     * comprende solo il primo dava un residuo negativo: la commessa Sammontana
+     * mostrava «ordinato 0, residuo -13.090» pur essendo tutto in regola. Ogni
+     * gruppo si confronta solo con se stesso.
      */
     totali() {
-        let ordinato = 0, fatturato = 0, aGiornate = 0;
+        const t = {
+            ordinato: 0, fatturato: 0, residuo: 0,
+            nQuantificati: 0,
+            aGiornate: 0, giornatePreviste: 0, fatturatoGiornate: 0,
+            senzaImporto: 0, fatturatoSenzaImporto: 0,
+        };
 
         this.documenti.forEach(doc => {
             if (doc.coperta_da_ordini) return;
 
+            const fatturato = parseFloat(doc.fatturato) || 0;
+
             if (doc.Tipo_Importo === 'A_giornate') {
-                aGiornate++;
-            } else if (doc.Importo !== null && doc.Importo !== undefined) {
-                ordinato += parseFloat(doc.Importo) || 0;
+                t.aGiornate++;
+                t.giornatePreviste += parseFloat(doc.Giornate_Previste) || 0;
+                t.fatturatoGiornate += fatturato;
+            } else if (doc.Importo === null || doc.Importo === undefined) {
+                t.senzaImporto++;
+                t.fatturatoSenzaImporto += fatturato;
+            } else {
+                t.nQuantificati++;
+                t.ordinato += parseFloat(doc.Importo) || 0;
+                t.fatturato += fatturato;
             }
-            fatturato += parseFloat(doc.fatturato) || 0;
         });
 
-        return { ordinato, fatturato, aGiornate, residuo: ordinato - fatturato };
+        t.residuo = t.ordinato - t.fatturato;
+        return t;
     }
 
     // ========================================================================

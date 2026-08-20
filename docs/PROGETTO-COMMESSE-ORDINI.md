@@ -242,6 +242,15 @@ E un caso che va gestito fin dall'inizio: una commessa con **un ordine chiuso e 
 giornate insieme** ha un ordinato solo parzialmente quantificato. Il pannello deve dirlo,
 non calcolare una percentuale su un denominatore incompleto.
 
+*Fatto il 20/08/2026, e con un gruppo in più.* La scheda documenti divide i documenti in
+**tre gruppi che non si mescolano**: quelli **a corpo** (ordinato, fatturato e residuo,
+confrontabili fra loro), quelli **a giornate** (giornate previste e fatturato, nessun
+residuo in euro) e quelli **a corpo senza importo**, che finiscono in un avviso a parte
+perché lì l'importo è un dato da recuperare. La prima versione sommava il fatturato di
+tutti e tre e lo sottraeva da un ordinato che comprendeva solo il primo: Sammontana Francia,
+che ha una sola offerta a giornate, mostrava «ordinato 0,00 €, residuo −13.090,00 €» pur
+essendo tutto in regola.
+
 **Il fee giornaliero non va sull'ordine.** Il prezzo per giornata sta già sul task ed è il
 cardine del modello economico: il prezzo sul task, il costo sulla tariffa del collaboratore,
 la giornata che li mette in contatto. Duplicarlo sull'ordine creerebbe due verità da tenere
