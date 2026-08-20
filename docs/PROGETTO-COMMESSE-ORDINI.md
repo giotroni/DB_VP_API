@@ -531,10 +531,37 @@ Gli altri, in ordine di peso:
    riferimento: sono le due righe dell'appendice A senza alcun riferimento documentale, e
    finché restano scoperte `ID_DOCUMENTO` non può diventare obbligatorio. Per la 38/26 Emu
    l'offerta c'è (`Offerta 260724 EMU Quadro.pdf`).
-5. Quali ordini sono **a giornate** e quali **chiusi**. Per i 21 documenti in archivio si
-   legge dal PDF; per gli 8 di cui manca il documento — Calvi, i quattro Lavazza, i due
-   Lindt del 2025 e IWT — serve una risposta. Calvi `7130017952`, con nove fatture a
-   giornate su due anni, è quasi certamente aperto.
+5. ~~Quali ordini sono **a giornate** e quali **chiusi**~~ — **deciso il 20/08/2026.**
+
+   Gli ordini senza documento sono **dieci**, non otto: il conteggio vecchio dava per
+   scoperti i quattro Perfetti, che invece il PDF ce l'hanno — i file si chiamano
+   `113088.pdf`, `124038.pdf`, `124043.pdf`, `129980.pdf`, cioè le ultime sei cifre, e
+   una ricerca per numero intero non li trova. In compenso i Lindt scoperti sono quattro
+   e non due.
+
+   | Ordine | Cliente | Commessa | Tipo |
+   |---|---|---|---|
+   | `7130017952` | Calvi | COM0001 | **A giornate** |
+   | `4500247167` | Lindt | COM2025015 | Chiuso |
+   | `4500241173` | Lindt | COM2025010 | Chiuso |
+   | `4500238831` | Lindt | COM2025009 | Chiuso |
+   | `n. 438026` | Lindt | COM2025008 | Chiuso |
+   | `1020203362` | Lavazza | COM0006 | Chiuso |
+   | `1020209062` | Lavazza | COM2025012 | Chiuso |
+   | `1020201558` | Lavazza | COM0007 | Chiuso |
+   | `1020205239` | Lavazza | COM0008 | Chiuso |
+   | `WR2500969` | IWT | COM2025004 | Chiuso |
+
+   **Calvi è l'unico a giornate**, e i numeri lo confermavano: nove fatture di importo
+   sempre diverso, da dicembre 2024 a ottobre 2025, senza un tetto visibile.
+
+   Restano da leggere dai PDF i tipi dei 21 ordini che il documento ce l'hanno. Con nove
+   su dieci chiusi qui, è probabile che lo siano tutti — ma è una lettura, non una
+   deduzione.
+
+   Due scansioni non identificate potrebbero coprire due di questi dieci:
+   `Lavazza/Lavazza Settimo/ordine Vaglio.PDF` e `Iwt/Caoching/10092025130544-0001.pdf`.
+   Sono immagini senza testo estraibile, verificato aprendo i flussi interni del PDF.
 
 ---
 

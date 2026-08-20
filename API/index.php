@@ -49,6 +49,7 @@ require_once 'CollaboratoriAPI.php';
 require_once 'CommesseAPI.php';
 require_once 'TaskAPI.php';
 require_once 'TariffeAPI.php';
+require_once 'DocumentiCommercialiAPI.php';
 require_once 'GiornateAPI.php';
 require_once 'FattureAPI.php';
 require_once 'FattureCollaboratoriAPI.php';
@@ -143,6 +144,10 @@ try {
             $api = new TariffeAPI();
             break;
             
+        case 'documenti':
+            $api = new DocumentiCommercialiAPI();
+            break;
+            
         case 'giornate':
             $api = new GiornateAPI();
             break;
@@ -179,7 +184,8 @@ try {
                     'task',
                     'tariffe',
                     'giornate',
-                    'fatture'
+                    'fatture',
+                    'documenti'
                 ]
             ], 'API funzionante');
             break;
@@ -221,6 +227,11 @@ try {
                     'POST /tariffe' => 'Crea tariffa',
                     'PUT /tariffe/{id}' => 'Aggiorna tariffa',
                     'DELETE /tariffe/{id}' => 'Elimina tariffa',
+                    'GET /documenti' => 'Lista documenti commerciali (offerte e ordini)',
+                    'GET /documenti/{id}' => 'Dettaglio documento',
+                    'POST /documenti' => 'Crea documento',
+                    'PUT /documenti/{id}' => 'Aggiorna documento',
+                    'DELETE /documenti/{id}' => 'Elimina documento',
                     
                     'GET /giornate' => 'Lista giornate',
                     'GET /giornate/{id}' => 'Dettaglio giornata',
