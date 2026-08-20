@@ -1,0 +1,87 @@
+GESTIONALE V&P — installazione del sito
+
+
+COSA C'E' NEL PACCHETTO
+
+  management.html, consuntivazione.html   le due pagine
+  assets/                                 css, javascript, immagini
+  API/                                    il backend
+  DB/config.example.php                   il modello di configurazione
+  DB/uploads/consuntivazioni/             cartella vuota per le foto
+
+Non ci sono file di test o di debug, che nel repository esistono ma su un
+server pubblico non servono. Non c'e' nessun dump: il database si carica
+separatamente, vedi README.md in questa stessa cartella.
+
+
+COME SI INSTALLA
+
+1. Scompatta il contenuto dentro la cartella del sito. I file stanno gia'
+   nella struttura giusta.
+
+   SUBITO DOPO, CONTROLLA LE DIMENSIONI dei file piu' grossi, prima di aprire
+   la pagina. Il 19/08/2026 l'estrazione da File Manager ha creato i nomi
+   lasciando i file VUOTI: la pagina rispondeva senza errori di rete e
+   management si bloccava su "CommesseTaskSection is not defined", perche' lo
+   script veniva caricato con successo e dentro non c'era niente.
+
+   I quattro da guardare, in byte:
+
+     assets/js/management.js                                166.106
+     assets/js/consuntivazione.js                           129.195
+     assets/js/modules/sections/commesse-task-section.js    107.248
+     assets/js/modules/sections/collaboratori-section.js     84.339
+
+   Se ne trovi uno a zero, cancella la cartella e riestrai.
+
+2. Crea DB/config.php copiando DB/config.example.php e scrivendoci le
+   credenziali. L'unica riga che cambia fra collaudo e produzione:
+
+       define('DB_NAME', 'vaglioty_DB_VP_TEST');    // collaudo
+       define('DB_NAME', 'vaglioty_DB_VP');         // produzione
+
+   DB_HOST, DB_USER e DB_PASS sono gli stessi. Il modo piu' sicuro e' copiare
+   il config.php della produzione e cambiare solo il nome del database.
+
+   ATTENZIONE: se sul collaudo DB_NAME resta 'vaglioty_DB_VP', i colleghi
+   crederebbero di provare e starebbero lavorando sulla produzione. E' l'unico
+   errore di questa installazione che fa danno.
+
+3. Controlla che DB/uploads/consuntivazioni/ esista e sia scrivibile dal web
+   server. Se lo zip non ha creato la cartella vuota, creala a mano.
+
+4. Solo per il collaudo, proteggilo:
+     - una password di cartella da cPanel, oppure un accesso limitato;
+     - un robots.txt che vieti l'indicizzazione;
+     - una scritta ben visibile «AMBIENTE DI PROVA» nella pagina, altrimenti
+       qualcuno ci lavorera' davvero.
+
+5. Prova l'accesso. Gli utenti arrivano con il dump, quindi le password sono
+   quelle che i colleghi conoscono gia'.
+
+
+DA VERIFICARE, UNA COSA SOLA
+
+Le foto delle consuntivazioni vengono servite da un indirizzo ASSOLUTO,
+scritto in API/ConsuntivazioneAPI.php:
+
+    $this->uploadUrlBase = '/DB/uploads/consuntivazioni';
+
+Partendo dalla barra, il browser lo risolve dalla radice del dominio -
+vaglioandpartners.com/DB/uploads/... - e non dalla cartella del gestionale.
+
+Se in produzione le foto si vedono, vuol dire che quella cartella esiste alla
+radice del dominio; e allora il sito di collaudo leggerebbe le stesse foto
+della produzione, pur salvando le proprie altrove. Se invece non si vedono, e'
+un difetto che c'era gia'.
+
+La correzione e' ricavare l'indirizzo dalla posizione dello script invece di
+scriverlo fisso, ma dipende da come e' sistemato il sito: prima va guardato.
+
+
+L'ORDINE PER LA PRODUZIONE
+
+Prima la catena sul database, poi il codice. Vedi README.md, parte 2.
+
+Il codice nuovo somma valori con segno: su dati non ancora migrati
+sottrarrebbe le note di accredito invece di stornarle.
