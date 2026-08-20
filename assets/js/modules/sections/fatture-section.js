@@ -32,7 +32,7 @@ class FattureSection extends BaseSection {
                 <div class="row gy-3">
                     <div class="col-lg-3 col-md-6"><label class="form-label">Cerca</label><input type="text" class="form-control" id="searchFatture" placeholder="Numero, cliente..."></div>
                     <div class="col-lg-2 col-md-6"><label class="form-label">Cliente</label><select class="form-select" id="filterCliente"><option value="">Tutti</option>${this.app.utils.ordinaPerNome(this.app.clienti, 'Cliente').map(c => `<option value="${c.ID_CLIENTE}">${c.Cliente}</option>`).join('')}</select></div>
-                    <div class="col-lg-2 col-md-6"><label class="form-label">Stato Pagamento</label><select class="form-select" id="filterStatoPagamento"><option value="">Tutti</option><option value="pagata">Pagata</option><option value="non_pagata">Non pagata</option><option value="scaduta">Scaduta</option><option value="in_scadenza">In scadenza</option><option value="parzialmente_pagata">Parzialmente pagata</option><option value="stornata">Annullate da nota</option><option value="nota_accredito">Note di accredito</option></select></div>
+                    <div class="col-lg-2 col-md-6"><label class="form-label">Stato Pagamento</label><select class="form-select" id="filterStatoPagamento"><option value="">Tutti</option><option value="da_incassare">Da incassare</option><option value="scaduta">Scaduta</option><option value="pagata">Pagata</option><option value="parzialmente_pagata">Parzialmente pagata</option><option value="stornata">Annullate da nota</option><option value="nota_accredito">Note di accredito</option></select></div>
                     <div class="col-lg-1 col-md-3"><label class="form-label">Anno</label><div class="dropdown"><button class="btn btn-outline-secondary dropdown-toggle w-100" type="button" id="filterAnnoBtn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">${currentYear}</button><ul class="dropdown-menu" id="filterAnno" aria-labelledby="filterAnnoBtn"><li><a class="dropdown-item fw-bold" href="#" data-action="toggle-all-filter" data-target-filter="filterAnno">Seleziona/Deseleziona</a></li><li><hr class="dropdown-divider"></li>${yearOptions}</ul></div></div>
                     <div class="col-lg-2 col-md-3"><label class="form-label">Mese</label><div class="dropdown"><button class="btn btn-outline-secondary dropdown-toggle w-100" type="button" id="filterMeseBtn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">Tutti</button><ul class="dropdown-menu" id="filterMese" aria-labelledby="filterMeseBtn"><li><a class="dropdown-item fw-bold" href="#" data-action="toggle-all-filter" data-target-filter="filterMese">Seleziona/Deseleziona</a></li><li><hr class="dropdown-divider"></li>${monthOptions}</ul></div></div>
                     <div class="col-lg-2 col-md-6"><label class="form-label">&nbsp;</label><div class="d-flex gap-2"><button class="btn btn-vp-primary" data-action="filter" title="Applica Filtri"><i class="fas fa-search"></i></button><button class="btn btn-outline-primary" data-action="toggle-all-fatture" id="toggleAllBtn" title="Espandi/Comprimi tutto"><i class="fas fa-expand-arrows-alt"></i></button></div></div>
@@ -138,7 +138,7 @@ class FattureSection extends BaseSection {
     }
 
     createFatturaRow(fattura) {
-        const statoClass = this.getStatoClass(fattura.stato_pagamento);
+        const statoClass = this.getStatoClass(fattura.stato_pagamento, fattura.giorni_scadenza);
         const scadenzaText = fattura.Scadenza_Pagamento ? this.app.utils.formatDate(fattura.Scadenza_Pagamento) : 'N/D';
         const statoText = this.getStatoText(fattura.stato_pagamento, fattura.giorni_scadenza);
         // Nome commessa se disponibile
@@ -344,7 +344,7 @@ class FattureSection extends BaseSection {
                             ${commessaInfo}
                             <li><i class="fas fa-file-signature me-2"></i><strong>Riferimento Ordine:</strong> ${riferimentoOrdine}</li>
                             <li><i class="fas fa-tag me-2"></i><strong>Tipo:</strong> ${fattura.TIPO}</li>
-                            <li><i class="fas fa-info-circle me-2"></i><strong>Stato:</strong> <span class="badge ${this.getStatoClass(fattura.stato_pagamento)}">${statoFattura}</span></li>
+                            <li><i class="fas fa-info-circle me-2"></i><strong>Stato:</strong> <span class="badge ${this.getStatoClass(fattura.stato_pagamento, fattura.giorni_scadenza)}">${statoFattura}</span></li>
                             ${this.getStornoInfoHTML(fattura)}
                             <li><i class="fas fa-sticky-note me-2"></i><strong>Note:</strong> ${fattura.Note || 'N/D'}</li>
                         </ul>
@@ -655,10 +655,11 @@ class FattureSection extends BaseSection {
         const fattureCount = data.reduce((sum, c) => sum + c.fatture.filter(f => f.TIPO !== 'Nota_Accredito').length, 0);
         const fatturatoTotale = data.reduce((sum, c) => sum + c.fatture.reduce((fSum, f) => fSum + (parseFloat(f.Fatturato_TOT) || 0), 0), 0);
         const incassatoTotale = data.reduce((sum, c) => sum + c.fatture.reduce((fSum, f) => fSum + (parseFloat(f.Valore_Pagato) || 0), 0), 0);
-        // Rimosso conteggio 'in_scadenza' su richiesta: rimaniamo con scadute e altri riepiloghi
         const scadute = data.reduce((sum, c) => sum + c.fatture.filter(f => f.stato_pagamento === 'scaduta').length, 0);
-        // Nuova misura: Fatture non pagate (stato 'non_pagata' o default quando stato mancante)
-        const nonPagate = data.reduce((sum, c) => sum + c.fatture.filter(f => !f.stato_pagamento || f.stato_pagamento === 'non_pagata').length, 0);
+        // Il credito aperto non ancora scaduto. Gli stati 'non_pagata' e
+        // 'in_scadenza' sono stati fusi in 'da_incassare': la distinzione non
+        // veniva usata e faceva dire cose diverse a filtro ed etichetta.
+        const daIncassare = data.reduce((sum, c) => sum + c.fatture.filter(f => !f.stato_pagamento || f.stato_pagamento === 'da_incassare').length, 0);
         
         const statsContainer = document.getElementById('stats-row-container');
         if (statsContainer) {
@@ -667,7 +668,7 @@ class FattureSection extends BaseSection {
                     ${this.ui.createStatsCard('fas fa-file-invoice', fattureCount, 'Totale Fatture')}
                     ${this.ui.createStatsCard('fas fa-euro-sign', this.app.utils.formatCurrency(fatturatoTotale), 'Fatturato Netto')}
                     ${this.ui.createStatsCard('fas fa-piggy-bank', this.app.utils.formatCurrency(incassatoTotale), 'Totale Incassato')}
-                    ${this.ui.createStatsCard('fas fa-times-circle', nonPagate, 'Fatture Non Pagate')}
+                    ${this.ui.createStatsCard('fas fa-hourglass-half', daIncassare, 'Fatture da Incassare')}
                     ${this.ui.createStatsCard('fas fa-exclamation-triangle', scadute, 'Fatture Scadute')}
                 </div>
             `;
@@ -903,12 +904,18 @@ class FattureSection extends BaseSection {
         return `<li><i class="fas fa-link me-2"></i><strong>Stornata da:</strong> ${numeri} (${this.app.utils.formatCurrency(fattura.stornato)})</li>${rigaResiduo}`;
     }
 
-    getStatoClass(stato) {
+    getStatoClass(stato, giorniScadenza) {
         switch (stato) {
             case 'pagata': return 'bg-success';
             case 'parzialmente_pagata': return 'bg-warning text-dark';
             case 'scaduta': return 'bg-danger';
-            case 'in_scadenza': return 'bg-info text-dark';
+            // Un solo stato, due colori: l'ultima settimana si distingue a
+            // colpo d'occhio senza essere uno stato a se'. Senza scadenza
+            // registrata non c'e' urgenza da segnalare, e resta il grigio.
+            case 'da_incassare':
+                return (giorniScadenza !== undefined && giorniScadenza !== null && giorniScadenza <= 7)
+                    ? 'bg-info text-dark'
+                    : 'bg-secondary';
             // text-light esplicito: .status-badge non definisce un colore di
             // testo, quindi su sfondo scuro resterebbe nero su nero.
             case 'nota_accredito': return 'bg-dark text-light';
@@ -925,13 +932,19 @@ class FattureSection extends BaseSection {
             case 'pagata': return 'Pagata';
             case 'parzialmente_pagata': return 'Parzialmente Pagata';
             case 'scaduta': return `Scaduta da ${Math.abs(giorniScadenza)} gg`;
-            case 'in_scadenza': return `In Scadenza in ${giorniScadenza} gg`;
+            // Senza scadenza registrata non si scrive un numero inventato: la
+            // fattura resta da incassare e basta. E' anche l'unico posto in cui
+            // quel caso si vede, quindi non va mascherato.
+            case 'da_incassare':
+                return (giorniScadenza !== undefined && giorniScadenza !== null)
+                    ? `Da incassare fra ${giorniScadenza} gg`
+                    : 'Da incassare';
             // Una nota di accredito non ha un incasso da attendere: sta fuori
             // dall'aging e non va mai mostrata come scaduta.
             case 'nota_accredito': return 'Storno';
             case 'stornata': return 'Annullata';
             case 'stornata_parzialmente': return 'Stornata in parte';
-            default: return 'Non Pagata';
+            default: return 'Da incassare';
         }
     }
 }

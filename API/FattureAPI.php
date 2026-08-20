@@ -547,17 +547,34 @@ class FattureAPI extends BaseAPI {
         if (isset($_GET['stato_pagamento'])) {
             $stornata = $this->clausolaStornata();
             switch ($_GET['stato_pagamento']) {
+                // NOT $stornata anche qui: getStatoPagamento() guarda lo storno
+                // PRIMA dell'incasso, perche' una fattura annullata non e' un
+                // credito qualunque cosa sia stato pagato. La 20/25 risulta
+                // insieme stornata e incassata - e' un'anomalia dei dati, gia'
+                // nota - e senza questa riga compariva fra le pagate nel filtro
+                // e fra le annullate nell'elenco.
                 case 'pagata':
-                    $conditions[] = "Data_Pagamento IS NOT NULL AND TIPO <> 'Nota_Accredito'";
+                    $conditions[] = "Data_Pagamento IS NOT NULL AND TIPO <> 'Nota_Accredito' AND NOT $stornata
+                                     AND Valore_Pagato >= Fatturato_TOT";
                     break;
-                case 'non_pagata':
-                    $conditions[] = "Data_Pagamento IS NULL AND TIPO <> 'Nota_Accredito' AND NOT $stornata";
+                // Le condizioni qui sotto devono dire esattamente quello che
+                // dice getStatoPagamento(): sono la stessa regola scritta due
+                // volte, e finche' e' cosi' vanno cambiate insieme. Era gia'
+                // andata storta: il vecchio filtro 'non_pagata' prendeva anche
+                // le scadute, quindi la tendina rispondeva 6 dove le righe con
+                // quell'etichetta erano 4.
+                case 'da_incassare':
+                    $conditions[] = "Data_Pagamento IS NULL AND TIPO <> 'Nota_Accredito' AND NOT $stornata
+                                     AND (Scadenza_Pagamento IS NULL OR Scadenza_Pagamento >= CURDATE())";
                     break;
                 case 'scaduta':
                     $conditions[] = "Scadenza_Pagamento < CURDATE() AND Data_Pagamento IS NULL AND TIPO <> 'Nota_Accredito' AND NOT $stornata";
                     break;
-                case 'in_scadenza':
-                    $conditions[] = "Scadenza_Pagamento BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 7 DAY) AND Data_Pagamento IS NULL AND TIPO <> 'Nota_Accredito' AND NOT $stornata";
+                // Mancava del tutto: la voce c'era in tendina, il ramo no,
+                // quindi selezionandola non filtrava niente e si vedeva tutto.
+                case 'parzialmente_pagata':
+                    $conditions[] = "Data_Pagamento IS NOT NULL AND TIPO <> 'Nota_Accredito' AND NOT $stornata
+                                     AND (Valore_Pagato IS NULL OR Valore_Pagato < Fatturato_TOT)";
                     break;
                 case 'nota_accredito':
                     $conditions[] = "TIPO = 'Nota_Accredito'";
@@ -782,18 +799,24 @@ class FattureAPI extends BaseAPI {
             }
         }
         
-        if (!empty($record['Scadenza_Pagamento'])) {
-            $oggi = date('Y-m-d');
-            $scadenza = $record['Scadenza_Pagamento'];
-            
-            if ($scadenza < $oggi) {
-                return 'scaduta';
-            } elseif ($scadenza <= date('Y-m-d', strtotime('+7 days'))) {
-                return 'in_scadenza';
-            }
+        // Il credito aperto ha due soli stati: o il termine e' passato, o no.
+        //
+        // Prima ce n'erano tre, con 'in_scadenza' per l'ultima settimana e
+        // 'non_pagata' per il resto. La distinzione non veniva usata - il
+        // conteggio 'in_scadenza' era gia' stato tolto dal riepilogo - e
+        // costava due difetti: il filtro della tendina e l'etichetta della
+        // riga intendevano cose diverse con lo stesso nome, e 'non_pagata'
+        // mescolava "scade fra tre mesi" con "scadenza mai registrata", che
+        // e' il caso che non emerge da nessuna parte.
+        //
+        // L'urgenza dell'ultima settimana non sparisce: resta nei giorni alla
+        // scadenza, che il front-end usa per il colore. E' presentazione, non
+        // uno stato a se'.
+        if (!empty($record['Scadenza_Pagamento']) && $record['Scadenza_Pagamento'] < date('Y-m-d')) {
+            return 'scaduta';
         }
-        
-        return 'non_pagata';
+
+        return 'da_incassare';
     }
     
     /**
