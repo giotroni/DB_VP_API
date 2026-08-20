@@ -1,0 +1,24 @@
+# Questa cartella non si serve dal web.
+#
+# I documenti commerciali portano gli importi ordinati, e li puo` vedere solo
+# Admin o Manager. Il controllo sta in DocumentiCommercialiAPI::serviFile(),
+# che legge il file da PHP e lo restituisce solo a chi ha il ruolo giusto.
+#
+# Senza questo file quel controllo si aggira: Apache serviva la cartella
+# direttamente, e chiunque indovinasse il nome scaricava un ordine senza
+# passare da nessun controllo. Verificato il 20/08/2026: rispondeva 200.
+#
+# Il divieto vale per le richieste HTTP, non per la lettura da PHP: readfile()
+# apre il file dal disco e continua a funzionare.
+
+<IfModule mod_authz_core.c>
+    # Apache 2.4
+    Require all denied
+</IfModule>
+<IfModule !mod_authz_core.c>
+    # Apache 2.2
+    Order allow,deny
+    Deny from all
+</IfModule>
+
+Options -Indexes

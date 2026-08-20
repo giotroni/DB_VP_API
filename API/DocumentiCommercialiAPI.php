@@ -15,8 +15,32 @@ require_once 'BaseAPI.php';
 
 class DocumentiCommercialiAPI extends BaseAPI {
 
+    /** Dove finiscono i PDF caricati. */
+    private $uploadDir;
+
+    /** 20 MB: i documenti d'ordine in archivio sono scansioni, non testo. */
+    const MAX_BYTE = 20971520;
+
+    /**
+     * Cosa si accetta. Il tipo si legge dal contenuto con mime_content_type(),
+     * non dall'estensione: l'estensione la sceglie chi carica.
+     *
+     * Non solo PDF perche' l'archivio non e' solo PDF - l'offerta EOC e' un
+     * .docx - e perche' 14 ordini sono scansioni, che a volte arrivano come
+     * immagine invece che come PDF.
+     */
+    private static $tipiAmmessi = [
+        'application/pdf'  => 'pdf',
+        'image/jpeg'       => 'jpg',
+        'image/png'        => 'png',
+        'application/msword' => 'doc',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document' => 'docx',
+    ];
+
     public function __construct() {
         parent::__construct('ANA_DOCUMENTI_COMMERCIALI', 'ID_DOCUMENTO');
+
+        $this->uploadDir = __DIR__ . '/../DB/uploads/documenti';
 
         $this->requiredFields = ['Tipo', 'ID_COMMESSA'];
         $this->validationRules = [
@@ -35,6 +59,27 @@ class DocumentiCommercialiAPI extends BaseAPI {
             'Ordine_Atteso'           => ['enum' => ['Si', 'No']],
             'Residuo_Alla_Chiusura'   => ['numeric' => true],
         ];
+    }
+
+    /**
+     * Le azioni sull'allegato passano dallo stesso indirizzo della risorsa,
+     * con ?action=. Un endpoint separato - come quello delle foto delle
+     * consuntivazioni, che e' uno script a se' - vorrebbe dire un secondo
+     * punto d'ingresso da proteggere allo stesso modo, e dimenticarsene una
+     * volta basta.
+     */
+    public function handleRequest($id = null) {
+        $action = $_GET['action'] ?? '';
+
+        if ($action === 'file') {
+            switch ($_SERVER['REQUEST_METHOD']) {
+                case 'GET':    $this->serviFile($id);   return;
+                case 'POST':   $this->caricaFile($id);  return;
+                case 'DELETE': $this->eliminaFile($id); return;
+            }
+        }
+
+        parent::handleRequest($id);
     }
 
     /**
@@ -294,6 +339,14 @@ class DocumentiCommercialiAPI extends BaseAPI {
             $stmt->execute();
             $record['n_ordini_figli'] = intval($stmt->fetchColumn());
 
+            // L'indirizzo dell'allegato, RELATIVO alla pagina. Non assoluto:
+            // l'indirizzo assoluto e' il difetto che le foto delle
+            // consuntivazioni si portano dietro, e sotto una sottocartella
+            // come /gestione_VP punta fuori dall'applicazione.
+            $record['documento_url'] = !empty($record['Documento'])
+                ? 'API/index.php?resource=documenti&id=' . rawurlencode($record['ID_DOCUMENTO']) . '&action=file'
+                : null;
+
             // Un'offerta che ha generato ordini non porta piu' cifre proprie:
             // le fatture stanno sugli ordini, e leggerla da sola direbbe "0%
             // fatturato, residuo pieno" mentre la fornitura e' gia' saldata.
@@ -397,5 +450,210 @@ class DocumentiCommercialiAPI extends BaseAPI {
         }
 
         parent::delete($id);
+    }
+
+    // =================================================================
+    //  L'allegato
+    // =================================================================
+
+    /**
+     * Carica il PDF (o la scansione) e lo lega al documento.
+     *
+     * Un documento, un file. Non e' una limitazione tecnica ma la forma della
+     * tabella decisa nella fase 1: il campo Documento e' uno. Le varianti
+     * firmate e le revisioni restano nell'archivio su disco, non qui.
+     */
+    private function caricaFile($id) {
+        $this->assertWriteAllowed();
+
+        $doc = $this->documentoOEsci($id);
+        if (!$doc) { return; }
+
+        if (empty($_FILES['documento']) || $_FILES['documento']['error'] !== UPLOAD_ERR_OK) {
+            sendErrorResponse($this->spiegaErroreUpload($_FILES['documento']['error'] ?? null), 400);
+            return;
+        }
+
+        $tmp  = $_FILES['documento']['tmp_name'];
+        $size = intval($_FILES['documento']['size']);
+
+        if ($size > self::MAX_BYTE) {
+            sendErrorResponse('Il file supera i ' . round(self::MAX_BYTE / 1048576) . ' MB', 400);
+            return;
+        }
+
+        // Il tipo si legge dal CONTENUTO. Fidarsi dell'estensione vorrebbe dire
+        // accettare come PDF qualunque cosa rinominata .pdf, e questa cartella
+        // sta dentro la radice del sito.
+        $mime = function_exists('mime_content_type') ? mime_content_type($tmp) : null;
+        if (!isset(self::$tipiAmmessi[$mime])) {
+            sendErrorResponse('Tipo di file non ammesso (' . ($mime ?: 'sconosciuto')
+                . '). Ammessi: PDF, JPG, PNG, DOC, DOCX', 400);
+            return;
+        }
+
+        if (!is_dir($this->uploadDir) && !@mkdir($this->uploadDir, 0755, true)) {
+            sendErrorResponse('Cartella degli allegati non disponibile', 500);
+            return;
+        }
+
+        // Il nome sul disco lo decidiamo noi: l'ID del documento piu' un suffisso
+        // casuale. Il nome scelto da chi carica non entra mai nel percorso - e'
+        // la strada piu' corta per uscire dalla cartella con un ../ - e il tipo
+        // decide l'estensione.
+        $estensione = self::$tipiAmmessi[$mime];
+        $nomeSuDisco = $id . '_' . bin2hex(random_bytes(6)) . '.' . $estensione;
+        $destinazione = $this->uploadDir . DIRECTORY_SEPARATOR . $nomeSuDisco;
+
+        if (!move_uploaded_file($tmp, $destinazione)) {
+            sendErrorResponse('Caricamento non riuscito', 500);
+            return;
+        }
+
+        // Il file precedente si cancella solo dopo che il nuovo e' al suo posto:
+        // se il salvataggio fallisse a meta', il documento resterebbe senza
+        // allegato e senza modo di riaverlo.
+        $precedente = $doc['Documento'];
+
+        $stmt = $this->db->prepare("UPDATE {$this->table}
+                                       SET Documento = :f,
+                                           Data_Modifica = :dm, ID_UTENTE_MODIFICA = :u
+                                     WHERE ID_DOCUMENTO = :id");
+        $stmt->bindValue(':f', $nomeSuDisco);
+        $stmt->bindValue(':dm', date('Y-m-d H:i:s'));
+        $stmt->bindValue(':u', $this->getCurrentUserId());
+        $stmt->bindValue(':id', $id);
+        $stmt->execute();
+
+        if ($precedente && $precedente !== $nomeSuDisco) {
+            @unlink($this->uploadDir . DIRECTORY_SEPARATOR . basename($precedente));
+        }
+
+        sendSuccessResponse([
+            'ID_DOCUMENTO'   => $id,
+            'nome_originale' => $_FILES['documento']['name'],
+            'dimensione'     => $size,
+            'tipo'           => $mime,
+        ], 'Allegato caricato');
+    }
+
+    /**
+     * Restituisce il file. Lo serve PHP, non Apache.
+     *
+     * E' il punto della scelta: la cartella non e' raggiungibile dal web e il
+     * controllo di ruolo vale anche sull'allegato. Servirlo da un percorso
+     * statico vorrebbe dire che chiunque indovini l'indirizzo si scarica un
+     * ordine con dentro gli importi, ruolo o no.
+     *
+     * Qui la risposta non e' JSON, quindi i controlli scrivono testo e basta.
+     */
+    private function serviFile($id) {
+        // L'autenticazione l'ha gia' imposta index.php prima di instradare
+        // qui: e' il vantaggio di passare dal router unico invece che da uno
+        // script a se'. Il ruolo invece e' affare di questa risorsa.
+        if ($this->isRestrictedUser()) {
+            http_response_code(403);
+            echo 'Operazione non consentita per il tuo ruolo';
+            exit;
+        }
+
+        $stmt = $this->db->prepare("SELECT Documento FROM {$this->table} WHERE ID_DOCUMENTO = :id");
+        $stmt->bindValue(':id', $id);
+        $stmt->execute();
+        $nome = $stmt->fetchColumn();
+
+        if (!$nome) {
+            http_response_code(404);
+            echo 'Nessun allegato su questo documento';
+            exit;
+        }
+
+        // basename() e non il valore grezzo: se in colonna finisse un percorso,
+        // qui diventerebbe una lettura fuori dalla cartella.
+        $percorso = $this->uploadDir . DIRECTORY_SEPARATOR . basename($nome);
+        if (!is_file($percorso)) {
+            http_response_code(404);
+            echo 'File non trovato sul server';
+            exit;
+        }
+
+        $mime = function_exists('mime_content_type')
+            ? mime_content_type($percorso)
+            : 'application/octet-stream';
+
+        header('Content-Type: ' . $mime);
+        header('Content-Length: ' . filesize($percorso));
+        header('Content-Disposition: inline; filename="' . basename($nome) . '"');
+        header('X-Content-Type-Options: nosniff');
+        readfile($percorso);
+        exit;
+    }
+
+    /** Stacca l'allegato dal documento e lo cancella dal disco. */
+    private function eliminaFile($id) {
+        $this->assertWriteAllowed();
+
+        $doc = $this->documentoOEsci($id);
+        if (!$doc) { return; }
+
+        if (empty($doc['Documento'])) {
+            sendErrorResponse('Questo documento non ha un allegato', 404);
+            return;
+        }
+
+        $stmt = $this->db->prepare("UPDATE {$this->table}
+                                       SET Documento = NULL,
+                                           Data_Modifica = :dm, ID_UTENTE_MODIFICA = :u
+                                     WHERE ID_DOCUMENTO = :id");
+        $stmt->bindValue(':dm', date('Y-m-d H:i:s'));
+        $stmt->bindValue(':u', $this->getCurrentUserId());
+        $stmt->bindValue(':id', $id);
+        $stmt->execute();
+
+        @unlink($this->uploadDir . DIRECTORY_SEPARATOR . basename($doc['Documento']));
+
+        sendSuccessResponse(['ID_DOCUMENTO' => $id], 'Allegato rimosso');
+    }
+
+    /** Il documento, oppure null quando la risposta d'errore e' gia' partita. */
+    private function documentoOEsci($id) {
+        if (!$id) {
+            sendErrorResponse('Indicare il documento', 400);
+            return null;
+        }
+        $stmt = $this->db->prepare("SELECT ID_DOCUMENTO, Documento FROM {$this->table}
+                                     WHERE ID_DOCUMENTO = :id");
+        $stmt->bindValue(':id', $id);
+        $stmt->execute();
+        $doc = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$doc) {
+            sendErrorResponse('Documento non trovato', 404);
+            return null;
+        }
+        return $doc;
+    }
+
+    /**
+     * Gli errori di upload di PHP, detti in italiano.
+     *
+     * Il piu' frequente e' il primo: un ordine scansionato supera facilmente i
+     * limiti del php.ini, e "errore 1" non aiuta nessuno a capire perche'.
+     */
+    private function spiegaErroreUpload($codice) {
+        switch ($codice) {
+            case UPLOAD_ERR_INI_SIZE:
+            case UPLOAD_ERR_FORM_SIZE:
+                return "Il file e' troppo grande per il server (limite attuale: "
+                     . ini_get('upload_max_filesize') . ")";
+            case UPLOAD_ERR_PARTIAL:
+                return "Il caricamento si e' interrotto a meta'";
+            case UPLOAD_ERR_NO_TMP_DIR:
+            case UPLOAD_ERR_CANT_WRITE:
+            case UPLOAD_ERR_EXTENSION:
+                return "Il server non e' riuscito a salvare il file";
+            default:
+                return 'Nessun file ricevuto';
+        }
     }
 }
