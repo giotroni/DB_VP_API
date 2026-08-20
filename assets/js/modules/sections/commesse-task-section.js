@@ -846,6 +846,28 @@ class CommesseTaskSection extends BaseSection {
         this.documentiCommessa.apri(commessaId);
     }
 
+    /**
+     * Dalla scheda della commessa a quella dei suoi ordini, una alla volta.
+     *
+     * Si aspetta che la prima finestra sia CHIUSA prima di aprire la seconda,
+     * e non e' pignoleria: createModal(), quando una modale si chiude, toglie
+     * tutti gli sfondi presenti in pagina. Aprendo la seconda prima che la
+     * prima abbia finito, lo sfondo della seconda se ne andrebbe con quello
+     * della prima e la finestra resterebbe appoggiata sul nulla.
+     */
+    apriDocumentiDopoChiusura(bottone, commessaId) {
+        const modale = bottone.closest('.modal');
+        const istanza = modale ? bootstrap.Modal.getInstance(modale) : null;
+
+        if (!istanza) {
+            this.showDocumentiCommessa(commessaId);
+            return;
+        }
+
+        modale.addEventListener('hidden.bs.modal', () => this.showDocumentiCommessa(commessaId), { once: true });
+        istanza.hide();
+    }
+
     showGiornateModal(taskId) {
             // MODIFICATO: Cerca il task nella struttura dati corretta e completa.
             const task = this.commesseConTask.flatMap(c => c.tasks).find(t => t.ID_TASK === taskId);
@@ -963,17 +985,27 @@ class CommesseTaskSection extends BaseSection {
         const clienteContainer = form.querySelector('#clienteFieldContainer');
         const responsabileContainer = form.querySelector('#responsabileFieldContainer');
         const commissioneContainer = form.querySelector('#commissioneFieldContainer');
+        // Una commessa interna non ha ordini: non c'e' un cliente che ordina.
+        const documentiContainer = form.querySelector('#documentiFieldContainer');
         const toggleCommessaFields = () => {
             const isCliente = tipoSelect.value === 'Cliente';
             clienteContainer.style.display = isCliente ? 'block' : 'none';
             responsabileContainer.style.display = isCliente ? 'block' : 'none';
             commissioneContainer.style.display = isCliente ? 'block' : 'none';
+            if (documentiContainer) documentiContainer.style.display = isCliente ? 'block' : 'none';
             form.querySelector('#ID_CLIENTE').required = isCliente;
             form.querySelector('#ID_COLLABORATORE').required = isCliente;
             form.querySelector('#Commissione').required = isCliente;
         };
         tipoSelect?.addEventListener('change', toggleCommessaFields);
         toggleCommessaFields();
+
+        // Il pulsante degli ordini si aggancia a mano, e non con data-action:
+        // la delega globale ascolta su #appContainer, mentre le modali le
+        // appende createModal() in fondo al body. Da li' dentro un data-action
+        // non arriva a nessuno.
+        form.querySelector('#apriDocumentiCommessa')?.addEventListener('click', (e) =>
+            this.apriDocumentiDopoChiusura(e.currentTarget, commessaId));
 
         const statoSelect = form.querySelector('#Stato_Commessa');
         const avviso = form.querySelector('#avvisoChiusuraTask');
@@ -1032,8 +1064,27 @@ class CommesseTaskSection extends BaseSection {
                 : await this.api.createCommessa(commessaData);
             if (result.success) {
                 this.ui.showToast(`Commessa ${commessaId ? 'aggiornata' : 'creata'} con successo!`, 'success');
-                bootstrap.Modal.getInstance(form.closest('.modal'))?.hide();
+
+                // Appena creata una commessa cliente, la cosa che segue e'
+                // registrarne l'ordine: la finestra si apre da se', come dice
+                // il testo del form. Si aspetta pero' che questa sia chiusa,
+                // altrimenti la chiusura porterebbe via lo sfondo di quella
+                // nuova (vedi apriDocumentiDopoChiusura).
+                const nuova = !commessaId && result.data?.Tipo_Commessa === 'Cliente' ? result.data : null;
+                const modale = form.closest('.modal');
+                const istanza = modale ? bootstrap.Modal.getInstance(modale) : null;
+
+                const chiusa = istanza
+                    ? new Promise(resolve => modale.addEventListener('hidden.bs.modal', resolve, { once: true }))
+                    : Promise.resolve();
+
+                istanza?.hide();
                 await this.app.loadInitialData();
+
+                if (nuova) {
+                    await chiusa;
+                    this.showDocumentiCommessa(nuova.ID_COMMESSA);
+                }
             } else { throw new Error(result.message || 'Errore nel salvataggio della commessa.'); }
         } catch (error) { this.ui.showToast(error.message, 'error'); }
     }
@@ -1431,6 +1482,20 @@ class CommesseTaskSection extends BaseSection {
                     <div class="mb-3" id="clienteFieldContainer"><label for="ID_CLIENTE" class="form-label">Cliente</label><select class="form-select" id="ID_CLIENTE" name="ID_CLIENTE"><option value="">Seleziona cliente...</option>${clientiOptions}</select></div>
                     <div class="mb-3" id="responsabileFieldContainer"><label for="ID_COLLABORATORE" class="form-label">Responsabile</label><select class="form-select" id="ID_COLLABORATORE" name="ID_COLLABORATORE"><option value="">Seleziona responsabile...</option>${collaboratoriOptions}</select></div>
                     <div class="mb-3" id="commissioneFieldContainer"><label for="Commissione" class="form-label">Commissione</label><input type="number" class="form-control" id="Commissione" name="Commissione" min="0" max="1" step="0.01" value="${commessa.Commissione || '0.27'}"></div>
+                    <div class="mb-3" id="documentiFieldContainer">
+                        <label class="form-label">Ordini e offerte del cliente</label>
+                        ${commessa.ID_COMMESSA ? `
+                        <div>
+                            <button type="button" class="btn btn-outline-primary" id="apriDocumentiCommessa">
+                                <i class="fas fa-file-signature me-1"></i>Apri gli ordini di questa commessa
+                            </button>
+                            <div class="form-text">Si apre al posto di questa finestra: le modifiche non ancora salvate vanno perse.</div>
+                        </div>` : `
+                        <div class="form-text">
+                            Si registrano dopo: un ordine sta su una commessa che esiste già.
+                            Appena creata, si apre la finestra per aggiungerli.
+                        </div>`}
+                    </div>
                 </div>
                 <div class="mb-3"><label for="Data_Apertura_Commessa" class="form-label">Data Inizio</label><input type="date" class="form-control" id="Data_Apertura_Commessa" name="Data_Apertura_Commessa" value="${dataApertura}"></div>
                 <div class="mb-3"><label for="Desc_Commessa" class="form-label">Descrizione</label><textarea class="form-control" id="Desc_Commessa" name="Desc_Commessa" rows="3">${commessa.Desc_Commessa || ''}</textarea></div>
