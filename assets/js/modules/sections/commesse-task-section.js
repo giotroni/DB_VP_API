@@ -97,6 +97,7 @@ class CommesseTaskSection extends BaseSection {
             case 'toggle-commessa': this.toggleCommessa(id); break;
             case 'view-giornate': this.showGiornateModal(id); break;
             case 'view-fatture-commessa': this.showFattureCommessaModal(id); break;
+            case 'documenti-commessa': this.showDocumentiCommessa(id); break;
             case 'filter': this.filterData(); break;
             case 'toggle-all-commesse': this.toggleAllCommesse(); break;
             case 'toggle-all-filter':
@@ -230,6 +231,7 @@ class CommesseTaskSection extends BaseSection {
                             ` : ''}
                             <span class="badge bg-success" title="Giorni effettuati/previsti (Campo)">${totalGiornate.toFixed(1)}${totalGgPreviste > 0 ? ` su ${totalGgPreviste.toFixed(1)}` : ''} gg</span>
                             ${!isUser ? `
+                            ${mostraFatturato ? `<button class="btn btn-sm btn-outline-light" data-action="documenti-commessa" data-id="${commessa.ID_COMMESSA}" title="Ordini e offerte del cliente"><i class="fas fa-file-signature"></i></button>` : ''}
                             <button class="btn btn-sm btn-outline-light" data-action="edit-commessa" data-id="${commessa.ID_COMMESSA}" title="Modifica Commessa"><i class="fas fa-pencil-alt"></i></button>
                             <button class="btn btn-vp-primary btn-sm" data-action="add-task" data-id="${commessa.ID_COMMESSA}" title="Aggiungi nuovo task"><i class="fas fa-plus me-1"></i>Nuovo Task</button>
                             ` : ''}
@@ -826,6 +828,22 @@ class CommesseTaskSection extends BaseSection {
 
         const modalActions = [{ html: '<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Chiudi</button>' }];
         this.ui.createModal(`fattureCommessaModal_${commessaId}`, modalTitle, modalBody, modalActions, { size: 'modal-xl' });
+    }
+
+    /**
+     * Gli ordini e le offerte della commessa.
+     *
+     * Sta tutto in documenti-commessa.js: qui c'e' solo l'aggancio. L'oggetto
+     * si crea la prima volta che serve - i documenti non entrano in
+     * loadInitialData() e chi non apre mai questa finestra non li scarica.
+     */
+    showDocumentiCommessa(commessaId) {
+        if (this.app.currentUser?.ruolo === 'User') return;
+
+        if (!this.documentiCommessa) {
+            this.documentiCommessa = new DocumentiCommessa(this.app);
+        }
+        this.documentiCommessa.apri(commessaId);
     }
 
     showGiornateModal(taskId) {

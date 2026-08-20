@@ -481,7 +481,7 @@ Rimappatura secondo l'**appendice B**, compilazione di partita IVA e codice fisc
 clienti attivi, eliminazione di CLI0010 e CLI0012. Va **dopo** la fase 2, quando la
 granularità per stabilimento è già salva sul nome della commessa e non si perde nulla.
 
-### Fase 4 — i documenti commerciali · *iniziata il 20/08/2026, backend fatto*
+### Fase 4 — i documenti commerciali · *20/08/2026: backend e interfaccia fatti, resta il caricamento dei dati*
 
 **Fatto**, in `main`:
 
@@ -492,11 +492,17 @@ granularità per stabilimento è già salva sul nome della commessa e non si per
   `GET` restituisce, `DELETE` stacca. Il file lo serve PHP leggendolo da disco, e le
   cartelle `DB/uploads/*` sono chiuse al web da un `.htaccess`.
 
-**Da fare**: la **scheda documenti dentro la maschera di commessa**, in un file suo e non
-dentro `commesse-task-section.js`. È da lì che si caricano offerte e ordini con i loro dati
-e importi, con l'ordine agganciato alla sua offerta.
+- **La scheda documenti nella maschera di commessa**
+  ([`documenti-commessa.js`](../assets/js/modules/sections/documenti-commessa.js)), in un
+  file suo: il pulsante sta nell'intestazione della commessa e apre l'elenco delle offerte
+  con sotto i loro ordini, l'ordinato, il fatturato e il residuo. Da lì si crea, si
+  modifica, si elimina e si allega il PDF.
+- **Il collegamento sulla fattura**: una tendina nella scheda della fattura, con solo gli
+  ordini della commessa scelta e il residuo di ciascuno accanto al numero.
 
-Tre cose decise costruendo il backend, che il § 4 non diceva:
+**Da fare**: **caricare i documenti veri**. L'interfaccia c'è, la tabella è ancora vuota.
+
+Quattro cose decise costruendo questa parte, che il § 4 non diceva:
 
 - **L'ID è `DOC{yy}###` con l'anno del documento**, non quello corrente. Caricando a gennaio
   un ordine di dicembre, l'anno corrente lo archivierebbe sotto l'anno sbagliato: è il
@@ -508,6 +514,11 @@ Tre cose decise costruendo il backend, che il § 4 non diceva:
 - **Un'offerta con ordini figli non espone cifre proprie.** Letta da sola direbbe «0%
   fatturato, residuo pieno» mentre la fornitura è saldata sugli ordini. È la stessa regola
   che evita il doppio conteggio dell'ordinato.
+- **La fattura eredita la commessa dall'ordine**, quando non ne dichiara una; e un ordine
+  di un'altra commessa viene respinto. Sono i due lati della stessa regola: un ordine
+  autorizza il lavoro di una commessa sola. Senza il primo si otterrebbe la fattura
+  agganciata all'ordine giusto e alla commessa vuota, che sparisce dall'avanzamento pur
+  avendo tutto il necessario per comparirci.
 
 Il caricamento cresce rispetto alla stima iniziale: ai 21 ordini con documento e ai 4 non
 ancora fatturati si aggiungono le **offerte confermate**, circa una ventina, comprese quelle
@@ -542,8 +553,9 @@ Gli altri, in ordine di peso:
 - L'assunzione una-fattura-un-documento regge su tutti gli 89 documenti, **ma nulla la impone**:
   senza un controllo si perde in silenzio e si scopre due anni dopo. Il caso più vicino al
   limite è la 32/26, «Castenedolo / Collecchio», che sta ancora dentro una commessa sola.
-- La fase 4 tocca `commesse-task-section.js`, che con 1.428 righe è il file più grande
-  dell'applicazione.
+- ~~La fase 4 tocca `commesse-task-section.js`, che con 1.428 righe è il file più grande
+  dell'applicazione.~~ Rientrato: la scheda documenti sta in `documenti-commessa.js`, e di
+  quel file ne ha toccate venti righe — il pulsante e la chiamata che apre la finestra.
 
 ## 7. Cosa resta da decidere
 

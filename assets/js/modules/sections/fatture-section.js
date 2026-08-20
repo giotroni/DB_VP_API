@@ -332,6 +332,18 @@ class FattureSection extends BaseSection {
             ? this.app.utils.escapeHtml(fattura.Riferimento_Ordine) + (fattura.Data_Ordine ? ` del ${this.app.utils.formatDate(fattura.Data_Ordine)}` : '')
             : 'N/D';
         
+        // L'ordine collegato non è il "riferimento ordine" qui sopra: quello è
+        // testo copiato dal cartaceo, questo è il documento registrato, da cui
+        // si legge quanto di quell'ordine resta da fatturare. Su una commessa
+        // che ha ordini, la sua assenza è un buco da colmare e va detta.
+        const documento = fattura.documento_info;
+        const commessaHaOrdini = !!fattura.ID_COMMESSA;
+        const documentoCollegato = documento
+            ? `<li><i class="fas fa-link me-2"></i><strong>${documento.Tipo} collegato:</strong> ${this.app.utils.escapeHtml(documento.Numero || fattura.ID_DOCUMENTO)}${documento.Data ? ` del ${this.app.utils.formatDate(documento.Data)}` : ''}${documento.Tipo_Importo === 'Chiuso' && documento.Importo ? ` — ${this.app.utils.formatCurrency(documento.Importo)}` : ''}</li>`
+            : (commessaHaOrdini
+                ? '<li><i class="fas fa-unlink me-2 text-muted"></i><strong>Ordine collegato:</strong> <span class="text-muted">nessuno</span></li>'
+                : '');
+
         const modalBody = `
             <div class="container-fluid">
                 <div class="row">
@@ -343,6 +355,7 @@ class FattureSection extends BaseSection {
                             <li><i class="fas fa-building me-2"></i><strong>Cliente:</strong> ${fattura.cliente_info?.Ragione_Sociale || 'N/D'}</li>
                             ${commessaInfo}
                             <li><i class="fas fa-file-signature me-2"></i><strong>Riferimento Ordine:</strong> ${riferimentoOrdine}</li>
+                            ${documentoCollegato}
                             <li><i class="fas fa-tag me-2"></i><strong>Tipo:</strong> ${fattura.TIPO}</li>
                             <li><i class="fas fa-info-circle me-2"></i><strong>Stato:</strong> <span class="badge ${this.getStatoClass(fattura.stato_pagamento, fattura.giorni_scadenza)}">${statoFattura}</span></li>
                             ${this.getStornoInfoHTML(fattura)}
@@ -441,6 +454,62 @@ class FattureSection extends BaseSection {
                     commessaHint.textContent = "Questo cliente non ha commesse: allarga l'elenco qui sopra.";
                 } else {
                     commessaHint.textContent = '';
+                }
+            }
+        };
+
+        const inputDocumento = form.querySelector('#ID_DOCUMENTO');
+        const documentoHint = form.querySelector('#documentoHint');
+
+        // Gli ordini (e le offerte) fra cui scegliere sono quelli della commessa
+        // selezionata, e nessun altro: un ordine autorizza il lavoro di una
+        // commessa sola, e il backend rifiuta l'accoppiata sbagliata. Si
+        // chiedono all'API sul momento perché i documenti non stanno fra i dati
+        // caricati all'avvio: li guarda solo chi apre questa tendina.
+        const aggiornaOpzioniDocumento = async () => {
+            if (!inputDocumento) return;
+
+            const commessa = inputCommessa?.value || '';
+            const scelta = inputDocumento.value || fattura.ID_DOCUMENTO || '';
+
+            if (!commessa) {
+                inputDocumento.innerHTML = '<option value="">Nessun ordine collegato</option>';
+                inputDocumento.disabled = true;
+                if (documentoHint) documentoHint.textContent = 'Seleziona prima la commessa: gli ordini appartengono a lei.';
+                return;
+            }
+
+            inputDocumento.disabled = true;
+            if (documentoHint) documentoHint.textContent = 'Caricamento ordini…';
+
+            const risposta = await this.app.api.getDocumenti({ commessa, limit: 200 });
+            const documenti = risposta.success ? (risposta.data?.data || []) : [];
+
+            const opzioni = documenti.map(d => {
+                const numero = d.Numero || d.ID_DOCUMENTO;
+                const data = d.Data ? ` del ${this.app.utils.formatDate(d.Data)}` : '';
+                const cifra = d.Tipo_Importo === 'A_giornate'
+                    ? 'a giornate'
+                    : this.app.utils.formatCurrency(d.Importo);
+                // Il residuo è la cosa che serve sapere qui: quanto di
+                // quell'ordine non è ancora stato fatturato.
+                const residuo = (d.residuo === null || d.residuo === undefined)
+                    ? ''
+                    : ` · residuo ${this.app.utils.formatCurrency(d.residuo)}`;
+                const sel = String(d.ID_DOCUMENTO) === String(scelta) ? 'selected' : '';
+                return `<option value="${d.ID_DOCUMENTO}" ${sel}>${d.Tipo} ${numero}${data} — ${cifra}${residuo}</option>`;
+            }).join('');
+
+            inputDocumento.innerHTML = `<option value="">Nessun ordine collegato</option>${opzioni}`;
+            inputDocumento.disabled = false;
+
+            if (documentoHint) {
+                if (!risposta.success) {
+                    documentoHint.textContent = 'Ordini non caricati: ' + (risposta.message || 'errore');
+                } else if (!documenti.length) {
+                    documentoHint.textContent = 'Questa commessa non ha ancora ordini registrati: si aggiungono dalla scheda della commessa.';
+                } else {
+                    documentoHint.textContent = '';
                 }
             }
         };
@@ -570,6 +639,24 @@ class FattureSection extends BaseSection {
         });
         if (chkTutteCommesse) chkTutteCommesse.addEventListener('change', () => aggiornaOpzioniCommessa());
 
+        // Cambiare commessa cambia gli ordini disponibili. Il collegamento
+        // precedente non sopravvive al cambio: apparteneva all'altra commessa.
+        if (inputCommessa) inputCommessa.addEventListener('change', () => {
+            if (inputDocumento) inputDocumento.value = '';
+            aggiornaOpzioniDocumento();
+        });
+
+        // Il numero d'ordine da citare in fattura è quello del documento
+        // collegato: si compila da sé, ma solo se il campo è vuoto — dove è già
+        // scritto a mano vince quello, che è il numero copiato dal cartaceo.
+        if (inputDocumento) inputDocumento.addEventListener('change', () => {
+            const inputRiferimento = form.querySelector('#Riferimento_Ordine');
+            if (!inputRiferimento || inputRiferimento.value.trim() !== '') return;
+            const scelto = inputDocumento.selectedOptions?.[0]?.textContent || '';
+            const numero = scelto.split('—')[0].replace(/^(Ordine|Offerta)\s+/, '').split(' del ')[0].trim();
+            if (numero) inputRiferimento.value = numero;
+        });
+
         // Una nota di accredito sta sulla stessa commessa della fattura che
         // storna: e' l'unica risposta possibile, quindi si compila da se'.
         if (inputStorno) inputStorno.addEventListener('change', () => {
@@ -577,11 +664,13 @@ class FattureSection extends BaseSection {
             const stornata = (this.app.fatture || []).find(f => f.ID_FATTURA === inputStorno.value);
             if (!stornata?.ID_COMMESSA) return;
             aggiornaOpzioniCommessa(stornata.ID_COMMESSA);
+            aggiornaOpzioniDocumento();
             if (commessaHint) commessaHint.textContent = `Ereditata dalla ${stornata.NR}, che questa nota storna.`;
         });
 
         // Esegui inizializzazione al caricamento del modal
         aggiornaOpzioniCommessa();
+        aggiornaOpzioniDocumento();
         aggiornaTipo();
 
         // Inizializza i tooltip Bootstrap presenti nel form
@@ -811,6 +900,15 @@ class FattureSection extends BaseSection {
                 <div class="row">
                     <div class="col-md-6 mb-3"><label for="TIPO" class="form-label">Tipo</label><select class="form-select" id="TIPO" name="TIPO" required>${tipiOptions}</select></div>
                     <div class="col-md-6 mb-3"><label for="Riferimento_Ordine" class="form-label">Riferimento Ordine</label><input type="text" class="form-control" id="Riferimento_Ordine" name="Riferimento_Ordine" value="${fattura.Riferimento_Ordine || ''}"></div>
+                </div>
+                <div class="row">
+                    <div class="col-12 mb-3">
+                        <label for="ID_DOCUMENTO" class="form-label">Ordine o offerta del cliente
+                            <i class="fas fa-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="Il documento che autorizza questa fattura. Solo quelli della commessa selezionata: un ordine e le sue fatture stanno sulla stessa commessa."></i>
+                        </label>
+                        <select class="form-select" id="ID_DOCUMENTO" name="ID_DOCUMENTO"><option value="">Nessun ordine collegato</option></select>
+                        <div class="form-text" id="documentoHint"></div>
+                    </div>
                 </div>
                 <div class="row d-none" id="rigaStorno">
                     <div class="col-12 mb-3">

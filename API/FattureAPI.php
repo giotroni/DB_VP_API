@@ -31,6 +31,7 @@ class FattureAPI extends BaseAPI {
             'NR' => ['required' => true, 'max_length' => 100],
             'ID_FATTURA_STORNATA' => ['max_length' => 50],
             'ID_COMMESSA' => ['max_length' => 50],
+            'ID_DOCUMENTO' => ['max_length' => 50],
             'Fatturato_gg' => ['numeric' => true],
             'Fatturato_Spese' => ['numeric' => true],
             'Fatturato_TOT' => ['numeric' => true],
@@ -166,6 +167,12 @@ class FattureAPI extends BaseAPI {
             }
         }
         
+        // Il documento commerciale che autorizza questa fattura: l'ordine del
+        // cliente, o l'offerta quando l'ordine non arriva mai.
+        if (isset($data['ID_DOCUMENTO']) && trim((string)$data['ID_DOCUMENTO']) !== '') {
+            $errors = array_merge($errors, $this->validateDocumento($data));
+        }
+
         // Verifica univocità numero fattura per anno
         if (isset($data['NR'], $data['Data'])) {
             $duplicateCheck = $this->checkDuplicateNumber($data);
@@ -235,6 +242,71 @@ class FattureAPI extends BaseAPI {
         ];
     }
     
+    /**
+     * Controlli sull'ordine (o offerta) a cui la fattura si aggancia.
+     *
+     * Uno solo, ma e' quello che tiene in piedi il modello: il documento deve
+     * stare sulla STESSA commessa della fattura. Un ordine autorizza il lavoro
+     * di una commessa sola - e' la regola scritta in
+     * docs/PROGETTO-COMMESSE-ORDINI.md, § 4 - quindi una fattura che punta a un
+     * ordine di un'altra commessa spezzerebbe in silenzio la catena
+     * commessa -> ordine -> fattura da cui si legge il residuo.
+     *
+     * La commessa della fattura non arriva sempre nella richiesta: un update
+     * parziale manda solo i campi cambiati. Quando manca si legge quella gia'
+     * salvata, altrimenti il controllo si spegnerebbe proprio quando serve.
+     */
+    private function validateDocumento($data) {
+        $idDocumento = trim((string)$data['ID_DOCUMENTO']);
+
+        try {
+            $stmt = $this->db->prepare("SELECT Tipo, Numero, ID_COMMESSA
+                                          FROM ANA_DOCUMENTI_COMMERCIALI
+                                         WHERE ID_DOCUMENTO = :id");
+            $stmt->bindValue(':id', $idDocumento);
+            $stmt->execute();
+            $documento = $stmt->fetch(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            return ['Impossibile verificare il documento indicato'];
+        }
+
+        if (!$documento) {
+            return ['Ordine o offerta indicata non esistente'];
+        }
+
+        $commessaFattura = array_key_exists('ID_COMMESSA', $data)
+            ? trim((string)$data['ID_COMMESSA'])
+            : $this->commessaSalvata($data['ID_FATTURA'] ?? null);
+
+        if ($commessaFattura === '' || $commessaFattura === null) {
+            // Nessuna commessa dichiarata: la eredita preprocessData() da qui.
+            return [];
+        }
+
+        if ($commessaFattura !== $documento['ID_COMMESSA']) {
+            $che = ($documento['Tipo'] === 'Offerta' ? "L'offerta" : "L'ordine")
+                 . ' ' . ($documento['Numero'] ?: $idDocumento);
+            return ["$che appartiene a un'altra commessa: una fattura e il suo ordine stanno sulla stessa"];
+        }
+
+        return [];
+    }
+
+    /** La commessa gia' salvata sulla fattura, per gli update parziali. */
+    private function commessaSalvata($idFattura) {
+        if (empty($idFattura)) {
+            return null;
+        }
+        try {
+            $stmt = $this->db->prepare("SELECT ID_COMMESSA FROM {$this->table} WHERE ID_FATTURA = :id");
+            $stmt->bindValue(':id', $idFattura);
+            $stmt->execute();
+            return $stmt->fetchColumn() ?: null;
+        } catch (PDOException $e) {
+            return null;
+        }
+    }
+
     /**
      * Controlli sul documento che una nota di accredito dice di stornare.
      *
@@ -448,6 +520,35 @@ class FattureAPI extends BaseAPI {
             $data['ID_FATTURA_STORNATA'] = null;
         }
 
+        // Il collegamento all'ordine. Campo vuoto dal form vuol dire "nessun
+        // documento": a database va NULL, altrimenti la chiave esterna rifiuta
+        // la stringa vuota.
+        if (array_key_exists('ID_DOCUMENTO', $data)) {
+            $data['ID_DOCUMENTO'] = trim((string)$data['ID_DOCUMENTO']) !== ''
+                ? trim((string)$data['ID_DOCUMENTO'])
+                : null;
+        }
+
+        // Con un ordine collegato la commessa non e' piu' una scelta: e' quella
+        // dell'ordine. Ereditarla qui evita la fattura agganciata all'ordine
+        // giusto e alla commessa vuota, che sparirebbe dall'avanzamento pur
+        // avendo tutto il necessario per comparirci.
+        if (!empty($data['ID_DOCUMENTO']) && empty($data['ID_COMMESSA'])) {
+            try {
+                $stmt = $this->db->prepare("SELECT ID_COMMESSA FROM ANA_DOCUMENTI_COMMERCIALI
+                                             WHERE ID_DOCUMENTO = :id");
+                $stmt->bindValue(':id', $data['ID_DOCUMENTO']);
+                $stmt->execute();
+                $commessa = $stmt->fetchColumn();
+                if ($commessa) {
+                    $data['ID_COMMESSA'] = $commessa;
+                }
+            } catch (PDOException $e) {
+                // La fattura si salva lo stesso, senza commessa: e' la
+                // situazione di prima, non un peggioramento.
+            }
+        }
+
         // Normalizza note e riferimenti
         if (isset($data['Note'])) {
             $data['Note'] = trim($data['Note']);
@@ -504,6 +605,18 @@ class FattureAPI extends BaseAPI {
             $params[':commessa'] = $_GET['commessa'];
         }
         
+        // Filtro per documento commerciale: le fatture di un ordine.
+        if (isset($_GET['documento']) && !empty($_GET['documento'])) {
+            $conditions[] = "ID_DOCUMENTO = :documento";
+            $params[':documento'] = $_GET['documento'];
+        }
+
+        // Le fatture ancora da agganciare a un ordine. Sono la coda di lavoro
+        // della fase 4: finché ce ne sono, il residuo per ordine è parziale.
+        if (isset($_GET['senza_documento']) && $_GET['senza_documento'] === 'si') {
+            $conditions[] = "ID_DOCUMENTO IS NULL";
+        }
+
         // Filtro per tipo
         if (isset($_GET['tipo']) && !empty($_GET['tipo'])) {
             $conditions[] = "TIPO = :tipo";
@@ -676,6 +789,16 @@ class FattureAPI extends BaseAPI {
                 $record['commessa_info'] = $commessaInfo;
             }
             
+            // L'ordine (o l'offerta) che autorizza questa fattura. Il numero
+            // serve a schermo: 'DOC26001' non dice niente a chi guarda, il
+            // numero d'ordine del cliente è quello che compare sul cartaceo.
+            if (!empty($record['ID_DOCUMENTO'])) {
+                $record['documento_info'] = $this->getRelatedData(
+                    'ANA_DOCUMENTI_COMMERCIALI', 'ID_DOCUMENTO', $record['ID_DOCUMENTO'],
+                    ['Tipo', 'Numero', 'Data', 'Tipo_Importo', 'Importo']
+                );
+            }
+
             // Storni: su una fattura, quanto è stato annullato da note di
             // accredito e quanto resta davvero esigibile; su una nota, la
             // fattura che storna.

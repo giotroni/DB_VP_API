@@ -172,6 +172,43 @@ class APIClient {
     async updateFattura(id, data) { return this.request('fatture', 'update', { data, params: { id } }); }
     async deleteFattura(id) { return this.request('fatture', 'delete', { params: { id } }); }
     
+    // Documenti commerciali (offerte e ordini)
+    async getDocumenti(params = {}) { return this.request('documenti', 'getAll', { params }); }
+    async createDocumento(data) { return this.request('documenti', 'create', { data }); }
+    async updateDocumento(id, data) { return this.request('documenti', 'update', { data, params: { id } }); }
+    async deleteDocumento(id) { return this.request('documenti', 'delete', { params: { id } }); }
+
+    // L'allegato del documento. Non passa da request(): quello manda JSON, e un
+    // file si carica in multipart. L'indirizzo è lo stesso della risorsa, con
+    // &action=file, e il file lo serve PHP - la cartella è chiusa al web.
+    documentoFileURL(id) {
+        return `${this.baseURL}?resource=documenti&id=${encodeURIComponent(id)}&action=file`;
+    }
+
+    async uploadDocumentoFile(id, file) {
+        const body = new FormData();
+        body.append('documento', file);
+        try {
+            const response = await fetch(this.documentoFileURL(id), { method: 'POST', body });
+            const testo = await response.text();
+            const esito = testo.trim() ? JSON.parse(testo) : {};
+            if (!response.ok) {
+                throw new Error(esito.error || esito.message || `Errore ${response.status}`);
+            }
+            return esito;
+        } catch (error) {
+            console.error('Errore upload allegato documento:', error);
+            return { success: false, message: error.message };
+        }
+    }
+
+    async deleteDocumentoFile(id) {
+        return this.request('documenti', 'delete', {
+            method: 'DELETE',
+            params: { id, action: 'file' }
+        });
+    }
+
     // Fatture Collaboratori (fatture passive)
     async getFattureCollaboratori(params = {}) { return this.request('fatture_collaboratori', 'getAll', { params }); }
     async createFatturaCollaboratore(data) { return this.request('fatture_collaboratori', 'create', { data }); }

@@ -8,6 +8,7 @@ COSA C'E' NEL PACCHETTO
   API/                                    il backend
   DB/config.example.php                   il modello di configurazione
   DB/uploads/consuntivazioni/             cartella vuota per le foto
+  DB/uploads/documenti/                   cartella vuota per gli ordini in PDF
 
 Non ci sono file di test o di debug, che nel repository esistono ma su un
 server pubblico non servono. Non c'e' nessun dump: il database si carica
@@ -25,14 +26,20 @@ COME SI INSTALLA
    management si bloccava su "CommesseTaskSection is not defined", perche' lo
    script veniva caricato con successo e dentro non c'era niente.
 
-   I quattro da guardare, in byte:
+   I sei da guardare, in byte (rilascio del 20/08/2026 — a ogni rilascio
+   cambiano, i valori giusti sono quelli dei file nello zip):
 
-     assets/js/management.js                                166.106
      assets/js/consuntivazione.js                           129.195
-     assets/js/modules/sections/commesse-task-section.js    107.248
+     assets/js/modules/sections/commesse-task-section.js    108.166
      assets/js/modules/sections/collaboratori-section.js     84.339
+     assets/js/modules/sections/fatture-section.js           65.227
+     assets/js/management.js                                 33.722
+     assets/js/modules/sections/documenti-commessa.js        31.878
 
    Se ne trovi uno a zero, cancella la cartella e riestrai.
+
+   L'ultimo e' nuovo di questo rilascio: senza, la pagina si apre ma il
+   pulsante degli ordini nella commessa non risponde.
 
 2. Crea DB/config.php copiando DB/config.example.php e scrivendoci le
    credenziali. L'unica riga che cambia fra collaudo e produzione:
@@ -47,8 +54,18 @@ COME SI INSTALLA
    crederebbero di provare e starebbero lavorando sulla produzione. E' l'unico
    errore di questa installazione che fa danno.
 
-3. Controlla che DB/uploads/consuntivazioni/ esista e sia scrivibile dal web
-   server. Se lo zip non ha creato la cartella vuota, creala a mano.
+3. Controlla che DB/uploads/consuntivazioni/ e DB/uploads/documenti/ esistano
+   e siano scrivibili dal web server. Se lo zip non ha creato le cartelle
+   vuote, creale a mano.
+
+   DENTRO CIASCUNA DEVE ESSERCI IL FILE .htaccess con Require all denied. E'
+   un file nascosto e molti programmi di estrazione lo saltano: senza, chi
+   indovina il nome di un file scarica un ordine con dentro gli importi senza
+   passare da nessun controllo. Si verifica chiamando dal browser
+
+       .../DB/uploads/documenti/
+
+   che deve rispondere 403, non un elenco di file.
 
 4. Solo per il collaudo, proteggilo:
      - una password di cartella da cPanel, oppure un accesso limitato;
@@ -60,23 +77,20 @@ COME SI INSTALLA
    quelle che i colleghi conoscono gia'.
 
 
-DA VERIFICARE, UNA COSA SOLA
+SULLE FOTO DELLE CONSUNTIVAZIONI: NIENTE DA FARE
 
-Le foto delle consuntivazioni vengono servite da un indirizzo ASSOLUTO,
-scritto in API/ConsuntivazioneAPI.php:
+In API/ConsuntivazioneAPI.php c'e' una riga che sembra un problema:
 
     $this->uploadUrlBase = '/DB/uploads/consuntivazioni';
 
-Partendo dalla barra, il browser lo risolve dalla radice del dominio -
-vaglioandpartners.com/DB/uploads/... - e non dalla cartella del gestionale.
+E' un indirizzo assoluto, che partendo dalla barra il browser risolverebbe
+dalla radice del dominio invece che dalla cartella del gestionale. Una
+versione precedente di questo foglio chiedeva percio' di verificare le foto
+sul collaudo.
 
-Se in produzione le foto si vedono, vuol dire che quella cartella esiste alla
-radice del dominio; e allora il sito di collaudo leggerebbe le stesse foto
-della produzione, pur salvando le proprie altrove. Se invece non si vedono, e'
-un difetto che c'era gia'.
-
-La correzione e' ricavare l'indirizzo dalla posizione dello script invece di
-scriverlo fisso, ma dipende da come e' sistemato il sito: prima va guardato.
+Non serve: quella proprieta' e' dichiarata e non viene usata da nessuna parte.
+Le foto le serve gia' PHP, come gli allegati dei documenti. La riga e' codice
+morto, non un difetto.
 
 
 L'ORDINE PER LA PRODUZIONE

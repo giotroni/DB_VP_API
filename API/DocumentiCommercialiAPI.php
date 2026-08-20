@@ -449,6 +449,28 @@ class DocumentiCommercialiAPI extends BaseAPI {
             return;
         }
 
+        // L'allegato se ne va col documento. Il nome del file sta scritto solo
+        // nella riga: cancellata quella, nessuno saprebbe piu' a cosa
+        // appartiene, e la cartella si riempirebbe di PDF che non si possono
+        // ne' aprire dal gestionale ne' riconoscere a mano.
+        //
+        // Si cancella PRIMA della riga e non dopo perche' dopo non c'e' un
+        // dopo: sendSuccessResponse() chiude con exit, e qualunque istruzione
+        // messa sotto parent::delete() non verrebbe mai eseguita. Il rischio
+        // che resta e' il rovescio: se la DELETE fallisse qui sotto, la riga
+        // resterebbe con il nome di un file che non c'e' piu'. E' il guasto
+        // meno grave dei due - l'allegato risulta mancante invece di sparire
+        // in silenzio - e i due controlli qui sopra hanno gia' escluso i soli
+        // motivi per cui quella DELETE puo' fallire.
+        $stmt = $this->db->prepare("SELECT Documento FROM {$this->table} WHERE ID_DOCUMENTO = :id");
+        $stmt->bindValue(':id', $id);
+        $stmt->execute();
+        $allegato = $stmt->fetchColumn();
+
+        if ($allegato) {
+            @unlink($this->uploadDir . DIRECTORY_SEPARATOR . basename($allegato));
+        }
+
         parent::delete($id);
     }
 

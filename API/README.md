@@ -474,6 +474,10 @@ Aggiorna. I campi non inviati **non vengono toccati**.
 Elimina. Rifiutato con 409 se sul documento ci sono fatture, o se dall'offerta discendono
 ordini: quel legame è l'unico posto in cui è scritto che sono la stessa fornitura.
 
+Quando invece l'eliminazione va a buon fine, **l'allegato viene cancellato dal disco**: il
+nome del file è scritto solo nella riga, e senza di quella nessuno saprebbe più a cosa
+appartiene.
+
 ### L'allegato
 
 Stesso indirizzo della risorsa, con `&action=file`. Un documento, un file.
@@ -573,9 +577,12 @@ scrivere su questa risorsa.
 - `data_da` / `data_a`: Range date (YYYY-MM-DD)
 - `anno`, `mese` (`mese` richiede `anno`)
 - `importo_min` / `importo_max`: Range importo
-- `stato_pagamento`: `pagata`, `non_pagata`, `scaduta`, `in_scadenza`, `stornata`,
-  `nota_accredito`. Le note di accredito e le fatture stornate sono escluse dagli stati
-  di incasso: non sono un credito
+- `stato_pagamento`: `pagata`, `parzialmente_pagata`, `da_incassare`, `scaduta`,
+  `stornata`, `nota_accredito`. Le note di accredito e le fatture stornate sono escluse
+  dagli stati di incasso: non sono un credito
+- `documento`: le fatture agganciate a un dato ordine o offerta
+- `senza_documento=si`: le fatture che non sono agganciate ad alcun documento. È la coda
+  di lavoro dell'attribuzione: finché ce ne sono, il residuo per ordine è parziale
 
 **Campi nella risposta:**
 - `ID_FATTURA`: ID del documento (`FAT{yy}###`)
@@ -585,7 +592,11 @@ scrivere su questa risorsa.
 - `ID_CLIENTE`, `ID_COMMESSA`: riferimenti; `cliente_info` e `commessa_info` contengono i nomi
 - `Fatturato_gg`, `Fatturato_Spese`, `Fatturato_TOT`: importi. **Negativi su una nota di accredito**
 - `ID_FATTURA_STORNATA`: solo sulle note di accredito, la fattura che la nota annulla
-- `Riferimento_Ordine`, `Data_Ordine`: l'ordine del cliente
+- `Riferimento_Ordine`, `Data_Ordine`: l'ordine del cliente, come testo copiato dal
+  cartaceo. Restano: sono l'unico riferimento sulle fatture più vecchie
+- `ID_DOCUMENTO`: l'ordine (o l'offerta) **registrato** che autorizza la fattura;
+  `documento_info` porta tipo, numero, data e importo. È da qui che si legge quanto di
+  quell'ordine resta da fatturare
 - `Tempi_Pagamento`, `Scadenza_Pagamento`, `Data_Pagamento`, `Valore_Pagato`: incasso.
   I primi due sono sempre `null` su una nota di accredito
 
@@ -613,6 +624,10 @@ Crea un nuovo documento.
 - `TIPO`: default `Fattura`
 - `Fatturato_gg`, `Fatturato_Spese`: importi. `Fatturato_TOT` è la loro somma se omesso
 - `ID_COMMESSA`, `Riferimento_Ordine`, `Data_Ordine`, `Note`
+- `ID_DOCUMENTO`: l'ordine o l'offerta che autorizza la fattura. Deve stare sulla
+  **stessa commessa** della fattura, altrimenti la richiesta è respinta: un ordine
+  autorizza il lavoro di una commessa sola. Se la fattura non dichiara una commessa, la
+  eredita dal documento
 - `Tempi_Pagamento`: giorni; `Scadenza_Pagamento` viene calcolata da `Data` + giorni
 - `ID_FATTURA_STORNATA`: solo su una nota di accredito
 
