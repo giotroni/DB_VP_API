@@ -9,7 +9,7 @@ identica sequenza**, così quello che approvano è quello che va in produzione.
 
 | File | Cosa fa |
 |---|---|
-| `01-catena.sql` | le undici modifiche, in ordine, in un file solo |
+| `01-catena.sql` | le dodici modifiche, in ordine, in un file solo |
 | `02-verifica.sql` | i controlli sui **dati** |
 | `03-verifica-struttura.sql` | i controlli sulla **struttura** |
 
@@ -188,6 +188,22 @@ doppione `03/26` datato 31/12/2025.
 È un controllo di sicurezza: l'ambiente locale ha un utente `testadmin` con
 ruolo Admin e password nota. Se comparisse su un server, qualcosa è stato
 copiato che non doveva.
+
+### Il registro attività dopo il rilascio
+
+La catena tocca centinaia di righe, e `Data_Modifica` si aggiorna da sola —
+è `ON UPDATE current_timestamp()` — mentre `ID_UTENTE_MODIFICA` lo scrive solo
+il codice PHP. Senza correttivo, Statistiche mostrerebbe per una settimana un
+muro di «Modificato» tutti allo stesso minuto e senza nome.
+
+Lo script `14` timbra quelle righe come **SYSTEM**: l'evento resta — i dati
+sono cambiati davvero — ma dice chi è stato. Timbra **solo** dove il nome
+manca: le attribuzioni vere non si toccano, perché sovrascriverle non si
+recupera più.
+
+Restano una quindicina di righe in cui il registro mostra il nome di chi le
+aveva salvate mesi prima. Sono riconoscibili: hanno la stessa ora di tutte le
+altre.
 
 ### Struttura — `03-verifica-struttura.sql`
 
