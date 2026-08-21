@@ -236,7 +236,7 @@ Conseguenze sulla lettura dell'avanzamento:
 | Tipo | Cosa si mostra |
 |---|---|
 | `Chiuso` | percentuale fatturato / ordinato, e il residuo da fatturare |
-| `A_giornate` | nessuna percentuale: fatturato e maturato in valore assoluto. Se l'ordine dichiara un tetto in giornate, la percentuale si calcola su quelle |
+| `A_giornate` | nessuna percentuale in euro: fatturato in valore assoluto. Se l'ordine dichiara un tetto in giornate, la percentuale si calcola su quelle, contro le giornate **già fatte** |
 
 E un caso che va gestito fin dall'inizio: una commessa con **un ordine chiuso e uno a
 giornate insieme** ha un ordinato solo parzialmente quantificato. Il pannello deve dirlo,
@@ -250,6 +250,22 @@ perché lì l'importo è un dato da recuperare. La prima versione sommava il fat
 tutti e tre e lo sottraeva da un ordinato che comprendeva solo il primo: Sammontana Francia,
 che ha una sola offerta a giornate, mostrava «ordinato 0,00 €, residuo −13.090,00 €» pur
 essendo tutto in regola.
+
+**L'avanzamento di un ordine a giornate si legge dai task** *(20/08/2026)*. Le giornate già
+fatte il gestionale le sa: sono quelle consuntivate sui task di tipo `Campo`, la stessa
+somma che alimenta il badge della commessa — `calcolaValoriCommessa()`, non una formula
+nuova. Contro le giornate previste dal documento danno la percentuale: Sammontana Francia
+legge «8 di 8 gg, 100%».
+
+Il limite è l'**attribuzione**: una giornata sta su un task, e il task sulla commessa — il
+documento non c'entra. Finché la commessa ha **un documento solo** la risposta è ovvia; con
+due o più nessuna divisione sarebbe più vera di un'altra, e allora le giornate si mostrano
+come dato della commessa **senza percentuale**. Attribuirle richiederebbe un legame
+task → documento, che oggi non esiste e che nessun documento in archivio giustifica.
+
+Quando le giornate previste dal documento e quelle previste dai task non coincidono, la
+riga lo dice («i task ne prevedono 8»): è la prima verifica di coerenza fra ciò che il
+cliente ha ordinato e ciò che è stato pianificato.
 
 **Il fee giornaliero non va sull'ordine.** Il prezzo per giornata sta già sul task ed è il
 cardine del modello economico: il prezzo sul task, il costo sulla tariffa del collaboratore,

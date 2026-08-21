@@ -85,6 +85,8 @@ class DocumentiCommessa {
 
     vistaElenco() {
         const t = this.totali();
+        // Una volta sola per disegnata: le righe la leggono, non la ricalcolano.
+        this.gg = this.avanzamentoGiornate();
 
         // I documenti a corpo hanno tre numeri confrontabili fra loro; quelli a
         // giornate ne hanno altri, e stanno in un riquadro separato invece che
@@ -110,10 +112,29 @@ class DocumentiCommessa {
 
         if (t.aGiornate) {
             // Niente residuo in euro: il valore della giornata sta sul task e
-            // l'ordine non lo duplica. Qui la previsione e' in giornate.
-            riquadri.push(riquadro('A giornate',
-                `${t.giornatePreviste ? this.numero(t.giornatePreviste) + ' gg previste' : '—'}`,
-                `${t.aGiornate} ${t.aGiornate === 1 ? 'documento' : 'documenti'} · fatturato ${this.app.utils.formatCurrency(t.fatturatoGiornate)}`));
+            // l'ordine non lo duplica. L'avanzamento pero' c'e', ed e' in
+            // GIORNATE: quelle previste dal documento contro quelle gia' fatte,
+            // che il gestionale sa dalle consuntivazioni.
+            const gg = this.avanzamentoGiornate();
+            const attribuibili = gg && this.giornateAttribuibili();
+            const percentuale = attribuibili && t.giornatePreviste > 0
+                ? Math.round(gg.fatte / t.giornatePreviste * 100)
+                : null;
+
+            const valore = t.giornatePreviste
+                ? (attribuibili
+                    ? `${this.numero(gg.fatte)} di ${this.numero(t.giornatePreviste)} gg`
+                    : `${this.numero(t.giornatePreviste)} gg previste`)
+                : (attribuibili ? `${this.numero(gg.fatte)} gg fatte` : '—');
+
+            const nota = [
+                percentuale !== null ? `${percentuale}% delle giornate previste` : null,
+                `fatturato ${this.app.utils.formatCurrency(t.fatturatoGiornate)}`,
+                !attribuibili && gg ? `${this.numero(gg.fatte)} gg fatte sulla commessa, su più documenti` : null,
+            ].filter(Boolean).join(' · ');
+
+            riquadri.push(riquadro('A giornate', valore, nota,
+                percentuale !== null && percentuale > 100 ? 'text-danger' : ''));
         }
 
         const intestazione = `
@@ -206,9 +227,28 @@ class DocumentiCommessa {
         // residuo e percentuale arrivano gia' a null dove non hanno risposta:
         // ordine a giornate, offerta coperta dai suoi ordini. Qui non si
         // reinventa un denominatore.
-        const residuo = doc.residuo === null || doc.residuo === undefined
-            ? `<span class="text-muted" title="${doc.coperta_da_ordini ? 'Le cifre stanno sugli ordini nati da questa offerta' : 'Ordine a giornate: non c\'è un importo totale'}">—</span>`
-            : `<span class="${parseFloat(doc.residuo) < -0.01 ? 'text-danger' : ''}">${this.app.utils.formatCurrency(doc.residuo)}</span>`;
+        //
+        // Su un documento a giornate il residuo in euro non esiste, ma quello in
+        // GIORNATE si': previste meno fatte. Vale pero' solo quando la commessa
+        // ha un documento solo - vedi giornateAttribuibili().
+        const residuoGiornate = doc.Tipo_Importo === 'A_giornate' && doc.Giornate_Previste
+            && this.gg && this.giornateAttribuibili()
+            ? parseFloat(doc.Giornate_Previste) - this.gg.fatte
+            : null;
+
+        const residuo = residuoGiornate !== null
+            ? `<span class="${residuoGiornate < -0.01 ? 'text-danger' : ''}" title="Giornate previste dal documento meno quelle già fatte">${this.numero(residuoGiornate)} gg</span>`
+            : (doc.residuo === null || doc.residuo === undefined
+                ? `<span class="text-muted" title="${doc.coperta_da_ordini ? 'Le cifre stanno sugli ordini nati da questa offerta' : "Ordine a giornate: non c'è un importo totale"}">—</span>`
+                : `<span class="${parseFloat(doc.residuo) < -0.01 ? 'text-danger' : ''}">${this.app.utils.formatCurrency(doc.residuo)}</span>`);
+
+        // Il documento dice N giornate, i task ne prevedono altre: e' una
+        // discordanza che vale la pena vedere subito, non un errore.
+        const scostamento = doc.Tipo_Importo === 'A_giornate' && doc.Giornate_Previste
+            && this.gg?.previsteDaiTask > 0 && this.giornateAttribuibili()
+            && Math.abs(parseFloat(doc.Giornate_Previste) - this.gg.previsteDaiTask) > 0.01
+            ? `<div class="small text-warning-emphasis">i task ne prevedono ${this.numero(this.gg.previsteDaiTask)}</div>`
+            : '';
 
         const percentuale = doc.percentuale_fatturata === null || doc.percentuale_fatturata === undefined
             ? ''
@@ -237,6 +277,7 @@ class DocumentiCommessa {
                     ${doc.numero_offerta && annidato ? `<div class="small text-muted">da offerta ${this.app.utils.escapeHtml(doc.numero_offerta)}</div>` : ''}
                     ${doc.cliente_intestatario && doc.cliente_intestatario !== doc.cliente_commessa
                         ? `<div class="small text-muted">intestato a ${this.app.utils.escapeHtml(doc.cliente_intestatario)}</div>` : ''}
+                    ${scostamento}
                 </td>
                 <td>${doc.Data ? this.app.utils.formatDate(doc.Data) : '<span class="text-muted">—</span>'}</td>
                 <td>${this.badgeStato(doc)}</td>
@@ -249,6 +290,49 @@ class DocumentiCommessa {
                     <button class="btn btn-sm btn-outline-danger" data-doc-azione="elimina" data-doc-id="${id}" title="Elimina"><i class="fas fa-trash"></i></button>
                 </td>
             </tr>`;
+    }
+
+    /**
+     * Le giornate gia' fatte sulla commessa, e quelle che i task prevedono.
+     *
+     * NON si ricalcolano qui: si chiedono a calcolaValoriCommessa() della
+     * sezione Commesse, che e' il posto dove la regola e' scritta - contano le
+     * giornate di tipo Campo, non tutte. Riscriverla vorrebbe dire vedere due
+     * numeri diversi per la stessa cosa in due schermate, che a questo
+     * gestionale e' gia' successo.
+     *
+     * Si legge da `commesseConTask`, che e' la fotografia INTERA della
+     * commessa: `lastFilteredData` invece risente del filtro per anno e mese in
+     * cima alla pagina, e qui il confronto e' con le giornate previste da un
+     * ordine, che un periodo non ce l'hanno.
+     */
+    avanzamentoGiornate() {
+        const sezione = this.app.sections?.['commesse-task'];
+        const commessa = sezione?.commesseConTask?.find(c => c.ID_COMMESSA === this.commessa.ID_COMMESSA);
+
+        if (!commessa || typeof sezione.calcolaValoriCommessa !== 'function') {
+            return null;
+        }
+
+        const v = sezione.calcolaValoriCommessa(commessa);
+        return {
+            fatte: v.giornateCampo,
+            previsteDaiTask: v.giornatePreviste,
+            maturato: v.valoreLavori,
+        };
+    }
+
+    /**
+     * A quale documento appartengono quelle giornate?
+     *
+     * Una giornata sta su un task, e il task sulla commessa: il documento non
+     * c'entra. Finche' la commessa ha UN documento solo la risposta e' ovvia e
+     * si puo' dire «5 fatte su 8». Con due o piu' documenti no, e nessuna
+     * divisione sarebbe piu' vera di un'altra: allora le giornate si mostrano
+     * come dato della commessa, e la percentuale non si calcola affatto.
+     */
+    giornateAttribuibili() {
+        return this.documenti.length === 1;
     }
 
     /** Le giornate come si scrivono in italiano: 8, non 8.00; 8,5 e non 8.5. */
