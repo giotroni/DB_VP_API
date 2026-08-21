@@ -523,7 +523,27 @@ granularità per stabilimento è già salva sul nome della commessa e non si per
   con sotto i loro ordini, l'ordinato, il fatturato e il residuo. Da lì si crea, si
   modifica, si elimina e si allega il PDF.
 - **Il collegamento sulla fattura**: una tendina nella scheda della fattura, con solo gli
-  ordini della commessa scelta e il residuo di ciascuno accanto al numero.
+  ordini della commessa scelta e il residuo di ciascuno accanto al numero. Da lì si apre
+  anche **l'allegato del documento**, senza passare dalla scheda della commessa: chi
+  registra una fattura ha spesso bisogno di rileggere l'ordine proprio in quel momento.
+
+**Chi guida la compilazione di una fattura** *(20/08/2026)*. Né il cliente né la commessa in
+esclusiva: **la commessa è il dato che decide**, e il cliente si compila da sé quando è
+ancora vuoto. Prima, senza cliente scelto, l'elenco delle commesse restava vuoto e l'ordine
+era imposto; ora si vedono tutte, e sceglierne una compila il cliente. Il cliente già scelto
+non viene mai sovrascritto: l'intestatario della fattura può essere diverso dal cliente
+della commessa — accade su quattro fatture in archivio — e quella scelta è deliberata.
+
+La stessa cosa vale in avanti: scegliendo il documento, la fattura eredita l'intestatario
+dichiarato sull'ordine se il cliente è ancora vuoto. È la direzione in cui il modello si sta
+muovendo — l'ordine decide commessa e intestatario — ma non si può imporre finché i
+documenti in archivio sono pochi.
+
+**Il numero d'ordine da citare in fattura non è il codice interno.** `Riferimento_Ordine` si
+compila da sé dal `Numero` del documento, e **solo se il documento ce l'ha**: la prima
+versione ripiegava sull'ID e scriveva `DOC25001` in un campo che finisce sulla fattura del
+cliente. Per lo stesso motivo, un documento senza numero in tendina si legge «senza numero»
+e non col suo ID.
 
 **Da fare**: **caricare i documenti veri**. L'interfaccia c'è, la tabella è ancora vuota.
 

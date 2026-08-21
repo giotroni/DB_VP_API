@@ -795,8 +795,18 @@ class FattureAPI extends BaseAPI {
             if (!empty($record['ID_DOCUMENTO'])) {
                 $record['documento_info'] = $this->getRelatedData(
                     'ANA_DOCUMENTI_COMMERCIALI', 'ID_DOCUMENTO', $record['ID_DOCUMENTO'],
-                    ['Tipo', 'Numero', 'Data', 'Tipo_Importo', 'Importo']
+                    ['Tipo', 'Numero', 'Data', 'Tipo_Importo', 'Importo', 'Documento']
                 );
+
+                // L'indirizzo dell'allegato, così il PDF dell'ordine si apre
+                // dalla fattura senza passare dalla scheda della commessa.
+                // Relativo alla pagina, come in DocumentiCommercialiAPI: sotto
+                // una sottocartella come /gestione_VP un indirizzo assoluto
+                // punterebbe fuori dall'applicazione.
+                if (!empty($record['documento_info']['Documento'])) {
+                    $record['documento_info']['url'] = 'API/index.php?resource=documenti&id='
+                        . rawurlencode($record['ID_DOCUMENTO']) . '&action=file';
+                }
             }
 
             // Storni: su una fattura, quanto è stato annullato da note di

@@ -595,8 +595,9 @@ scrivere su questa risorsa.
 - `Riferimento_Ordine`, `Data_Ordine`: l'ordine del cliente, come testo copiato dal
   cartaceo. Restano: sono l'unico riferimento sulle fatture più vecchie
 - `ID_DOCUMENTO`: l'ordine (o l'offerta) **registrato** che autorizza la fattura;
-  `documento_info` porta tipo, numero, data e importo. È da qui che si legge quanto di
-  quell'ordine resta da fatturare
+  `documento_info` porta tipo, numero, data, importo e — quando c'è un allegato — `url`,
+  l'indirizzo relativo del file, così il PDF dell'ordine si apre dalla fattura. È da qui che
+  si legge quanto di quell'ordine resta da fatturare
 - `Tempi_Pagamento`, `Scadenza_Pagamento`, `Data_Pagamento`, `Valore_Pagato`: incasso.
   I primi due sono sempre `null` su una nota di accredito
 

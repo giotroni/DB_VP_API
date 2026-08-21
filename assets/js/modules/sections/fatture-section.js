@@ -339,7 +339,7 @@ class FattureSection extends BaseSection {
         const documento = fattura.documento_info;
         const commessaHaOrdini = !!fattura.ID_COMMESSA;
         const documentoCollegato = documento
-            ? `<li><i class="fas fa-link me-2"></i><strong>${documento.Tipo} collegato:</strong> ${this.app.utils.escapeHtml(documento.Numero || fattura.ID_DOCUMENTO)}${documento.Data ? ` del ${this.app.utils.formatDate(documento.Data)}` : ''}${documento.Tipo_Importo === 'Chiuso' && documento.Importo ? ` — ${this.app.utils.formatCurrency(documento.Importo)}` : ''}</li>`
+            ? `<li><i class="fas fa-link me-2"></i><strong>${documento.Tipo === 'Offerta' ? 'Offerta collegata' : 'Ordine collegato'}:</strong> ${this.app.utils.escapeHtml(documento.Numero || 'senza numero')}${documento.Data ? ` del ${this.app.utils.formatDate(documento.Data)}` : ''}${documento.Tipo_Importo === 'Chiuso' && documento.Importo ? ` — ${this.app.utils.formatCurrency(documento.Importo)}` : ''}${documento.url ? ` <a href="${documento.url}" target="_blank" rel="noopener" title="Apri il documento allegato"><i class="fas fa-paperclip"></i></a>` : ''}</li>`
             : (commessaHaOrdini
                 ? '<li><i class="fas fa-unlink me-2 text-muted"></i><strong>Ordine collegato:</strong> <span class="text-muted">nessuno</span></li>'
                 : '');
@@ -431,7 +431,10 @@ class FattureSection extends BaseSection {
                 if (scelta && String(c.ID_COMMESSA) === String(scelta)) return true;
                 if (c.Tipo_Commessa === 'Interna') return false;
                 if (tutte) return true;
-                if (!cliente) return false;
+                // Senza cliente scelto si vedono tutte: è il caso di chi parte
+                // dalla commessa invece che dal cliente, e il cliente lo lascia
+                // dedurre. Prima l'elenco restava vuoto e l'ordine era imposto.
+                if (!cliente) return true;
                 return String(c.ID_CLIENTE) === String(cliente);
             });
 
@@ -449,7 +452,7 @@ class FattureSection extends BaseSection {
                 if (tutte) {
                     commessaHint.textContent = 'Elenco allargato a tutti i clienti.';
                 } else if (!cliente) {
-                    commessaHint.textContent = "Seleziona prima il cliente, oppure allarga l'elenco qui sopra.";
+                    commessaHint.textContent = 'Tutte le commesse: scegliendone una, il cliente si compila da sé.';
                 } else if (!candidate.length) {
                     commessaHint.textContent = "Questo cliente non ha commesse: allarga l'elenco qui sopra.";
                 } else {
@@ -460,6 +463,30 @@ class FattureSection extends BaseSection {
 
         const inputDocumento = form.querySelector('#ID_DOCUMENTO');
         const documentoHint = form.querySelector('#documentoHint');
+        const documentoAllegato = form.querySelector('#documentoAllegato');
+
+        // I documenti caricati per la commessa in corso. Servono dopo, quando si
+        // sceglie: il numero del cliente e l'allegato stanno qui, e rileggerli
+        // dal testo dell'opzione vorrebbe dire ricavarli da come sono scritti.
+        let documentiCommessa = [];
+
+        // L'allegato del documento scelto: il PDF dell'ordine, aperto da qui
+        // senza passare dalla scheda della commessa. Chi registra una fattura
+        // ha spesso bisogno di rileggerlo proprio in quel momento.
+        const aggiornaAllegato = () => {
+            if (!documentoAllegato) return;
+
+            const scelto = documentiCommessa.find(d => String(d.ID_DOCUMENTO) === String(inputDocumento?.value));
+
+            if (!scelto) {
+                documentoAllegato.innerHTML = '';
+                return;
+            }
+
+            documentoAllegato.innerHTML = scelto.documento_url
+                ? `<a href="${scelto.documento_url}" target="_blank" rel="noopener"><i class="fas fa-paperclip me-1"></i>Apri il documento allegato</a>`
+                : `<span class="text-muted"><i class="fas fa-paperclip me-1"></i>Questo documento non ha un allegato</span>`;
+        };
 
         // Gli ordini (e le offerte) fra cui scegliere sono quelli della commessa
         // selezionata, e nessun altro: un ordine autorizza il lavoro di una
@@ -473,9 +500,11 @@ class FattureSection extends BaseSection {
             const scelta = inputDocumento.value || fattura.ID_DOCUMENTO || '';
 
             if (!commessa) {
+                documentiCommessa = [];
                 inputDocumento.innerHTML = '<option value="">Nessun ordine collegato</option>';
                 inputDocumento.disabled = true;
                 if (documentoHint) documentoHint.textContent = 'Seleziona prima la commessa: gli ordini appartengono a lei.';
+                aggiornaAllegato();
                 return;
             }
 
@@ -484,9 +513,13 @@ class FattureSection extends BaseSection {
 
             const risposta = await this.app.api.getDocumenti({ commessa, limit: 200 });
             const documenti = risposta.success ? (risposta.data?.data || []) : [];
+            documentiCommessa = documenti;
 
             const opzioni = documenti.map(d => {
-                const numero = d.Numero || d.ID_DOCUMENTO;
+                // Senza numero si scrive «senza numero», non il codice interno:
+                // DOC25001 è come lo chiama il gestionale, non come lo chiama il
+                // cliente, e mostrarlo qui invita a copiarlo dove non va.
+                const numero = d.Numero || 'senza numero';
                 const data = d.Data ? ` del ${this.app.utils.formatDate(d.Data)}` : '';
                 const cifra = d.Tipo_Importo === 'A_giornate'
                     ? 'a giornate'
@@ -512,6 +545,8 @@ class FattureSection extends BaseSection {
                     documentoHint.textContent = '';
                 }
             }
+
+            aggiornaAllegato();
         };
 
         // Le due regole della nota di accredito, lato form: importi negativi e
@@ -643,18 +678,45 @@ class FattureSection extends BaseSection {
         // precedente non sopravvive al cambio: apparteneva all'altra commessa.
         if (inputCommessa) inputCommessa.addEventListener('change', () => {
             if (inputDocumento) inputDocumento.value = '';
+
+            // Chi parte dalla commessa non deve tornare indietro a cercare il
+            // cliente: la commessa ne ha uno solo. Si compila solo se vuoto,
+            // perché l'intestatario della fattura può essere un altro - accade
+            // su quattro fatture in archivio - e quella scelta non si tocca.
+            const commessa = (this.app.commesse || []).find(c => String(c.ID_COMMESSA) === String(inputCommessa.value));
+            if (inputCliente && !inputCliente.value && commessa?.ID_CLIENTE) {
+                inputCliente.value = commessa.ID_CLIENTE;
+                if (commessaHint) commessaHint.textContent = 'Cliente compilato dalla commessa.';
+                if (isNotaAccredito()) aggiornaOpzioniStorno();
+            }
+
             aggiornaOpzioniDocumento();
         });
 
-        // Il numero d'ordine da citare in fattura è quello del documento
-        // collegato: si compila da sé, ma solo se il campo è vuoto — dove è già
-        // scritto a mano vince quello, che è il numero copiato dal cartaceo.
+        // Scegliendo il documento si aggiornano l'allegato e, se sono vuoti, i
+        // due campi che il documento decide.
         if (inputDocumento) inputDocumento.addEventListener('change', () => {
+            aggiornaAllegato();
+
+            const scelto = documentiCommessa.find(d => String(d.ID_DOCUMENTO) === String(inputDocumento.value));
+            if (!scelto) return;
+
+            // Il numero d'ordine da citare in fattura è quello che porta il
+            // documento DEL CLIENTE. Se il documento non ce l'ha non si scrive
+            // niente: la prima versione ripiegava sull'ID interno e riempiva il
+            // campo con «DOC25001», che in una fattura non significa nulla.
             const inputRiferimento = form.querySelector('#Riferimento_Ordine');
-            if (!inputRiferimento || inputRiferimento.value.trim() !== '') return;
-            const scelto = inputDocumento.selectedOptions?.[0]?.textContent || '';
-            const numero = scelto.split('—')[0].replace(/^(Ordine|Offerta)\s+/, '').split(' del ')[0].trim();
-            if (numero) inputRiferimento.value = numero;
+            if (inputRiferimento && inputRiferimento.value.trim() === '' && scelto.Numero) {
+                inputRiferimento.value = scelto.Numero;
+            }
+
+            // L'intestatario lo decide l'ordine: è il motivo per cui il
+            // documento porta un intestatario proprio, diverso dal cliente
+            // della commessa nei casi in cui fattura e lavoro si separano.
+            if (inputCliente && !inputCliente.value && scelto.ID_CLIENTE_INTESTATARIO) {
+                inputCliente.value = scelto.ID_CLIENTE_INTESTATARIO;
+                aggiornaOpzioniCommessa();
+            }
         });
 
         // Una nota di accredito sta sulla stessa commessa della fattura che
@@ -908,6 +970,7 @@ class FattureSection extends BaseSection {
                         </label>
                         <select class="form-select" id="ID_DOCUMENTO" name="ID_DOCUMENTO"><option value="">Nessun ordine collegato</option></select>
                         <div class="form-text" id="documentoHint"></div>
+                        <div class="form-text" id="documentoAllegato"></div>
                     </div>
                 </div>
                 <div class="row d-none" id="rigaStorno">
