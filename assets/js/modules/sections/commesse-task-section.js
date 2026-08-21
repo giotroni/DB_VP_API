@@ -20,14 +20,10 @@ class CommesseTaskSection extends BaseSection {
         this.updatePageTitle('Situazione Commesse e Task', 'Visualizza e gestisci commesse e task');
         this.updateTopbarActions(isUserRole ? '' : `<div class="d-flex gap-2"><button class="btn btn-vp-primary" data-action="add-commessa"><i class="fas fa-plus me-2"></i>Nuova Commessa</button><button class="btn btn-outline-secondary" data-action="export-commesse"><i class="fas fa-file-export me-2"></i>Esporta Excel</button></div>`);
         const container = this.getContainer();
-        const currentYear = new Date().getFullYear();
-        let yearOptions = '';
-        for (let y = 2024; y <= currentYear + 1; y++) { 
-            const isChecked = (y === currentYear) ? 'checked' : '';
-            yearOptions += `<li><label class="dropdown-item"><input type="checkbox" class="form-check-input me-2" value="${y}" ${isChecked}>${y}</label></li>`; 
-        }
-        const months = ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"];
-        let monthOptions = months.map((month, index) => `<li><label class="dropdown-item"><input type="checkbox" class="form-check-input me-2" value="${index + 1}">${month}</label></li>`).join('');
+        // Anno e mese li decide l'applicazione, non la sezione: il periodo è
+        // uno solo e si ritrova cambiando pagina. Vedi ManagementApp.getPeriodo().
+        const yearOptions = this.app.opzioniAnno();
+        const monthOptions = this.app.opzioniMese();
         // Ordina le commesse alfabeticamente per il menu a tendina dei filtri
         const commesseOptionsSorted = this.app.utils.ordinaPerNome(this.app.commesse, 'Commessa');
 
@@ -38,8 +34,8 @@ class CommesseTaskSection extends BaseSection {
                     <div class="col-lg-3 col-md-6"><label class="form-label">Cerca</label><input type="text" class="form-control" id="searchCommesseTask" placeholder="Nome, codice, cliente..."></div>
                     <div class="col-lg-2 col-md-6"><label class="form-label">Commessa</label><select class="form-select" id="filterCommesse"><option value="">Tutte</option>${commesseOptionsSorted.map(c => `<option value="${c.ID_COMMESSA}">${c.Commessa}</option>`).join('')}</select></div>
                     <div class="col-lg-2 col-md-6"><label class="form-label">Stato</label><select class="form-select" id="filterStatoCommesse"><option value="">Tutti</option><option value="In corso" selected>In corso</option><option value="Chiusa">Chiusa</option><option value="Sospesa">Sospesa</option></select></div>
-                    <div class="col-lg-1 col-md-3"><label class="form-label">Anno</label><div class="dropdown"><button class="btn btn-outline-secondary dropdown-toggle w-100" type="button" id="filterAnnoBtn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">${currentYear}</button><ul class="dropdown-menu" id="filterAnno" aria-labelledby="filterAnnoBtn"><li><a class="dropdown-item fw-bold" href="#" data-action="toggle-all-filter" data-target-filter="filterAnno">Seleziona/Deseleziona</a></li><li><hr class="dropdown-divider"></li>${yearOptions}</ul></div></div>
-                    <div class="col-lg-2 col-md-3"><label class="form-label">Mese</label><div class="dropdown"><button class="btn btn-outline-secondary dropdown-toggle w-100" type="button" id="filterMeseBtn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">Tutti</button><ul class="dropdown-menu" id="filterMese" aria-labelledby="filterMeseBtn"><li><a class="dropdown-item fw-bold" href="#" data-action="toggle-all-filter" data-target-filter="filterMese">Seleziona/Deseleziona</a></li><li><hr class="dropdown-divider"></li>${monthOptions}</ul></div></div>
+                    <div class="col-lg-1 col-md-3"><label class="form-label">Anno</label><div class="dropdown"><button class="btn btn-outline-secondary dropdown-toggle w-100" type="button" id="filterAnnoBtn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">${this.app.etichettaAnno()}</button><ul class="dropdown-menu" id="filterAnno" aria-labelledby="filterAnnoBtn"><li><a class="dropdown-item fw-bold" href="#" data-action="toggle-all-filter" data-target-filter="filterAnno">Seleziona/Deseleziona</a></li><li><hr class="dropdown-divider"></li>${yearOptions}</ul></div></div>
+                    <div class="col-lg-2 col-md-3"><label class="form-label">Mese</label><div class="dropdown"><button class="btn btn-outline-secondary dropdown-toggle w-100" type="button" id="filterMeseBtn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">${this.app.etichettaMese()}</button><ul class="dropdown-menu" id="filterMese" aria-labelledby="filterMeseBtn"><li><a class="dropdown-item fw-bold" href="#" data-action="toggle-all-filter" data-target-filter="filterMese">Seleziona/Deseleziona</a></li><li><hr class="dropdown-divider"></li>${monthOptions}</ul></div></div>
                     <div class="col-lg-2 col-md-6"><label class="form-label">&nbsp;</label><div class="d-flex gap-2"><button class="btn btn-vp-primary" data-action="filter" title="Applica Filtri"><i class="fas fa-search"></i></button><button class="btn btn-outline-primary" data-action="toggle-all-commesse" id="toggleAllBtn" title="Espandi/Comprimi tutto"><i class="fas fa-expand-arrows-alt"></i></button></div></div>
                 </div>
             </div>
@@ -74,6 +70,9 @@ class CommesseTaskSection extends BaseSection {
                 if (checked.length === 0) { filterButton.textContent = 'Tutti'; } 
                 else if (checked.length === 1) { filterButton.textContent = checked[0].parentElement.textContent.trim(); } 
                 else { filterButton.textContent = `${checked.length} selezionati`; }
+                // Anno e mese valgono per tutta l'applicazione: la scelta si
+                // ricorda qui, e le altre sezioni la ritrovano già fatta.
+                this.app.salvaPeriodoDalDOM();
                 this.filterData();
             });
         };

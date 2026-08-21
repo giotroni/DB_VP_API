@@ -20,11 +20,10 @@ class FattureSection extends BaseSection {
         this.updatePageTitle('Gestione Fatture', 'Visualizza e gestisci le fatture emesse');
     this.updateTopbarActions(`<div class="d-flex gap-2"><button class="btn btn-outline-success" data-action="export-fatture" title="Esporta elenco fatture in Excel"><i class="fas fa-file-excel me-2"></i>Esporta Excel</button><button class="btn btn-vp-primary" data-action="add-fattura"><i class="fas fa-plus me-2"></i>Nuova Fattura</button></div>`);
         const container = this.getContainer();
-        const currentYear = new Date().getFullYear();
-        let yearOptions = '';
-        for (let y = 2024; y <= currentYear + 1; y++) { const isChecked = (y === currentYear) ? 'checked' : ''; yearOptions += `<li><label class="dropdown-item"><input type="checkbox" class="form-check-input me-2" value="${y}" ${isChecked}>${y}</label></li>`; }
-        const months = ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"];
-        let monthOptions = months.map((month, index) => `<li><label class="dropdown-item"><input type="checkbox" class="form-check-input me-2" value="${index + 1}">${month}</label></li>`).join('');
+        // Il periodo lo decide l'applicazione, non la sezione: è uno solo e si
+        // ritrova cambiando pagina. Vedi ManagementApp.getPeriodo().
+        const yearOptions = this.app.opzioniAnno();
+        const monthOptions = this.app.opzioniMese();
 
         // Gli stati si possono spuntare a più a più: «da incassare» e «scaduta»
         // insieme sono il credito aperto, ed è la domanda che si fa più spesso.
@@ -47,8 +46,8 @@ class FattureSection extends BaseSection {
                     <div class="col-lg-3 col-md-6"><label class="form-label">Cerca</label><input type="text" class="form-control" id="searchFatture" placeholder="Numero, cliente..."></div>
                     <div class="col-lg-2 col-md-6"><label class="form-label">Cliente</label><select class="form-select" id="filterCliente"><option value="">Tutti</option>${this.app.utils.ordinaPerNome(this.app.clienti, 'Cliente').map(c => `<option value="${c.ID_CLIENTE}">${c.Cliente}</option>`).join('')}</select></div>
                     <div class="col-lg-2 col-md-6"><label class="form-label">Stato Pagamento</label><div class="dropdown"><button class="btn btn-outline-secondary dropdown-toggle w-100 text-truncate" type="button" id="filterStatoBtn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">Tutti</button><ul class="dropdown-menu" id="filterStatoPagamento" aria-labelledby="filterStatoBtn"><li><a class="dropdown-item fw-bold" href="#" data-action="toggle-all-filter" data-target-filter="filterStatoPagamento">Seleziona/Deseleziona</a></li><li><hr class="dropdown-divider"></li>${statoOptions}</ul></div></div>
-                    <div class="col-lg-1 col-md-3"><label class="form-label">Anno</label><div class="dropdown"><button class="btn btn-outline-secondary dropdown-toggle w-100" type="button" id="filterAnnoBtn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">${currentYear}</button><ul class="dropdown-menu" id="filterAnno" aria-labelledby="filterAnnoBtn"><li><a class="dropdown-item fw-bold" href="#" data-action="toggle-all-filter" data-target-filter="filterAnno">Seleziona/Deseleziona</a></li><li><hr class="dropdown-divider"></li>${yearOptions}</ul></div></div>
-                    <div class="col-lg-2 col-md-3"><label class="form-label">Mese</label><div class="dropdown"><button class="btn btn-outline-secondary dropdown-toggle w-100" type="button" id="filterMeseBtn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">Tutti</button><ul class="dropdown-menu" id="filterMese" aria-labelledby="filterMeseBtn"><li><a class="dropdown-item fw-bold" href="#" data-action="toggle-all-filter" data-target-filter="filterMese">Seleziona/Deseleziona</a></li><li><hr class="dropdown-divider"></li>${monthOptions}</ul></div></div>
+                    <div class="col-lg-1 col-md-3"><label class="form-label">Anno</label><div class="dropdown"><button class="btn btn-outline-secondary dropdown-toggle w-100" type="button" id="filterAnnoBtn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">${this.app.etichettaAnno()}</button><ul class="dropdown-menu" id="filterAnno" aria-labelledby="filterAnnoBtn"><li><a class="dropdown-item fw-bold" href="#" data-action="toggle-all-filter" data-target-filter="filterAnno">Seleziona/Deseleziona</a></li><li><hr class="dropdown-divider"></li>${yearOptions}</ul></div></div>
+                    <div class="col-lg-2 col-md-3"><label class="form-label">Mese</label><div class="dropdown"><button class="btn btn-outline-secondary dropdown-toggle w-100" type="button" id="filterMeseBtn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">${this.app.etichettaMese()}</button><ul class="dropdown-menu" id="filterMese" aria-labelledby="filterMeseBtn"><li><a class="dropdown-item fw-bold" href="#" data-action="toggle-all-filter" data-target-filter="filterMese">Seleziona/Deseleziona</a></li><li><hr class="dropdown-divider"></li>${monthOptions}</ul></div></div>
                     <div class="col-lg-2 col-md-6"><label class="form-label">&nbsp;</label><div class="d-flex gap-2"><button class="btn btn-vp-primary" data-action="filter" title="Applica Filtri"><i class="fas fa-search"></i></button><button class="btn btn-outline-primary" data-action="toggle-all-fatture" id="toggleAllBtn" title="Espandi/Comprimi tutto"><i class="fas fa-expand-arrows-alt"></i></button></div></div>
                 </div>
             </div>
@@ -78,6 +77,11 @@ class FattureSection extends BaseSection {
                 if (checked.length === 0) { filterButton.textContent = 'Tutti'; } 
                 else if (checked.length === 1) { filterButton.textContent = checked[0].parentElement.textContent.trim(); } 
                 else { filterButton.textContent = `${checked.length} selezionati`; }
+                // Anno e mese valgono per tutta l'applicazione. Lo stato del
+                // filtro sugli stati di pagamento no: quello resta qui.
+                if (filterId === 'filterAnno' || filterId === 'filterMese') {
+                    this.app.salvaPeriodoDalDOM();
+                }
                 this.filterData();
             });
         };

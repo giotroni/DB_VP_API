@@ -36,12 +36,10 @@ class GiornateSection extends BaseSection {
             .map(c => `<option value="${c.ID_COMMESSA}">${c.Commessa}</option>`)
             .join('');
 
-        // prepara le opzioni per anno e mese (riuso pattern usato altrove)
-        const currentYear = new Date().getFullYear();
-        let yearOptions = '';
-        for (let y = 2024; y <= currentYear + 1; y++) { const isChecked = (y === currentYear) ? 'checked' : ''; yearOptions += `<li><label class="dropdown-item"><input type="checkbox" class="form-check-input me-2" value="${y}" ${isChecked}>${y}</label></li>`; }
-        const months = this.mesiItaliani;
-        let monthOptions = months.map((month, index) => `<li><label class="dropdown-item"><input type="checkbox" class="form-check-input me-2" value="${index + 1}">${month}</label></li>`).join('');
+        // Il periodo lo decide l'applicazione, non la sezione: è uno solo e si
+        // ritrova cambiando pagina. Vedi ManagementApp.getPeriodo().
+        const yearOptions = this.app.opzioniAnno();
+        const monthOptions = this.app.opzioniMese();
 
         container.innerHTML = `
             <div id="stats-row-container"></div>
@@ -64,11 +62,11 @@ class GiornateSection extends BaseSection {
                     </div>
                     <div class="col-lg-2 col-md-6">
                         <label class="form-label">Anno</label>
-                        <div class="dropdown"><button class="btn btn-outline-secondary dropdown-toggle w-100" type="button" id="filterAnnoBtn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">${currentYear}</button><ul class="dropdown-menu" id="filterAnno" aria-labelledby="filterAnnoBtn"><li><a class="dropdown-item fw-bold" href="#" data-action="toggle-all-filter" data-target-filter="filterAnno">Seleziona/Deseleziona</a></li><li><hr class="dropdown-divider"></li>${yearOptions}</ul></div>
+                        <div class="dropdown"><button class="btn btn-outline-secondary dropdown-toggle w-100" type="button" id="filterAnnoBtn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">${this.app.etichettaAnno()}</button><ul class="dropdown-menu" id="filterAnno" aria-labelledby="filterAnnoBtn"><li><a class="dropdown-item fw-bold" href="#" data-action="toggle-all-filter" data-target-filter="filterAnno">Seleziona/Deseleziona</a></li><li><hr class="dropdown-divider"></li>${yearOptions}</ul></div>
                     </div>
                     <div class="col-lg-2 col-md-6">
                         <label class="form-label">Mese</label>
-                        <div class="dropdown"><button class="btn btn-outline-secondary dropdown-toggle w-100" type="button" id="filterMeseBtn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">Tutti</button><ul class="dropdown-menu" id="filterMese" aria-labelledby="filterMeseBtn"><li><a class="dropdown-item fw-bold" href="#" data-action="toggle-all-filter" data-target-filter="filterMese">Seleziona/Deseleziona</a></li><li><hr class="dropdown-divider"></li>${monthOptions}</ul></div>
+                        <div class="dropdown"><button class="btn btn-outline-secondary dropdown-toggle w-100" type="button" id="filterMeseBtn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">${this.app.etichettaMese()}</button><ul class="dropdown-menu" id="filterMese" aria-labelledby="filterMeseBtn"><li><a class="dropdown-item fw-bold" href="#" data-action="toggle-all-filter" data-target-filter="filterMese">Seleziona/Deseleziona</a></li><li><hr class="dropdown-divider"></li>${monthOptions}</ul></div>
                     </div>
                     <div class="col-lg-2 col-md-6">
                         <label for="filterTipo" class="form-label">Filtra per Tipo</label>
@@ -182,19 +180,18 @@ class GiornateSection extends BaseSection {
         const { years, months } = this.leggiFiltroPeriodo();
         this.activeDateFilter = { years, months };
 
+        // Anno e mese valgono per tutta l'applicazione: la scelta si ricorda
+        // qui, e le altre sezioni la ritrovano già fatta.
+        this.app.setPeriodo(years, months);
+
+        // Le etichette le scrive l'applicazione, come nelle altre sezioni: qui
+        // dicevano «2 anni» e «2 mesi» mentre altrove dicono «2 selezionati»,
+        // per lo stesso identico periodo.
         const annoBtn = document.getElementById('filterAnnoBtn');
-        if (annoBtn) {
-            if (!years.length) annoBtn.textContent = 'Tutti';
-            else if (years.length === 1) annoBtn.textContent = String(years[0]);
-            else annoBtn.textContent = `${years.length} anni`;
-        }
+        if (annoBtn) annoBtn.textContent = this.app.etichettaAnno();
 
         const meseBtn = document.getElementById('filterMeseBtn');
-        if (meseBtn) {
-            if (!months.length) meseBtn.textContent = 'Tutti';
-            else if (months.length === 1) meseBtn.textContent = this.mesiItaliani[months[0] - 1] || `${months[0]}`;
-            else meseBtn.textContent = `${months.length} mesi`;
-        }
+        if (meseBtn) meseBtn.textContent = this.app.etichettaMese();
 
         this.filterData();
     }

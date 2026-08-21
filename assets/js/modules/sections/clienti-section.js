@@ -34,14 +34,10 @@ class ClientiSection extends BaseSection {
         `);
         
         const container = this.getContainer();
-        const currentYear = new Date().getFullYear();
-        let yearOptions = '';
-        for (let y = 2024; y <= currentYear + 1; y++) {
-            const isChecked = (y === currentYear) ? 'checked' : '';
-            yearOptions += `<li><label class="dropdown-item"><input type="checkbox" class="form-check-input me-2" value="${y}" ${isChecked}>${y}</label></li>`;
-        }
-        const months = ["Gennaio","Febbraio","Marzo","Aprile","Maggio","Giugno","Luglio","Agosto","Settembre","Ottobre","Novembre","Dicembre"];
-        const monthOptions = months.map((m, i) => `<li><label class="dropdown-item"><input type="checkbox" class="form-check-input me-2" value="${i + 1}">${m}</label></li>`).join('');
+        // Il periodo lo decide l'applicazione, non la sezione: è uno solo e si
+        // ritrova cambiando pagina. Vedi ManagementApp.getPeriodo().
+        const yearOptions = this.app.opzioniAnno();
+        const monthOptions = this.app.opzioniMese();
 
         container.innerHTML = `
             <div class="stats-row">
@@ -60,7 +56,7 @@ class ClientiSection extends BaseSection {
                     <div class="col-lg-1 col-md-3">
                         <label class="form-label">Anno</label>
                         <div class="dropdown">
-                            <button class="btn btn-outline-secondary dropdown-toggle w-100" type="button" id="filterAnnoClientiBtn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">${currentYear}</button>
+                            <button class="btn btn-outline-secondary dropdown-toggle w-100" type="button" id="filterAnnoClientiBtn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">${this.app.etichettaAnno()}</button>
                             <ul class="dropdown-menu" id="filterAnnoClienti" aria-labelledby="filterAnnoClientiBtn">
                                 <li><a class="dropdown-item fw-bold" href="#" data-action="toggle-all-filter" data-target-filter="filterAnnoClienti">Seleziona/Deseleziona</a></li>
                                 <li><hr class="dropdown-divider"></li>
@@ -71,7 +67,7 @@ class ClientiSection extends BaseSection {
                     <div class="col-lg-2 col-md-3">
                         <label class="form-label">Mese</label>
                         <div class="dropdown">
-                            <button class="btn btn-outline-secondary dropdown-toggle w-100" type="button" id="filterMeseClientiBtn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">Tutti</button>
+                            <button class="btn btn-outline-secondary dropdown-toggle w-100" type="button" id="filterMeseClientiBtn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">${this.app.etichettaMese()}</button>
                             <ul class="dropdown-menu" id="filterMeseClienti" aria-labelledby="filterMeseClientiBtn">
                                 <li><a class="dropdown-item fw-bold" href="#" data-action="toggle-all-filter" data-target-filter="filterMeseClienti">Seleziona/Deseleziona</a></li>
                                 <li><hr class="dropdown-divider"></li>
@@ -242,6 +238,9 @@ class ClientiSection extends BaseSection {
                 if (checked.length === 0) { filterButton.textContent = 'Tutti'; }
                 else if (checked.length === 1) { filterButton.textContent = checked[0].parentElement.textContent.trim(); }
                 else { filterButton.textContent = `${checked.length} selezionati`; }
+                // Anno e mese valgono per tutta l'applicazione: la scelta si
+                // ricorda qui, e le altre sezioni la ritrovano già fatta.
+                this.app.salvaPeriodoDalDOM();
                 this.filterClienti();
             });
         };
@@ -277,6 +276,7 @@ class ClientiSection extends BaseSection {
                     // aggiorna label pulsante
                     const btn = document.getElementById(targetId + 'Btn');
                     if (btn) btn.textContent = allChecked ? 'Tutti' : `${checkboxes.length} selezionati`;
+                    this.app.salvaPeriodoDalDOM();
                     this.filterClienti();
                 }
                 break;

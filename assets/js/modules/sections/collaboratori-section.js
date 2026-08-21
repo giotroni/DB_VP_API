@@ -33,12 +33,10 @@ class CollaboratoriSection extends BaseSection {
     this.updateTopbarActions(`<div class="d-flex gap-2"><button class="btn btn-vp-primary" data-action="add-collaboratore"><i class="fas fa-user-plus me-2"></i>Nuovo Collaboratore</button><button class="btn btn-outline-secondary" data-action="export-collaboratori"><i class="fas fa-file-export me-2"></i>Esporta Excel</button></div>`);
         
         const container = this.getContainer();
-        // prepara le opzioni per anno e mese (riuso lo stesso pattern usato altrove)
-        const currentYear = new Date().getFullYear();
-        let yearOptions = '';
-        for (let y = 2024; y <= currentYear + 1; y++) { const isChecked = (y === currentYear) ? 'checked' : ''; yearOptions += `<li><label class="dropdown-item"><input type="checkbox" class="form-check-input me-2" value="${y}" ${isChecked}>${y}</label></li>`; }
-        const months = ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"];
-        let monthOptions = months.map((month, index) => `<li><label class="dropdown-item"><input type="checkbox" class="form-check-input me-2" value="${index + 1}">${month}</label></li>`).join('');
+        // Il periodo lo decide l'applicazione, non la sezione: è uno solo e si
+        // ritrova cambiando pagina. Vedi ManagementApp.getPeriodo().
+        const yearOptions = this.app.opzioniAnno();
+        const monthOptions = this.app.opzioniMese();
 
         container.innerHTML = `
             <div id="stats-row-container"></div>
@@ -60,8 +58,8 @@ class CollaboratoriSection extends BaseSection {
                             <option value="User">User</option>
                         </select>
                     </div>
-                    <div class="col-lg-1 col-md-3"><label class="form-label">Anno</label><div class="dropdown"><button class="btn btn-outline-secondary dropdown-toggle w-100" type="button" id="filterAnnoBtn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">${currentYear}</button><ul class="dropdown-menu" id="filterAnno" aria-labelledby="filterAnnoBtn"><li><a class="dropdown-item fw-bold" href="#" data-action="toggle-all-filter" data-target-filter="filterAnno">Seleziona/Deseleziona</a></li><li><hr class="dropdown-divider"></li>${yearOptions}</ul></div></div>
-                    <div class="col-lg-2 col-md-3"><label class="form-label">Mese</label><div class="dropdown"><button class="btn btn-outline-secondary dropdown-toggle w-100" type="button" id="filterMeseBtn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">Tutti</button><ul class="dropdown-menu" id="filterMese" aria-labelledby="filterMeseBtn"><li><a class="dropdown-item fw-bold" href="#" data-action="toggle-all-filter" data-target-filter="filterMese">Seleziona/Deseleziona</a></li><li><hr class="dropdown-divider"></li>${monthOptions}</ul></div></div>
+                    <div class="col-lg-1 col-md-3"><label class="form-label">Anno</label><div class="dropdown"><button class="btn btn-outline-secondary dropdown-toggle w-100" type="button" id="filterAnnoBtn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">${this.app.etichettaAnno()}</button><ul class="dropdown-menu" id="filterAnno" aria-labelledby="filterAnnoBtn"><li><a class="dropdown-item fw-bold" href="#" data-action="toggle-all-filter" data-target-filter="filterAnno">Seleziona/Deseleziona</a></li><li><hr class="dropdown-divider"></li>${yearOptions}</ul></div></div>
+                    <div class="col-lg-2 col-md-3"><label class="form-label">Mese</label><div class="dropdown"><button class="btn btn-outline-secondary dropdown-toggle w-100" type="button" id="filterMeseBtn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">${this.app.etichettaMese()}</button><ul class="dropdown-menu" id="filterMese" aria-labelledby="filterMeseBtn"><li><a class="dropdown-item fw-bold" href="#" data-action="toggle-all-filter" data-target-filter="filterMese">Seleziona/Deseleziona</a></li><li><hr class="dropdown-divider"></li>${monthOptions}</ul></div></div>
                 </div>
             </div>
             <div id="collaboratoriContainer">
@@ -93,6 +91,9 @@ class CollaboratoriSection extends BaseSection {
                 if (checked.length === 0) { filterButton.textContent = 'Tutti'; } 
                 else if (checked.length === 1) { filterButton.textContent = checked[0].parentElement.textContent.trim(); } 
                 else { filterButton.textContent = `${checked.length} selezionati`; }
+                // Anno e mese valgono per tutta l'applicazione: la scelta si
+                // ricorda qui, e le altre sezioni la ritrovano già fatta.
+                this.app.salvaPeriodoDalDOM();
                 this.filterData();
             });
         };

@@ -585,6 +585,100 @@ class ManagementApp {
     }
 
     // ========================================================================
+    // IL PERIODO: UNO SOLO PER TUTTA L'APPLICAZIONE
+    // ========================================================================
+
+    /**
+     * Anno e mese non appartengono alla schermata ma all'applicazione.
+     *
+     * Comparivano in sei sezioni, ognuna con la sua copia delle caselle e il
+     * suo stato: scegliere il 2025 nelle Fatture e ritrovare il 2026 nelle
+     * Commesse voleva dire confrontare due periodi diversi credendo di
+     * guardare la stessa cosa. Ora la scelta e' una sola e le sezioni la
+     * leggono da qui.
+     *
+     * Dura quanto la scheda del browser (sessionStorage): riaprendo il
+     * gestionale si riparte dall'anno corrente, che e' quello che ci si aspetta
+     * al mattino. Con localStorage, a gennaio si guarderebbero i dati
+     * dell'anno vecchio senza accorgersene.
+     */
+    getPeriodo() {
+        if (this._periodo) return this._periodo;
+
+        try {
+            const salvato = JSON.parse(sessionStorage.getItem('vp_periodo'));
+            if (salvato && Array.isArray(salvato.anni) && Array.isArray(salvato.mesi)) {
+                this._periodo = salvato;
+                return this._periodo;
+            }
+        } catch (e) {
+            // Niente di salvato, o illeggibile: si riparte dal predefinito.
+        }
+
+        this._periodo = { anni: [new Date().getFullYear()], mesi: [] };
+        return this._periodo;
+    }
+
+    setPeriodo(anni, mesi) {
+        this._periodo = { anni: anni || [], mesi: mesi || [] };
+        try {
+            sessionStorage.setItem('vp_periodo', JSON.stringify(this._periodo));
+        } catch (e) {
+            // Se il browser non lo permette il periodo vale comunque finche'
+            // la pagina resta aperta: sta anche in memoria.
+        }
+    }
+
+    /**
+     * Rilegge il periodo dalle caselle a schermo.
+     *
+     * Le sezioni chiamano questo dopo ogni spunta. Gli identificativi non sono
+     * gli stessi ovunque - filterAnno, filterAnnoClienti, filterAnnoColl - e
+     * per questo si cercano per prefisso invece che per nome esatto.
+     */
+    salvaPeriodoDalDOM() {
+        const spuntati = (prefisso) => Array.from(
+            document.querySelectorAll(`ul[id^="${prefisso}"] input[type="checkbox"]:checked`)
+        ).map(el => parseInt(el.value, 10)).filter(n => !isNaN(n));
+
+        this.setPeriodo(spuntati('filterAnno'), spuntati('filterMese'));
+    }
+
+    /** Le caselle degli anni, spuntate secondo il periodo attivo. */
+    opzioniAnno() {
+        const anni = this.getPeriodo().anni;
+        const ultimo = new Date().getFullYear() + 1;
+        let html = '';
+        for (let y = 2024; y <= ultimo; y++) {
+            html += `<li><label class="dropdown-item"><input type="checkbox" class="form-check-input me-2" value="${y}" ${anni.includes(y) ? 'checked' : ''}>${y}</label></li>`;
+        }
+        return html;
+    }
+
+    /** Le caselle dei mesi, spuntate secondo il periodo attivo. */
+    opzioniMese() {
+        const mesi = this.getPeriodo().mesi;
+        return ManagementApp.MESI.map((nome, i) =>
+            `<li><label class="dropdown-item"><input type="checkbox" class="form-check-input me-2" value="${i + 1}" ${mesi.includes(i + 1) ? 'checked' : ''}>${nome}</label></li>`
+        ).join('');
+    }
+
+    /** Cosa scrive il pulsante: niente spunte vuol dire «Tutti». */
+    etichettaAnno() {
+        const anni = this.getPeriodo().anni;
+        if (anni.length === 0) return 'Tutti';
+        if (anni.length === 1) return String(anni[0]);
+        return `${anni.length} selezionati`;
+    }
+
+    etichettaMese() {
+        const mesi = this.getPeriodo().mesi;
+        if (mesi.length === 0) return 'Tutti';
+        if (mesi.length === 1) return ManagementApp.MESI[mesi[0] - 1];
+        return `${mesi.length} selezionati`;
+    }
+
+    // ========================================================================
     // SEZIONE 4: CARICAMENTO E GESTIONE DATI
     // ========================================================================
 
@@ -688,5 +782,9 @@ class ManagementApp {
         }
     }
 }
+
+// I mesi, scritti una volta sola: erano ricopiati in sei sezioni.
+ManagementApp.MESI = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno',
+                      'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'];
 
 document.addEventListener('DOMContentLoaded', () => { window.app = new ManagementApp(); });

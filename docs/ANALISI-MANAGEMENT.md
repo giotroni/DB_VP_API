@@ -98,6 +98,11 @@ All'avvio l'app scarica **l'intero database** in sette array in memoria
 - i **join** (commessa→cliente, task→commessa, giornata→task) sono fatti in JavaScript
   con `Array.find()`;
 - i **filtri** per anno/mese non tornano al server: filtrano gli array già caricati;
+  dal 20/08/2026 il periodo è **uno solo per tutta l'applicazione** — sta in
+  `ManagementApp.getPeriodo()`, dura quanto la scheda del browser (`sessionStorage`) e le
+  sei sezioni che mostrano Anno e Mese lo leggono da lì invece di tenerne una copia
+  ciascuna. Prima, scegliere il 2025 nelle Fatture e ritrovare il 2026 nelle Commesse
+  significava confrontare due periodi diversi credendo di guardare la stessa cosa;
 - ogni modifica richiama `loadInitialData()`, che riscarica tutto.
 
 Conseguenze pratiche: la reattività dei filtri è immediata, ma il costo di avvio cresce
