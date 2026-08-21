@@ -207,8 +207,24 @@ stato. Le distingue `Tipo`, e le lega `ID_PADRE`.
 | `Giornate_Previste` | solo sugli ordini a giornate che dichiarano un tetto in giornate |
 | `ID_CLIENTE_INTESTATARIO` | a chi va intestata la fattura. Lo dice l'ordine, non la commessa |
 | `Documento` | il PDF caricato |
-| `Stato` | `Atteso`, `Ricevuto`, `Chiuso` |
+| `Stato` | `Atteso`, `Ricevuto`, `Chiuso`. Vuol dire due cose diverse sui due tipi: vedi sotto |
 | `Residuo_Alla_Chiusura`, `Note_Chiusura` | quanto è rimasto non fatturato quando l'ordine è stato chiuso, e perché |
+
+### Lo stato dice due cose diverse sui due tipi *(20/08/2026)*
+
+Su un **ordine** è la sua vita, nell'ordine in cui accade: `Atteso` (il cliente ha
+confermato, il documento non è ancora arrivato) → `Ricevuto` (documento agli atti, si
+fattura su questo) → `Chiuso` (non ci si fattura più, esaurito o abbandonato).
+
+Su un'**offerta** quella sequenza non esiste: un'offerta la scriviamo noi, non si riceve e
+non si aspetta, e nel gestionale entra solo se confermata (decisione 8). Le domande sono due
+sole — ci si fattura ancora sopra, oppure no — e la scheda mostra `Aperta` e `Chiusa`. Il
+caso «aspetto l'ordine» ha già il campo `Ordine_Atteso`, e ripeterlo qui sarebbe il posto
+sbagliato.
+
+A database i valori restano i tre di sempre: `Aperta` è `Ricevuto`. Cambia l'etichetta,
+perché «Ricevuto» su un'offerta non significa niente per chi lo legge; cambiando tipo, uno
+stato `Atteso` rimasto addosso viene riportato a `Ricevuto`.
 
 `ID_CLIENTE_INTESTATARIO` sull'ordine e non solo sulla commessa perché è l'ordine a deciderlo:
 `4512149513` chiede fattura a Egidio Galbani, `4512149558` a Gruppo Lactalis, e sono due

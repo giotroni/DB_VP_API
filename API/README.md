@@ -429,7 +429,8 @@ Elenco dei documenti commerciali.
 **Filtri disponibili:**
 - `commessa`: la commessa a cui il documento è agganciato
 - `tipo`: `Offerta` oppure `Ordine`
-- `stato`: `Atteso`, `Ricevuto`, `Chiuso`
+- `stato`: `Atteso`, `Ricevuto`, `Chiuso`. Sull'ordine sono la sua vita, in quest'ordine;
+  sull'offerta `Atteso` non si usa e `Ricevuto` si legge «aperta», cioè ci si fattura sopra
 - `tipo_importo`: `Chiuso` oppure `A_giornate`
 - `padre`: gli ordini nati da una data offerta
 - `cliente`: l'intestatario della fattura

@@ -341,24 +341,29 @@ class DocumentiCommessa {
     }
 
     badgeStato(doc) {
+        const offerta = doc.Tipo === 'Offerta';
+
         if (doc.Stato === 'Chiuso') {
             const residuo = doc.Residuo_Alla_Chiusura;
             const titolo = residuo !== null && residuo !== undefined && Math.abs(parseFloat(residuo)) > 0.01
                 ? `Chiuso con ${this.app.utils.formatCurrency(residuo)} non fatturati`
-                : 'Chiuso';
-            return `<span class="badge bg-secondary" title="${titolo}">Chiuso</span>`;
+                : 'Non ci si fattura più';
+            return `<span class="badge bg-secondary" title="${titolo}">${offerta ? 'Chiusa' : 'Chiuso'}</span>`;
         }
         if (doc.Stato === 'Atteso') {
-            return `<span class="badge bg-warning text-dark" title="Documento non ancora ricevuto">Atteso</span>`;
+            return `<span class="badge bg-warning text-dark" title="Confermato dal cliente, ma il documento non è ancora arrivato">Atteso</span>`;
         }
         // Un'offerta che aspetta ancora l'ordine e' la coda da sollecitare;
         // quella a cui l'ordine non arrivera' mai e' un'altra cosa, e va detto.
-        if (doc.Tipo === 'Offerta' && !doc.n_ordini_figli) {
+        if (offerta) {
+            if (doc.n_ordini_figli) {
+                return '<span class="badge bg-success" title="Da questa offerta sono nati ordini: le cifre stanno su quelli">Con ordini</span>';
+            }
             return doc.Ordine_Atteso === 'No'
-                ? '<span class="badge bg-light text-dark" title="Cliente che non emette ordini: si fattura sull\'offerta">Senza ordine</span>'
+                ? '<span class="badge bg-success" title="Cliente che non emette ordini: si fattura su questa offerta">Aperta</span>'
                 : '<span class="badge bg-warning text-dark" title="Ordine da sollecitare">Ordine atteso</span>';
         }
-        return '<span class="badge bg-success">Ricevuto</span>';
+        return '<span class="badge bg-success" title="Documento agli atti: si fattura su questo">Ricevuto</span>';
     }
 
     /**
@@ -510,7 +515,8 @@ class DocumentiCommessa {
                 <div class="row">
                     <div class="col-md-4 mb-3">
                         <label class="form-label" for="docStato">Stato</label>
-                        <select class="form-select" id="docStato" name="Stato">${opzioni([['Ricevuto', 'Ricevuto'], ['Atteso', 'Atteso'], ['Chiuso', 'Chiuso']], doc.Stato || 'Ricevuto')}</select>
+                        <select class="form-select" id="docStato" name="Stato">${this.opzioniStato(tipo, doc.Stato || 'Ricevuto')}</select>
+                        <div class="form-text" id="statoHint"></div>
                     </div>
                     <div class="col-md-4 mb-3" id="campoOrdineAtteso" ${tipo === 'Offerta' ? '' : 'hidden'}>
                         <label class="form-label" for="docOrdineAtteso">Ordine atteso</label>
@@ -556,6 +562,41 @@ class DocumentiCommessa {
             </form>`;
     }
 
+    /**
+     * Lo stato, che vuol dire due cose diverse sui due tipi di documento.
+     *
+     * Su un ORDINE e' la sua vita, nell'ordine in cui accade:
+     *
+     *   Atteso     il cliente ha confermato ma il documento non e' arrivato
+     *   Ricevuto   il documento e' agli atti: su questo si fattura
+     *   Chiuso     non ci si fattura piu', esaurito o abbandonato
+     *
+     * Su un'OFFERTA no. Un'offerta la scriviamo noi: non si "riceve", e non si
+     * "aspetta". Nel gestionale ci entra solo se confermata (decisione dell'8
+     * agosto), quindi le domande sono due sole: ci si fattura ancora sopra,
+     * oppure no. Il caso "aspetto l'ordine" ha gia' un campo suo - Ordine
+     * atteso - e sarebbe questo il posto sbagliato per ripeterlo.
+     *
+     * A database i valori restano i tre di sempre: quello che cambia e' cosa
+     * c'e' scritto, perche' 'Ricevuto' su un'offerta non significa niente per
+     * chi lo legge.
+     */
+    opzioniStato(tipo, scelto) {
+        const voci = tipo === 'Offerta'
+            ? [['Ricevuto', 'Aperta: si fattura su questa offerta'],
+               ['Chiuso', 'Chiusa: non si fattura più']]
+            : [['Atteso', 'Atteso: confermato, ma il documento non è ancora arrivato'],
+               ['Ricevuto', 'Ricevuto: documento agli atti, si fattura su questo'],
+               ['Chiuso', 'Chiuso: non si fattura più']];
+
+        // 'Atteso' su un'offerta non esiste: chi cambia tipo si porterebbe
+        // dietro uno stato che l'elenco non saprebbe come mostrare.
+        const valido = voci.some(v => v[0] === scelto) ? scelto : 'Ricevuto';
+
+        return voci.map(([valore, etichetta]) =>
+            `<option value="${valore}" ${valore === valido ? 'selected' : ''}>${etichetta}</option>`).join('');
+    }
+
     /** Mostra i campi che il tipo di documento rende sensati, e nasconde gli altri. */
     aggiornaCampiScheda() {
         const form = document.getElementById('documentoForm');
@@ -563,7 +604,21 @@ class DocumentiCommessa {
 
         const tipo = form.querySelector('#docTipo')?.value;
         const tipoImporto = form.querySelector('#docTipoImporto')?.value;
-        const stato = form.querySelector('#docStato')?.value;
+
+        // Le voci dello stato dipendono dal tipo e si rifanno a ogni cambio:
+        // passando a Offerta, «Atteso» sparisce e «Ricevuto» diventa «Aperta».
+        const selectStato = form.querySelector('#docStato');
+        if (selectStato) {
+            selectStato.innerHTML = this.opzioniStato(tipo, selectStato.value);
+        }
+        const stato = selectStato?.value;
+
+        const statoHint = form.querySelector('#statoHint');
+        if (statoHint) {
+            statoHint.textContent = tipo === 'Offerta'
+                ? "Un'offerta non si riceve: la scriviamo noi, ed entra qui solo se confermata."
+                : 'Atteso → Ricevuto → Chiuso: è la vita del documento del cliente.';
+        }
 
         // ID_PADRE solo sugli ordini: e' un vincolo del database, non una scelta
         // dell'interfaccia (chk_padre_solo_su_ordine).
