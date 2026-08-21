@@ -24,6 +24,14 @@ class CommesseTaskSection extends BaseSection {
         // uno solo e si ritrova cambiando pagina. Vedi ManagementApp.getPeriodo().
         const yearOptions = this.app.opzioniAnno();
         const monthOptions = this.app.opzioniMese();
+
+        // Lo stato resta quello scelto anche cambiando pagina e tornando qui.
+        // «In corso» e' il predefinito solo al primo ingresso: chi sta lavorando
+        // sulle commesse chiuse non deve rimetterlo a ogni giro.
+        const statoScelto = this.app.getFiltro('filterStatoCommesse', 'In corso');
+        const statoOptions = [['', 'Tutti'], ['In corso', 'In corso'], ['Chiusa', 'Chiusa'], ['Sospesa', 'Sospesa']]
+            .map(([valore, etichetta]) => `<option value="${valore}" ${valore === statoScelto ? 'selected' : ''}>${etichetta}</option>`)
+            .join('');
         // Ordina le commesse alfabeticamente per il menu a tendina dei filtri
         const commesseOptionsSorted = this.app.utils.ordinaPerNome(this.app.commesse, 'Commessa');
 
@@ -33,7 +41,7 @@ class CommesseTaskSection extends BaseSection {
                 <div class="row gy-3">
                     <div class="col-lg-3 col-md-6"><label class="form-label">Cerca</label><input type="text" class="form-control" id="searchCommesseTask" placeholder="Nome, codice, cliente..."></div>
                     <div class="col-lg-2 col-md-6"><label class="form-label">Commessa</label><select class="form-select" id="filterCommesse"><option value="">Tutte</option>${commesseOptionsSorted.map(c => `<option value="${c.ID_COMMESSA}">${c.Commessa}</option>`).join('')}</select></div>
-                    <div class="col-lg-2 col-md-6"><label class="form-label">Stato</label><select class="form-select" id="filterStatoCommesse"><option value="">Tutti</option><option value="In corso" selected>In corso</option><option value="Chiusa">Chiusa</option><option value="Sospesa">Sospesa</option></select></div>
+                    <div class="col-lg-2 col-md-6"><label class="form-label">Stato</label><select class="form-select" id="filterStatoCommesse">${statoOptions}</select></div>
                     <div class="col-lg-1 col-md-3"><label class="form-label">Anno</label><div class="dropdown"><button class="btn btn-outline-secondary dropdown-toggle w-100" type="button" id="filterAnnoBtn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">${this.app.etichettaAnno()}</button><ul class="dropdown-menu" id="filterAnno" aria-labelledby="filterAnnoBtn"><li><a class="dropdown-item fw-bold" href="#" data-action="toggle-all-filter" data-target-filter="filterAnno">Seleziona/Deseleziona</a></li><li><hr class="dropdown-divider"></li>${yearOptions}</ul></div></div>
                     <div class="col-lg-2 col-md-3"><label class="form-label">Mese</label><div class="dropdown"><button class="btn btn-outline-secondary dropdown-toggle w-100" type="button" id="filterMeseBtn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">${this.app.etichettaMese()}</button><ul class="dropdown-menu" id="filterMese" aria-labelledby="filterMeseBtn"><li><a class="dropdown-item fw-bold" href="#" data-action="toggle-all-filter" data-target-filter="filterMese">Seleziona/Deseleziona</a></li><li><hr class="dropdown-divider"></li>${monthOptions}</ul></div></div>
                     <div class="col-lg-2 col-md-6"><label class="form-label">&nbsp;</label><div class="d-flex gap-2"><button class="btn btn-vp-primary" data-action="filter" title="Applica Filtri"><i class="fas fa-search"></i></button><button class="btn btn-outline-primary" data-action="toggle-all-commesse" id="toggleAllBtn" title="Espandi/Comprimi tutto"><i class="fas fa-expand-arrows-alt"></i></button></div></div>
@@ -60,7 +68,10 @@ class CommesseTaskSection extends BaseSection {
             });
         }
         document.getElementById('filterCommesse')?.addEventListener('change', () => this.filterData());
-        document.getElementById('filterStatoCommesse')?.addEventListener('change', () => this.filterData());
+        document.getElementById('filterStatoCommesse')?.addEventListener('change', (e) => {
+            this.app.setFiltro('filterStatoCommesse', e.target.value);
+            this.filterData();
+        });
         const setupMultiSelectFilter = (filterId, buttonId) => {
             const filterContainer = document.getElementById(filterId);
             const filterButton = document.getElementById(buttonId);

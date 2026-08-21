@@ -678,6 +678,37 @@ class ManagementApp {
         return `${mesi.length} selezionati`;
     }
 
+    /**
+     * Gli altri filtri che vale la pena ricordare, per identificativo.
+     *
+     * Il periodo qui sopra vale per tutte le sezioni; questi no: sono di chi li
+     * mostra, e restano quello che sono - lo stato delle commesse non c'entra
+     * con lo stato di pagamento delle fatture. Cambia solo che tornando sulla
+     * sezione si ritrova la scelta invece del predefinito.
+     *
+     * Stessa durata del periodo: la scheda del browser.
+     */
+    getFiltro(id, predefinito = '') {
+        if (!this._filtri) {
+            try {
+                this._filtri = JSON.parse(sessionStorage.getItem('vp_filtri')) || {};
+            } catch (e) {
+                this._filtri = {};
+            }
+        }
+        return this._filtri[id] !== undefined ? this._filtri[id] : predefinito;
+    }
+
+    setFiltro(id, valore) {
+        this.getFiltro(id); // assicura che _filtri sia carico
+        this._filtri[id] = valore;
+        try {
+            sessionStorage.setItem('vp_filtri', JSON.stringify(this._filtri));
+        } catch (e) {
+            // Vale comunque finche' la pagina resta aperta: sta in memoria.
+        }
+    }
+
     // ========================================================================
     // SEZIONE 4: CARICAMENTO E GESTIONE DATI
     // ========================================================================

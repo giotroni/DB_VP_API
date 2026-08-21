@@ -102,7 +102,10 @@ All'avvio l'app scarica **l'intero database** in sette array in memoria
   `ManagementApp.getPeriodo()`, dura quanto la scheda del browser (`sessionStorage`) e le
   sei sezioni che mostrano Anno e Mese lo leggono da lì invece di tenerne una copia
   ciascuna. Prima, scegliere il 2025 nelle Fatture e ritrovare il 2026 nelle Commesse
-  significava confrontare due periodi diversi credendo di guardare la stessa cosa;
+  significava confrontare due periodi diversi credendo di guardare la stessa cosa. Gli
+  altri filtri restano di chi li mostra, ma possono ricordarsi con
+  `getFiltro(id, predefinito)` / `setFiltro(id, valore)`: lo usa lo **Stato** di Commesse
+  & Task, dove «In corso» è solo il valore del primo ingresso;
 - ogni modifica richiama `loadInitialData()`, che riscarica tutto.
 
 Conseguenze pratiche: la reattività dei filtri è immediata, ma il costo di avvio cresce
