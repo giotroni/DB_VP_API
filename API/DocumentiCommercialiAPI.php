@@ -273,6 +273,23 @@ class DocumentiCommercialiAPI extends BaseAPI {
             $data['ID_PADRE'] = null;
         }
 
+        // Le quattro colonne che il database non ammette vuote. In
+        // aggiornamento un valore vuoto vuol dire «non lo sto cambiando»: si
+        // toglie dalla richiesta invece di scriverci sopra NULL.
+        //
+        // E' l'errore 1048 preso il 21/08/2026 modificando un ordine per
+        // collegarlo alla sua offerta: la scheda mandava Ordine_Atteso a null
+        // perche' sugli ordini non si applica, e il salvataggio moriva li'.
+        // In creazione non si vedeva - i predefiniti qui sotto rimediavano -
+        // quindi l'ordine si poteva creare ma non piu' modificare.
+        if ($isUpdate) {
+            foreach (['Tipo', 'Tipo_Importo', 'Stato', 'Ordine_Atteso'] as $campo) {
+                if (array_key_exists($campo, $data) && ($data[$campo] === null || $data[$campo] === '')) {
+                    unset($data[$campo]);
+                }
+            }
+        }
+
         if (!$isUpdate) {
             if (empty($data['Tipo_Importo']))  { $data['Tipo_Importo']  = 'Chiuso'; }
             if (empty($data['Stato']))         { $data['Stato']         = 'Ricevuto'; }

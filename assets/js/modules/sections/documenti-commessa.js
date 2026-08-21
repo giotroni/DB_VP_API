@@ -737,7 +737,12 @@ class DocumentiCommessa {
         } else {
             dati.Giornate_Previste = null;
         }
-        if (dati.Tipo !== 'Offerta') dati.Ordine_Atteso = null;
+        // «Ordine atteso» riguarda solo le offerte, ma la colonna non ammette
+        // NULL: su un ordine vale 'No', che e' anche il predefinito del
+        // database e vuol dire la cosa giusta - l'ordine e' questo, non se ne
+        // aspetta un altro. Svuotarla faceva fallire ogni modifica di un
+        // ordine con «Column 'Ordine_Atteso' cannot be null».
+        if (dati.Tipo !== 'Offerta') dati.Ordine_Atteso = 'No';
         if (dati.Stato !== 'Chiuso') { dati.Residuo_Alla_Chiusura = null; dati.Note_Chiusura = null; }
 
         const idEsistente = this.inModifica?.ID_DOCUMENTO || null;

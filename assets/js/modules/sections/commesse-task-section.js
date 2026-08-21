@@ -47,6 +47,7 @@ class CommesseTaskSection extends BaseSection {
                     <div class="col-lg-2 col-md-6"><label class="form-label">&nbsp;</label><div class="d-flex gap-2"><button class="btn btn-vp-primary" data-action="filter" title="Applica Filtri"><i class="fas fa-search"></i></button><button class="btn btn-outline-primary" data-action="toggle-all-commesse" id="toggleAllBtn" title="Espandi/Comprimi tutto"><i class="fas fa-expand-arrows-alt"></i></button></div></div>
                 </div>
             </div>
+            <div id="commesseNascoste" class="text-muted small mb-3"></div>
             <div id="commesseTaskContainer">${this.renderCommesseCards(this.commesseConTask)}</div>`;
         // salva l'ultima lista mostrata (inizialmente tutte le commesse raggruppate)
         this.lastFilteredData = this.commesseConTask;
@@ -576,6 +577,7 @@ class CommesseTaskSection extends BaseSection {
         // tieni traccia dei dati correnti mostrati per l'export
         this.lastFilteredData = filteredData;
         this.updateStats(filteredData);
+        this.mostraQuanteNascoste(filteredData.length);
         // inizializza tooltip sui nuovi elementi
         this.initTooltips();
     }
@@ -583,6 +585,33 @@ class CommesseTaskSection extends BaseSection {
     // ========================================================================
     // SEZIONE: GESTIONE MODALI
     // ========================================================================
+
+    /**
+     * Quante commesse i filtri stanno tenendo fuori.
+     *
+     * Serve perche' un elenco filtrato e un elenco corto si somigliano troppo:
+     * il 21/08/2026 sono sembrati spariti dei documenti appena caricati, e
+     * invece erano le loro commesse a non comparire - cinque su nove sono
+     * chiuse o sospese, e il filtro Stato parte da «In corso».
+     *
+     * Non e' un avviso e non allarma: e' un conto, e compare solo quando
+     * qualcosa e' davvero nascosto.
+     */
+    mostraQuanteNascoste(mostrate) {
+        const riga = document.getElementById('commesseNascoste');
+        if (!riga) return;
+
+        const totale = (this.commesseConTask || []).length;
+        const nascoste = totale - mostrate;
+
+        if (nascoste <= 0) {
+            riga.innerHTML = '';
+            return;
+        }
+
+        riga.innerHTML = `<i class="fas fa-filter me-1"></i>${mostrate} di ${totale} commesse:
+            ${nascoste === 1 ? 'una è nascosta' : `${nascoste} sono nascoste`} dai filtri qui sopra.`;
+    }
 
     showNewCommessaModal() {
         const modalTitle = 'Crea Nuova Commessa';
