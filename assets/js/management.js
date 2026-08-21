@@ -635,12 +635,18 @@ class ManagementApp {
             // Prova per id diretto
             let el = document.getElementById(key);
             if (!el) {
-                // Formato: containerId_value
+                // Formato: containerId_value. Dove finisce l'uno e comincia
+                // l'altro non si sa: il sottolineato sta in tutti e due - il
+                // contenitore e' 'filterStatoPagamento', il valore
+                // 'da_incassare' - quindi si provano tutti i tagli, dal piu'
+                // lungo al piu' corto. Prima si spezzava sull'ultimo
+                // sottolineato e i valori composti non si ritrovavano piu': il
+                // filtro tornava vuoto dopo ogni salvataggio, in silenzio.
                 const parts = key.split('_');
-                const val = parts.pop();
-                const containerId = parts.join('_');
-                const cont = document.getElementById(containerId);
-                if (cont) el = cont.querySelector(`input[type="checkbox"][value="${val}"]`);
+                for (let i = parts.length - 1; i > 0 && !el; i--) {
+                    const cont = document.getElementById(parts.slice(0, i).join('_'));
+                    if (cont) el = cont.querySelector(`input[type="checkbox"][value="${parts.slice(i).join('_')}"]`);
+                }
             }
             if (el) el.checked = checked;
         });

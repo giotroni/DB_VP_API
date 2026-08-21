@@ -25,14 +25,28 @@ class FattureSection extends BaseSection {
         for (let y = 2024; y <= currentYear + 1; y++) { const isChecked = (y === currentYear) ? 'checked' : ''; yearOptions += `<li><label class="dropdown-item"><input type="checkbox" class="form-check-input me-2" value="${y}" ${isChecked}>${y}</label></li>`; }
         const months = ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"];
         let monthOptions = months.map((month, index) => `<li><label class="dropdown-item"><input type="checkbox" class="form-check-input me-2" value="${index + 1}">${month}</label></li>`).join('');
-        
+
+        // Gli stati si possono spuntare a più a più: «da incassare» e «scaduta»
+        // insieme sono il credito aperto, ed è la domanda che si fa più spesso.
+        // Nessuna spunta vuol dire tutti, come per anno e mese.
+        const stati = [
+            ['da_incassare', 'Da incassare'],
+            ['scaduta', 'Scaduta'],
+            ['pagata', 'Pagata'],
+            ['parzialmente_pagata', 'Parzialmente pagata'],
+            ['stornata', 'Annullate da nota'],
+            ['nota_accredito', 'Note di accredito'],
+        ];
+        const statoOptions = stati.map(([valore, etichetta]) =>
+            `<li><label class="dropdown-item"><input type="checkbox" class="form-check-input me-2" value="${valore}">${etichetta}</label></li>`).join('');
+
         container.innerHTML = `
             <div id="stats-row-container"></div>
             <div class="search-filters">
                 <div class="row gy-3">
                     <div class="col-lg-3 col-md-6"><label class="form-label">Cerca</label><input type="text" class="form-control" id="searchFatture" placeholder="Numero, cliente..."></div>
                     <div class="col-lg-2 col-md-6"><label class="form-label">Cliente</label><select class="form-select" id="filterCliente"><option value="">Tutti</option>${this.app.utils.ordinaPerNome(this.app.clienti, 'Cliente').map(c => `<option value="${c.ID_CLIENTE}">${c.Cliente}</option>`).join('')}</select></div>
-                    <div class="col-lg-2 col-md-6"><label class="form-label">Stato Pagamento</label><select class="form-select" id="filterStatoPagamento"><option value="">Tutti</option><option value="da_incassare">Da incassare</option><option value="scaduta">Scaduta</option><option value="pagata">Pagata</option><option value="parzialmente_pagata">Parzialmente pagata</option><option value="stornata">Annullate da nota</option><option value="nota_accredito">Note di accredito</option></select></div>
+                    <div class="col-lg-2 col-md-6"><label class="form-label">Stato Pagamento</label><div class="dropdown"><button class="btn btn-outline-secondary dropdown-toggle w-100 text-truncate" type="button" id="filterStatoBtn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">Tutti</button><ul class="dropdown-menu" id="filterStatoPagamento" aria-labelledby="filterStatoBtn"><li><a class="dropdown-item fw-bold" href="#" data-action="toggle-all-filter" data-target-filter="filterStatoPagamento">Seleziona/Deseleziona</a></li><li><hr class="dropdown-divider"></li>${statoOptions}</ul></div></div>
                     <div class="col-lg-1 col-md-3"><label class="form-label">Anno</label><div class="dropdown"><button class="btn btn-outline-secondary dropdown-toggle w-100" type="button" id="filterAnnoBtn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">${currentYear}</button><ul class="dropdown-menu" id="filterAnno" aria-labelledby="filterAnnoBtn"><li><a class="dropdown-item fw-bold" href="#" data-action="toggle-all-filter" data-target-filter="filterAnno">Seleziona/Deseleziona</a></li><li><hr class="dropdown-divider"></li>${yearOptions}</ul></div></div>
                     <div class="col-lg-2 col-md-3"><label class="form-label">Mese</label><div class="dropdown"><button class="btn btn-outline-secondary dropdown-toggle w-100" type="button" id="filterMeseBtn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">Tutti</button><ul class="dropdown-menu" id="filterMese" aria-labelledby="filterMeseBtn"><li><a class="dropdown-item fw-bold" href="#" data-action="toggle-all-filter" data-target-filter="filterMese">Seleziona/Deseleziona</a></li><li><hr class="dropdown-divider"></li>${monthOptions}</ul></div></div>
                     <div class="col-lg-2 col-md-6"><label class="form-label">&nbsp;</label><div class="d-flex gap-2"><button class="btn btn-vp-primary" data-action="filter" title="Applica Filtri"><i class="fas fa-search"></i></button><button class="btn btn-outline-primary" data-action="toggle-all-fatture" id="toggleAllBtn" title="Espandi/Comprimi tutto"><i class="fas fa-expand-arrows-alt"></i></button></div></div>
@@ -54,8 +68,7 @@ class FattureSection extends BaseSection {
             });
         }
         document.getElementById('filterCliente')?.addEventListener('change', () => this.filterData());
-        document.getElementById('filterStatoPagamento')?.addEventListener('change', () => this.filterData());
-        
+
         const setupMultiSelectFilter = (filterId, buttonId) => {
             const filterContainer = document.getElementById(filterId);
             const filterButton = document.getElementById(buttonId);
@@ -70,6 +83,7 @@ class FattureSection extends BaseSection {
         };
         setupMultiSelectFilter('filterAnno', 'filterAnnoBtn');
         setupMultiSelectFilter('filterMese', 'filterMeseBtn');
+        setupMultiSelectFilter('filterStatoPagamento', 'filterStatoBtn');
     }
 
     handleAction(action, id, type, targetElement, e) {
@@ -268,10 +282,26 @@ class FattureSection extends BaseSection {
         toggleAllBtn.title = isAnyCollapsed ? 'Comprimi tutto' : 'Espandi tutto';
     }
 
+    /**
+     * Gli stati di pagamento spuntati nel filtro.
+     *
+     * Elenco vuoto vuol dire «tutti», come per anno e mese: e' la convenzione
+     * degli altri filtri a piu' scelte, e vale la pena rispettarla perche' e'
+     * quello che il pulsante mostra («Tutti») quando non c'e' nessuna spunta.
+     *
+     * Sta in un metodo perche' i posti che filtrano le fatture sono due -
+     * l'elenco a schermo e l'export in Excel - e devono leggere la stessa cosa:
+     * un export che esporta altro rispetto a quello che si vede e' un difetto
+     * che si scopre tardi e in riunione.
+     */
+    statiSelezionati() {
+        return Array.from(document.querySelectorAll('#filterStatoPagamento input:checked')).map(el => el.value);
+    }
+
     filterData() {
         const searchText = document.getElementById('searchFatture')?.value.toLowerCase() || '';
         const selectedCliente = document.getElementById('filterCliente')?.value || '';
-        const selectedStato = document.getElementById('filterStatoPagamento')?.value || '';
+        const selectedStati = this.statiSelezionati();
         const selectedYears = Array.from(document.querySelectorAll('#filterAnno input:checked')).map(el => parseInt(el.value));
         const selectedMonths = Array.from(document.querySelectorAll('#filterMese input:checked')).map(el => parseInt(el.value));
 
@@ -289,7 +319,7 @@ class FattureSection extends BaseSection {
                     (fattura.NR || '').toLowerCase().includes(searchText) ||
                     (fattura.cliente_info?.Cliente || client.cliente_nome || '').toLowerCase().includes(searchText);
 
-                const matchStato = !selectedStato || fattura.stato_pagamento === selectedStato;
+                const matchStato = !selectedStati.length || selectedStati.includes(fattura.stato_pagamento);
 
                 const matchDate = !this.activeDateFilter || (fattura.Data && (() => {
                     const fatturaDate = new Date(fattura.Data);
@@ -870,7 +900,7 @@ class FattureSection extends BaseSection {
         // Ricava i dati correnti applicando gli stessi filtri (ma senza modificare il DOM)
         const searchText = document.getElementById('searchFatture')?.value.toLowerCase() || '';
         const selectedCliente = document.getElementById('filterCliente')?.value || '';
-        const selectedStato = document.getElementById('filterStatoPagamento')?.value || '';
+        const selectedStati = this.statiSelezionati();
         const selectedYears = Array.from(document.querySelectorAll('#filterAnno input:checked')).map(el => parseInt(el.value));
         const selectedMonths = Array.from(document.querySelectorAll('#filterMese input:checked')).map(el => parseInt(el.value));
 
@@ -885,7 +915,7 @@ class FattureSection extends BaseSection {
                     (fattura.NR || '').toLowerCase().includes(searchText) ||
                     (fattura.cliente_info?.Cliente || client.cliente_nome || '').toLowerCase().includes(searchText);
 
-                const matchStato = !selectedStato || fattura.stato_pagamento === selectedStato;
+                const matchStato = !selectedStati.length || selectedStati.includes(fattura.stato_pagamento);
 
                 const matchDate = !activeDateFilter || (fattura.Data && (() => {
                     const fatturaDate = new Date(fattura.Data);
