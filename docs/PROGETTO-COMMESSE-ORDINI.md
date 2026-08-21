@@ -526,6 +526,11 @@ granularità per stabilimento è già salva sul nome della commessa e non si per
   ordini della commessa scelta e il residuo di ciascuno accanto al numero. Da lì si apre
   anche **l'allegato del documento**, senza passare dalla scheda della commessa: chi
   registra una fattura ha spesso bisogno di rileggere l'ordine proprio in quel momento.
+- **Nell'elenco delle fatture**, ogni riga porta l'ordine o l'offerta collegata con la
+  graffetta per aprire il PDF. Dove il documento non c'è ancora si mostra il vecchio
+  `Riferimento_Ordine` come «Rif. ordine»: sulle fatture più datate è l'unica traccia che
+  esiste. Dove non c'è nessuno dei due non compare nulla — oggi sono quasi tutte, e
+  ottantotto righe con scritto «nessun ordine» sarebbero rumore.
 
 **Chi guida la compilazione di una fattura** *(20/08/2026)*. Né il cliente né la commessa in
 esclusiva: **la commessa è il dato che decide**, e il cliente si compila da sé quando è

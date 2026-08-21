@@ -144,7 +144,8 @@ class FattureSection extends BaseSection {
         // Nome commessa se disponibile
         const nomeCommessa = fattura.commessa_info?.Commessa || '';
         const pagamentoDateText = fattura.Data_Pagamento ? this.app.utils.formatDate(fattura.Data_Pagamento) : 'N/D';
-        
+        const ordine = this.rigaOrdineFattura(fattura);
+
         return `
             <div class="col-12 mb-3">
                 <div class="card h-100 border-0 shadow-sm d-flex flex-column">
@@ -162,6 +163,7 @@ class FattureSection extends BaseSection {
                         <div class="row small text-muted mt-2">
                             <div class="col-md-3"><i class="fas fa-piggy-bank me-1"></i> Pagato: <strong>${this.app.utils.formatCurrency(fattura.Valore_Pagato)}</strong> (${fattura.percentuale_pagata || 0}%)</div>
                             <div class="col-md-3"><i class="fas fa-calendar-check me-1"></i> Data Pagamento: <strong>${pagamentoDateText}</strong></div>
+                            ${ordine ? `<div class="col-md-6">${ordine}</div>` : ''}
                         </div>
                         <div class="action-buttons d-flex justify-content-end gap-2 mt-3">
                             <button class="btn btn-outline-secondary btn-sm" data-action="view-fattura" data-id="${fattura.ID_FATTURA}" title="Visualizza dettagli"><i class="fas fa-eye"></i></button>
@@ -172,10 +174,47 @@ class FattureSection extends BaseSection {
             </div>`;
     }
     
+    /**
+     * L'ordine che autorizza la fattura, come si legge nell'elenco.
+     *
+     * Due cose diverse che qui convivono, e la differenza va vista:
+     *
+     *   il documento REGISTRATO   da cui si legge il residuo, e il cui PDF si
+     *                             apre da qui con la graffetta
+     *   Riferimento_Ordine        testo copiato dal cartaceo, l'unico
+     *                             riferimento che hanno le fatture piu' vecchie
+     *
+     * Quando il documento c'e', il testo libero non si ripete: direbbe la
+     * stessa cosa due volte. Quando non c'e', il testo e' meglio di niente e
+     * resta l'unico modo per risalire all'ordine.
+     *
+     * Su una fattura senza nessuno dei due non compare nulla: oggi sono quasi
+     * tutte, e ottantotto righe con scritto «nessun ordine» sarebbero rumore.
+     */
+    rigaOrdineFattura(fattura) {
+        const doc = fattura.documento_info;
+
+        if (doc) {
+            const che = doc.Tipo === 'Offerta' ? 'Offerta' : 'Ordine';
+            const numero = doc.Numero ? this.app.utils.escapeHtml(doc.Numero) : 'senza numero';
+            const data = doc.Data ? ` del ${this.app.utils.formatDate(doc.Data)}` : '';
+            const allegato = doc.url
+                ? ` <a href="${doc.url}" target="_blank" rel="noopener" title="Apri il documento allegato"><i class="fas fa-paperclip"></i></a>`
+                : '';
+            return `<i class="fas fa-file-signature me-1"></i> ${che}: <strong>${numero}</strong>${data}${allegato}`;
+        }
+
+        if (fattura.Riferimento_Ordine) {
+            return `<i class="fas fa-file-signature me-1"></i> Rif. ordine: ${this.app.utils.escapeHtml(fattura.Riferimento_Ordine)}`;
+        }
+
+        return '';
+    }
+
     // ========================================================================
     // SEZIONE: LOGICA DI INTERAZIONE E FILTRI
     // ========================================================================
-    
+
     toggleAllCheckboxes(targetId) {
         const container = document.getElementById(targetId);
         if (!container) return;
