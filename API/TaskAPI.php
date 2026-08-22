@@ -7,7 +7,14 @@ require_once 'BaseAPI.php';
 require_once __DIR__ . '/CalcoloSpese.php';
 
 class TaskAPI extends BaseAPI {
-    
+
+    /**
+     * I due regimi spese sono NOT NULL. Oggi la scheda li manda sempre pieni -
+     * il menu' non ha una voce vuota - ma basta un form che non li mostri
+     * perche' un task diventi non piu' modificabile. Vedi BaseAPI.
+     */
+    protected $campiObbligatoriDb = ['Regime_Spese_Viaggi', 'Regime_Spese_Vitto_Alloggio'];
+
     public function __construct() {
         parent::__construct('ANA_TASK', 'ID_TASK');
         

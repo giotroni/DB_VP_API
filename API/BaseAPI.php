@@ -10,6 +10,27 @@ abstract class BaseAPI {
     protected $primaryKey;
     protected $requiredFields = [];
     protected $validationRules = [];
+
+    /**
+     * Colonne NOT NULL che la scheda puo' mandare vuote.
+     *
+     * Ogni scheda del frontend converte i campi vuoti in null prima di
+     * salvare, e i campi che non si applicano al caso in corso (il regime
+     * spese di un task senza spese, l'attesa di un ordine su un ordine) sono
+     * spesso proprio vuoti. Su una colonna NOT NULL quel null diventa
+     * "Column X cannot be null", e si vede SOLO in modifica: in creazione i
+     * valori predefiniti di preprocessData fanno da rete, e quelli valgono
+     * solo li'. Il record si crea e poi non si tocca piu'.
+     *
+     * In aggiornamento un campo assente vuol dire "non lo cambio" - l'UPDATE
+     * elenca solo i campi ricevuti - quindi togliere un valore vuoto lascia
+     * in colonna quello che c'era, che e' esattamente cio' che la scheda
+     * intendeva dire.
+     *
+     * Elencare qui le colonne NOT NULL della tabella (le chiavi primarie no:
+     * quelle mancano solo per errore, e un errore deve farsi sentire).
+     */
+    protected $campiObbligatoriDb = [];
     
     public function __construct($table, $primaryKey) {
         $this->db = getDatabase();
@@ -342,6 +363,14 @@ abstract class BaseAPI {
                 return;
             }
             
+            // Un valore vuoto su una colonna NOT NULL non e' "azzerala": e'
+            // "non la sto cambiando". Vedi $campiObbligatoriDb.
+            foreach ($this->campiObbligatoriDb as $campo) {
+                if (array_key_exists($campo, $input) && ($input[$campo] === null || $input[$campo] === '')) {
+                    unset($input[$campo]);
+                }
+            }
+
             // Pre-processing dei dati
             $data = $this->preprocessData($input);
             

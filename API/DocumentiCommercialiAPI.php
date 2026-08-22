@@ -15,6 +15,14 @@ require_once 'BaseAPI.php';
 
 class DocumentiCommercialiAPI extends BaseAPI {
 
+    /**
+     * Le colonne che il database non ammette vuote. E' qui che si e' visto il
+     * problema per la prima volta: l'errore 1048 del 21/08/2026 modificando un
+     * ordine per collegarlo alla sua offerta, perche' la scheda mandava
+     * Ordine_Atteso a null - sugli ordini non si applica. Vedi BaseAPI.
+     */
+    protected $campiObbligatoriDb = ['Tipo', 'ID_COMMESSA', 'Tipo_Importo', 'Stato', 'Ordine_Atteso'];
+
     /** Dove finiscono i PDF caricati. */
     private $uploadDir;
 
@@ -271,23 +279,6 @@ class DocumentiCommercialiAPI extends BaseAPI {
         // Un'offerta non ha un padre, qualunque cosa arrivi dal form.
         if (($data['Tipo'] ?? null) === 'Offerta' && array_key_exists('ID_PADRE', $data)) {
             $data['ID_PADRE'] = null;
-        }
-
-        // Le quattro colonne che il database non ammette vuote. In
-        // aggiornamento un valore vuoto vuol dire «non lo sto cambiando»: si
-        // toglie dalla richiesta invece di scriverci sopra NULL.
-        //
-        // E' l'errore 1048 preso il 21/08/2026 modificando un ordine per
-        // collegarlo alla sua offerta: la scheda mandava Ordine_Atteso a null
-        // perche' sugli ordini non si applica, e il salvataggio moriva li'.
-        // In creazione non si vedeva - i predefiniti qui sotto rimediavano -
-        // quindi l'ordine si poteva creare ma non piu' modificare.
-        if ($isUpdate) {
-            foreach (['Tipo', 'Tipo_Importo', 'Stato', 'Ordine_Atteso'] as $campo) {
-                if (array_key_exists($campo, $data) && ($data[$campo] === null || $data[$campo] === '')) {
-                    unset($data[$campo]);
-                }
-            }
         }
 
         if (!$isUpdate) {

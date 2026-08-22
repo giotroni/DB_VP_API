@@ -104,6 +104,31 @@ Tutte le liste supportano la paginazione:
 ### Filtri Comuni
 Ogni endpoint supporta filtri specifici documentati nelle singole sezioni.
 
+## Aggiornamenti parziali e colonne obbligatorie
+
+Un `PUT` elenca nell'`UPDATE` **solo** i campi ricevuti: un campo assente
+significa «non lo sto cambiando», non «azzeralo». Le schede del frontend
+sfruttano questo, ma tutte convertono i campi vuoti in `null` prima di
+inviare — e i campi che non si applicano al caso in corso (il regime spese di
+un task senza spese, l'attesa di un ordine su un ordine che è già arrivato)
+sono spesso proprio vuoti.
+
+Su una colonna `NOT NULL` quel `null` diventa `1048 Column X cannot be null`,
+e **si vede solo in modifica**: in creazione i valori predefiniti di
+`preprocessData` fanno da rete, e quelli valgono solo lì. Il record si crea e
+poi non si tocca più.
+
+Per questo `BaseAPI` ha `$campiObbligatoriDb`: l'elenco delle colonne `NOT
+NULL` della tabella. In aggiornamento un valore vuoto su una di quelle viene
+tolto dalla richiesta, così in colonna resta ciò che c'era. Le chiavi primarie
+non vanno elencate: quelle mancano solo per errore, e un errore deve farsi
+sentire.
+
+Oggi lo dichiarano `DocumentiCommercialiAPI` (`Tipo`, `ID_COMMESSA`,
+`Tipo_Importo`, `Stato`, `Ordine_Atteso`) e `TaskAPI` (`Regime_Spese_Viaggi`,
+`Regime_Spese_Vitto_Alloggio`). **Aggiungendo una colonna `NOT NULL` a una
+tabella, aggiungila anche qui.**
+
 ---
 
 ## API Endpoints
