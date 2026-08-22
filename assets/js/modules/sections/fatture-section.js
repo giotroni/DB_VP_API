@@ -588,6 +588,22 @@ class FattureSection extends BaseSection {
             const documenti = risposta.success ? (risposta.data?.data || []) : [];
             documentiCommessa = documenti;
 
+            // Un'offerta che ha gia' generato il suo ordine non e' piu' il
+            // documento su cui si fattura: la fattura va sull'ordine, che e'
+            // quello che autorizza la spesa. E' la stessa regola con cui si
+            // calcola l'ordinato - ordini piu' offerte che non hanno ancora
+            // generato ordini - perche' scegliere qui l'offerta gonfierebbe il
+            // suo residuo mentre l'ordine resta intatto: la stessa fornitura
+            // contata due volte, esattamente cio' che quella regola evita.
+            const ordiniPerOfferta = new Map();
+            documenti.forEach(d => {
+                if (!d.ID_PADRE) return;
+                const chiave = String(d.ID_PADRE);
+                if (!ordiniPerOfferta.has(chiave)) ordiniPerOfferta.set(chiave, []);
+                ordiniPerOfferta.get(chiave).push(d);
+            });
+            let sceltaSuperata = null;
+
             const opzioni = documenti.map(d => {
                 // Senza numero si scrive «senza numero», non il codice interno:
                 // DOC25001 è come lo chiama il gestionale, non come lo chiama il
@@ -603,6 +619,25 @@ class FattureSection extends BaseSection {
                     ? ''
                     : ` · residuo ${this.app.utils.formatCurrency(d.residuo)}`;
                 const sel = String(d.ID_DOCUMENTO) === String(scelta) ? 'selected' : '';
+
+                const generati = d.Tipo === 'Offerta'
+                    ? (ordiniPerOfferta.get(String(d.ID_DOCUMENTO)) || [])
+                    : [];
+                if (generati.length) {
+                    const quali = generati.length === 1
+                        ? `ha generato l'ordine ${generati[0].Numero || 'senza numero'}`
+                        : `ha generato ${generati.length} ordini`;
+                    // Se la fattura e' gia' collegata a quest'offerta la voce
+                    // resta scegliibile: toglierla la scollegherebbe in silenzio
+                    // al primo salvataggio. Lo si dice sotto, e si corregge a
+                    // mano - un dato registrato non si cambia di nascosto.
+                    if (sel) {
+                        sceltaSuperata = { offerta: numero, ordini: generati };
+                        return `<option value="${d.ID_DOCUMENTO}" selected>${d.Tipo} ${numero}${data} — ${cifra} · ${quali}</option>`;
+                    }
+                    return `<option value="${d.ID_DOCUMENTO}" disabled>${d.Tipo} ${numero}${data} — ${cifra} · ${quali}: fattura sull'ordine</option>`;
+                }
+
                 return `<option value="${d.ID_DOCUMENTO}" ${sel}>${d.Tipo} ${numero}${data} — ${cifra}${residuo}</option>`;
             }).join('');
 
@@ -614,6 +649,12 @@ class FattureSection extends BaseSection {
                     documentoHint.textContent = 'Ordini non caricati: ' + (risposta.message || 'errore');
                 } else if (!documenti.length) {
                     documentoHint.textContent = 'Questa commessa non ha ancora ordini registrati: si aggiungono dalla scheda della commessa.';
+                } else if (sceltaSuperata) {
+                    const quali = sceltaSuperata.ordini
+                        .map(o => o.Numero || 'senza numero').join(' e ');
+                    documentoHint.textContent = `Questa fattura è collegata all'offerta ${sceltaSuperata.offerta}, `
+                        + `che nel frattempo ha generato l'ordine ${quali}: converrebbe spostarla sull'ordine, `
+                        + `altrimenti la stessa fornitura risulta ordinata due volte.`;
                 } else {
                     documentoHint.textContent = '';
                 }

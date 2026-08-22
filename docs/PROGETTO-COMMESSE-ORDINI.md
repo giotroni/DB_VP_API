@@ -464,6 +464,16 @@ Le commesse che stanno solo nella seconda colonna esistono già in archivio: Are
 Maxion Wheels, Vimar, Sammontana ed Emu hanno la sola offerta. Non sono un caso degenere da
 segnalare come mancanza — sono clienti che lavorano così.
 
+La stessa regola vale su **quale documento si fattura** *(22/08/2026)*. Nella tendina della
+fattura, un'offerta che ha già generato il suo ordine non è più scegliibile: resta visibile,
+con scritto quale ordine ha generato, ma la fattura va sull'ordine. Sceglierla consumerebbe
+il residuo dell'offerta lasciando intatto quello dell'ordine — la stessa fornitura ordinata
+due volte, cioè esattamente quello che la regola sopra evita nei totali.
+
+L'eccezione è una fattura già collegata a quell'offerta da prima: lì la voce resta
+scegliibile, perché toglierla scollegherebbe in silenzio un dato registrato al primo
+salvataggio. La scheda lo dice sotto la tendina e lo si sposta a mano.
+
 ## 5. Le fasi
 
 Le fasi 0, 1 e 2 hanno valore anche fermandosi lì. Dalla 3 in poi cambiano numeri già visti
